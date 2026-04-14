@@ -27,7 +27,7 @@ let orderStates = {};
 // CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
-// PERUBAHAN 1: Pemicu dimuat otomatis untuk mode Single Page
+// Pemicu dimuat otomatis untuk mode Single Page
 document.addEventListener('DOMContentLoaded', () => { if(!smsInitialized) initSms(); });
 
 function formatPrice(price) {
@@ -165,9 +165,6 @@ async function updateSmsBal() {
     else document.getElementById('sms-balance').innerText = "Offline";
 }
 
-// ==========================================
-// RENDER UI KHUSUS SVCO (2 LANGKAH)
-// ==========================================
 export function renderSvcoPriceList() {
     const box = document.getElementById('sms-prices');
     if (!cachedSvcoData) return;
@@ -176,7 +173,7 @@ export function renderSvcoPriceList() {
     let htmlList = prices.map(p => {
         return `<div class="price-item" onclick="renderSvcoOperatorList('${p.price}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                <div style="font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Shopee - 🇮🇩</div>
+                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Shopee - 🇮🇩</div>
             </div>
             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(p.price)}</div>
@@ -197,7 +194,7 @@ export function renderSvcoOperatorList(selectedPrice) {
     let htmlList = operators.map(op => {
         return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, 'Shopee', '${op.code}', '${countryId}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                <div style="font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left:5px;">${op.name.toUpperCase()}</div>
+                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left:5px;">${op.name.toUpperCase()}</div>
             </div>
             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(selectedPrice)}</div>
@@ -207,7 +204,7 @@ export function renderSvcoOperatorList(selectedPrice) {
     });
 
     htmlList.push(`
-        <div onclick="renderSvcoPriceList()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; color: #495057; border: 1px solid #ced4da; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div onclick="renderSvcoPriceList()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar Harga
         </div>
     `);
@@ -245,7 +242,7 @@ async function loadSmsPrices() {
             box.innerHTML = ops.map(op => {
                 return `<div class="price-item" onclick="executeBuySms('${pid}', ${sendPrice}, '${name}', '${op.id}', '')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                                <div style="font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.label}</div>
+                                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.label}</div>
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${displayPrice}</div>
@@ -261,7 +258,6 @@ async function loadSmsPrices() {
                 let pid = shopeeData.serviceId || "1"; 
                 let countryId = shopeeData.country || 1; 
 
-                // MURNI FILTER HARGA DAN PENGURUTAN (DESCENDING)
                 let prices = (shopeeData.customPrice || [])
                     .filter(p => parseFloat(p.price) <= 0.06885) 
                     .sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
@@ -273,11 +269,11 @@ async function loadSmsPrices() {
                 if (prices.length > 0) {
                     renderSvcoPriceList();
                 } else {
-                    box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:bold;">Fitur Pilih Provider Belum Tersedia Pada Harga Saat Ini</div>`;
+                    box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Fitur Pilih Provider Belum Tersedia Pada Harga Saat Ini</div>`;
                 }
 
             } else {
-                box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:bold;">Stok Kosong / Tidak Masuk Filter</div>`;
+                box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Kosong / Tidak Masuk Filter</div>`;
             }
         } 
         else {
@@ -290,7 +286,7 @@ async function loadSmsPrices() {
 
                 return `<div class="price-item" onclick="executeBuySms('${i.id}', ${i.price}, '${shortName}', '${extra}', '${rankParam}')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                                <div style="font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortName}${idLabel}</div>
+                                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortName}${idLabel}</div>
                                 ${rankBadge}
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
@@ -301,11 +297,13 @@ async function loadSmsPrices() {
             }).join('');
         }
     } else { 
-        box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:bold;">${json.error?.message || json.message || json.error || 'Stok Kosong'}</div>`;
+        box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">${json.error?.message || json.message || json.error || 'Stok Kosong'}</div>`;
     }
 }
 
-// === Modifikasi: Penambahan Parameter isRecycled ===
+// 1. Tampilan ID pembelian diubah jadi 2 digit terakhir diawali #.
+// 2. Angka OTP diubah menjadi Biru dengan pemisah spasi per 3 digit.
+// 3. Font ditebalkan (font-weight: 900).
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
@@ -315,39 +313,36 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     if (activeProviderKey === "otpcepat") borderColor = "#e74c3c"; 
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
     
-    let displayId = oId;
-    if ((activeProviderKey === "otpcepat" || activeProviderKey === "svco") && String(oId).length > 6) {
-        displayId = "..." + String(oId).slice(-4);
-    }
+    // Perubahan 1: ID pembelian menjadi 2 digit terakhir dengan #
+    let displayId = "#" + String(oId).slice(-2);
 
-    // === Modifikasi: Inject Red Dot Html ===
     const recycledDot = isRecycled ? `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>` : '';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" data-created="${Date.now()}" style="border: 2px solid ${borderColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
-                <span style="color:var(--fb-blue); font-weight:bold; font-family:monospace; font-size:15px;">#${displayId}</span>
-                <span class="badge-status" style="font-size:10px; color:#fff; font-family:sans-serif; background:${borderColor}; padding:3px 6px; border-radius:4px; font-weight:bold;">ACTIVE</span>
+                <span style="color:var(--fb-blue); font-weight:900; font-family:monospace; font-size:15px;">${displayId}</span>
+                <span class="badge-status" style="font-size:10px; color:#fff; font-family:sans-serif; background:${borderColor}; padding:3px 6px; border-radius:4px; font-weight:900;">ACTIVE</span>
                 <span class="price-box" style="font-size:16px; font-weight:900; color:var(--fb-red); font-family:monospace; display:flex; align-items:center; white-space: nowrap;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class="fa-regular fa-eye-slash hide-btn-icon" onclick="hideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;"></i>
-                <span class="sms-timer" data-id="${oId}" style="font-family:monospace; font-weight:bold; color:var(--fb-blue);">--:--</span>
+                <span class="sms-timer" data-id="${oId}" style="font-family:monospace; font-weight:900; color:var(--fb-blue);">--:--</span>
             </div>
         </div>
-        <div style="font-size:11px; color:var(--fb-muted); margin-bottom:5px; text-transform:uppercase;">Nomor HP:</div>
-        <div class="phone-box" onclick="copyPhoneNumber('${phone}', 'copy-icon-${oId}')">
+        <div style="font-size:11px; color:var(--fb-muted); margin-bottom:5px; text-transform:uppercase; font-weight:900;">Nomor HP:</div>
+        <div class="phone-box" onclick="copyPhoneNumber('${phone}', 'copy-icon-${oId}')" style="font-weight: 900;">
             <span class="phone-text-span">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>${recycledDot}
         </div>
         <div style="text-align: center; margin: 10px 0 15px 0; padding: 15px 0; background: #fafafa; border-radius: 8px;">
-            <div style="font-size:11px; color:var(--fb-muted); font-weight:bold; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
-            <div class="otp-container" style="min-height:35px; display:flex; align-items:center; justify-content:center;">${otpDisplay}</div>
+            <div style="font-size:11px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
+            <div class="otp-container" style="min-height:35px; display:flex; align-items:center; justify-content:center; font-weight: 900;">${otpDisplay}</div>
         </div>
         <div class="btn-grid-4">
-            <button class="sms-btn btn-done" onclick="actSms('finish', '${oId}')" ${doneStyle}>✓ DONE</button>
-            <button class="sms-btn btn-resend" onclick="actSms('resend', '${oId}')" ${resendState}>↻ RESEND</button>
-            <button class="sms-btn btn-cancel" onclick="actSms('cancel', '${oId}')" ${cancelState}>✕ CANCEL</button>
-            <button class="sms-btn btn-replace" onclick="actSms('replace', '${oId}')" ${replaceState}>⇄ REPLACE</button>
+            <button class="sms-btn btn-done" onclick="actSms('finish', '${oId}')" ${doneStyle} style="font-weight: 900;">✓ DONE</button>
+            <button class="sms-btn btn-resend" onclick="actSms('resend', '${oId}')" ${resendState} style="font-weight: 900;">↻ RESEND</button>
+            <button class="sms-btn btn-cancel" onclick="actSms('cancel', '${oId}')" ${cancelState} style="font-weight: 900;">✕ CANCEL</button>
+            <button class="sms-btn btn-replace" onclick="actSms('replace', '${oId}')" ${replaceState} style="font-weight: 900;">⇄ REPLACE</button>
         </div>
     </div>`;
 }
@@ -405,7 +400,6 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         let replaceState = 'disabled'; 
 
         const container = document.getElementById('sms-active-orders');
-        // === Modifikasi: Lempar o.is_recycled ke UI builder ===
         const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
         container.insertAdjacentHTML('afterbegin', cardHTML);
 
@@ -535,7 +529,15 @@ function renderSmsOrders(orders) {
         const priceDisplay = (serverPrice ? formatPrice(serverPrice) : '...') + extraBadge;
         const resendState = o.otp_code ? '' : 'disabled';
         const isDone = !!o.otp_code;
-        let otpDisplay = o.otp_code ? `<span style="color:var(--fb-green); letter-spacing:4px; font-size:26px; font-weight:bold; font-family:monospace;">${o.otp_code}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+
+        // Perubahan 2: OTP warna Biru dengan pemisah spasi per 3 digit & font tebal
+        let otpDisplay;
+        if (o.otp_code) {
+            let formattedOtp = o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ');
+            otpDisplay = `<span style="color:var(--fb-blue); letter-spacing:4px; font-size:26px; font-weight:900; font-family:monospace;">${formattedOtp}</span>`;
+        } else {
+            otpDisplay = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        }
         
         const cancelState = (passed2Mins || ["smsbower", "otpcepat"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
         const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
@@ -552,7 +554,6 @@ function renderSmsOrders(orders) {
             const phoneBox = existingCard.querySelector('.phone-box');
             if (phoneBox) {
                 phoneBox.setAttribute('onclick', `copyPhoneNumber('${phone}', 'copy-icon-${o.id}')`);
-                // === Modifikasi: Pastikan dot merah ada jika di-refresh ===
                 if (o.is_recycled && !existingCard.querySelector('.recycled-dot')) {
                     phoneBox.insertAdjacentHTML('beforeend', `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>`);
                 }
@@ -564,18 +565,16 @@ function renderSmsOrders(orders) {
             const priceBox = existingCard.querySelector('.price-box');
             if (priceBox && serverPrice) priceBox.innerHTML = priceDisplay;
 
-            let displayNewId = o.id;
-            if ((activeProviderKey === "otpcepat" || activeProviderKey === "svco") && String(o.id).length > 4) {
-                displayNewId = "..." + String(o.id).slice(-4);
-            }
+            // Perubahan 1 (Update ID): ID menjadi 2 digit terakhir dengan #
+            let displayNewId = "#" + String(o.id).slice(-2);
             const spans = existingCard.querySelectorAll('span');
             spans.forEach(sp => { 
-                if (sp.innerText.trim().startsWith('#')) sp.innerText = `#${displayNewId}`; 
+                if (sp.innerText.trim().startsWith('#')) sp.innerText = displayNewId; 
             });
 
             if (o.otp_code) {
                 const btnDone = existingCard.querySelector('.btn-done');
-                if(btnDone && btnDone.disabled) { btnDone.disabled = false; btnDone.style.color = "var(--fb-green)"; btnDone.style.borderColor = "var(--fb-green)"; btnDone.style.background = "#e6f4ea"; }
+                if(btnDone && btnDone.disabled) { btnDone.disabled = false; btnDone.style.color = "var(--fb-blue)"; btnDone.style.borderColor = "var(--fb-blue)"; btnDone.style.background = "#e6f4ea"; }
                 const btnResend = existingCard.querySelector('.btn-resend');
                 if(btnResend && btnResend.disabled) btnResend.disabled = false;
                 
@@ -591,7 +590,6 @@ function renderSmsOrders(orders) {
                 if(btnReplace && btnReplace.disabled && (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey))) btnReplace.disabled = false;
             }
         } else {
-            // === Modifikasi: Lempar o.is_recycled saat build dari get-active ===
             const cardHTML = createCardHTML(o.id, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone, o.is_recycled);
             container.insertAdjacentHTML('afterbegin', cardHTML);
         }
@@ -612,7 +610,7 @@ function updateSmsTimers() {
             
             if (diff <= 1080 || ["smsbower", "otpcepat"].includes(activeProviderKey)) { 
                 const existingCard = document.getElementById(`order-${activeProviderKey}-${id}`); 
-                if(existingCard && !existingCard.innerHTML.includes('color:var(--fb-green); letter-spacing:4px;')) { 
+                if(existingCard && !existingCard.innerHTML.includes('color:var(--fb-blue); letter-spacing:4px;')) { 
                     const btnCancel = existingCard.querySelector('.btn-cancel'); 
                     if(btnCancel && btnCancel.disabled) btnCancel.disabled = false; 
                     
@@ -644,7 +642,7 @@ export async function actSms(action, id) {
         const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
         if(oldCard) {
             const otpContainer = oldCard.querySelector('.otp-container');
-            if(otpContainer) otpContainer.innerHTML = `<span style="color:var(--fb-blue); font-size:12px; font-weight:bold;"><i class="fa-solid fa-spinner fa-spin"></i> Menukar...</span>`;
+            if(otpContainer) otpContainer.innerHTML = `<span style="color:var(--fb-blue); font-size:12px; font-weight:900;"><i class="fa-solid fa-spinner fa-spin"></i> Menukar...</span>`;
         }
     }
 
@@ -736,13 +734,10 @@ export async function actSms(action, id) {
                     const hideBtn = oldCard.querySelector('.hide-btn-icon');
                     if (hideBtn) hideBtn.setAttribute('onclick', `hideSmsCard('${od.id}')`);
 
-                    let displayNewId = od.id;
-                    if (activeProviderKey === "otpcepat" && String(od.id).length > 4) {
-                        displayNewId = "..." + String(od.id).slice(-4);
-                    }
+                    let displayNewId = "#" + String(od.id).slice(-2);
                     const spans = oldCard.querySelectorAll('span');
                     spans.forEach(sp => { 
-                        if (sp.innerText.trim().startsWith('#')) sp.innerText = `#${displayNewId}`; 
+                        if (sp.innerText.trim().startsWith('#')) sp.innerText = displayNewId; 
                     });
                     
                     const copyIcon = oldCard.querySelector('.fa-copy, .fa-circle-check');
@@ -764,7 +759,7 @@ export async function actSms(action, id) {
             const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
             if (oldCard) {
                 const otpContainer = oldCard.querySelector('.otp-container');
-                if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+                if (otpContainer) otpContainer.innerHTML = `<div class=\"loader-bars\"><span></span><span></span><span></span></div>`;
             }
         }
     }
