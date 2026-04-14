@@ -51,3 +51,8 @@ export function saveShopee() {
         showModal("Peringatan", "Nama & Link wajib diisi!", "alert");
     }
 }
+
+// Tambahkan fungsi ini di baris paling bawah shopee.js
+export function openShopeeList() {
+    document.getElementById('modal-shopee-list').classList.add('active');
+}
