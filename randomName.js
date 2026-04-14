@@ -1,10 +1,3 @@
-// ==========================================
-// KONFIGURASI STORAGE & DATA
-// ==========================================
-const STORAGE_BASE_EMAIL = 'xurel_base_email';
-const STORAGE_EMAIL_INDEX = 'xurel_email_index';
-
-// Fungsi senyap untuk menyalin teks
 async function copyToClipboard(text) {
     if (!text) return;
     try {
@@ -26,21 +19,6 @@ async function copyToClipboard(text) {
     }
 }
 
-// Fungsi format iterasi email (aku@upil.com -> aku1@upil.com)
-function formatEmail(baseEmail, index) {
-    if (!baseEmail) return "";
-    if (index === 0) return baseEmail;
-    
-    const parts = baseEmail.split('@');
-    if (parts.length === 2) {
-        return `${parts[0]}${index}@${parts[1]}`;
-    }
-    return `${baseEmail}${index}`; // Fallback jika tidak ada karakter @
-}
-
-// ==========================================
-// FUNGSI UTAMA ACAK DATA PROFIL LENGKAP
-// ==========================================
 export async function generateName() {
     try {
         const fakerObj = window.faker;
@@ -115,61 +93,17 @@ export async function generateName() {
 
         const hasilLengkap = `${nama}, ${noHp}, ${provinsi}, ${kota}, ${kodePos}, ${jalan} (${patokanAcak})`;
         
-        // Salin DATA LENGKAP secara senyap (tanpa animasi)
         await copyToClipboard(hasilLengkap);
+        
+        // Animasi Ceklis di Tombol Acak
+        const btnGen = document.getElementById('btn-gen');
+        if(btnGen) {
+            const originalHTML = btnGen.innerHTML;
+            btnGen.innerHTML = '<i class="fa-solid fa-check"></i> Disalin';
+            setTimeout(() => { btnGen.innerHTML = originalHTML; }, 1000);
+        }
 
     } catch (err) {
         console.error("Error Detail:", err);
     }
 }
-
-// ==========================================
-// EVENT LISTENERS: EMAIL INPUT, NEXT & PREV
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    const btnPrev = document.getElementById('btn-prev');
-    const btnNext = document.getElementById('btn-next');
-    const outputEl = document.getElementById('genNameOutput');
-
-    // Load email terakhir saat web direfresh
-    const savedBase = localStorage.getItem(STORAGE_BASE_EMAIL);
-    const savedIndex = localStorage.getItem(STORAGE_EMAIL_INDEX);
-    if (savedBase && outputEl) {
-        outputEl.value = formatEmail(savedBase, parseInt(savedIndex || 0));
-    }
-
-    // Tangkap ketikan manual user untuk mengatur email dasar baru
-    outputEl?.addEventListener('input', (e) => {
-        const newVal = e.target.value.trim();
-        localStorage.setItem(STORAGE_BASE_EMAIL, newVal);
-        localStorage.setItem(STORAGE_EMAIL_INDEX, "0"); // Reset hitungan ke 0
-    });
-
-    // Fungsi klik NEXT (Tanpa Animasi)
-    btnNext?.addEventListener('click', async () => {
-        let base = localStorage.getItem(STORAGE_BASE_EMAIL);
-        let index = parseInt(localStorage.getItem(STORAGE_EMAIL_INDEX) || 0);
-
-        if (!base) return; 
-        index++;
-        localStorage.setItem(STORAGE_EMAIL_INDEX, index.toString());
-        
-        const newEmail = formatEmail(base, index);
-        if (outputEl) outputEl.value = newEmail;
-        await copyToClipboard(newEmail); // Salin email ke clipboard secara senyap
-    });
-
-    // Fungsi klik PREV (Tanpa Animasi)
-    btnPrev?.addEventListener('click', async () => {
-        let base = localStorage.getItem(STORAGE_BASE_EMAIL);
-        let index = parseInt(localStorage.getItem(STORAGE_EMAIL_INDEX) || 0);
-
-        if (!base || index <= 0) return; // Cegah index minus
-        index--;
-        localStorage.setItem(STORAGE_EMAIL_INDEX, index.toString());
-        
-        const newEmail = formatEmail(base, index);
-        if (outputEl) outputEl.value = newEmail;
-        await copyToClipboard(newEmail); // Salin email ke clipboard secara senyap
-    });
-});
