@@ -1,13 +1,19 @@
 import { showModal } from './ui.js';
 
-const configMaster = { 
-    apiKey: "AIzaSyDX5o3n7iQjqcS0ZJsbir_35JOpG7jqkPA", 
-    authDomain: "link-shopee-bc394.firebaseapp.com", 
-    databaseURL: "https://link-shopee-bc394-default-rtdb.asia-southeast1.firebasedatabase.app", 
-    projectId: "link-shopee-bc394" 
+// Konfigurasi Firebase Anda yang baru (sms-xurel)
+const firebaseConfig = {
+  apiKey: "AIzaSyCSjZ7ay8kUYXJ_3Jqnke3uvTRtwpgCws0",
+  authDomain: "sms-xurel.firebaseapp.com",
+  databaseURL: "https://sms-xurel-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sms-xurel",
+  storageBucket: "sms-xurel.firebasestorage.app",
+  messagingSenderId: "486134590584",
+  appId: "1:486134590584:web:cac02f4429e0432c05518d",
+  measurementId: "G-RV5ZSH1EG6"
 };
 
-firebase.initializeApp(configMaster);
+// Inisialisasi Firebase menggunakan metode Compat (agar web tidak rusak)
+firebase.initializeApp(firebaseConfig);
 export const db = firebase.database(); 
 export const auth = firebase.auth();
 
