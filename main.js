@@ -119,3 +119,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { btnNext.innerHTML = originalHTML; }, 1000);
     });
 });
+
+// ==========================================
+// LOGIKA CEK IP ADDRESS
+// ==========================================
+window.checkMyIP = async function() {
+    const ipInput = document.getElementById('ip-result');
+    ipInput.value = "Mengecek...";
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        if (!response.ok) throw new Error("Gagal");
+        const data = await response.json();
+        ipInput.value = data.ip;
+    } catch (error) {
+        ipInput.value = "Gagal memuat IP";
+    }
+};
