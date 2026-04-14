@@ -1,7 +1,7 @@
 import { showModal, closeModal, toggleMainMenu } from './ui.js';
-import { masukSistem, keluarSistem, auth } from './firebase.js';
+import { db, masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
-import { openShopeeModal, saveShopee } from './shopee.js';
+import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList } from './shopee.js';
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
@@ -11,6 +11,18 @@ window.closeModal = closeModal;
 window.toggleMainMenu = toggleMainMenu;
 window.masukSistem = masukSistem;
 window.keluarSistem = keluarSistem;
+window.generateName = generateName;
+
+// Shopee
+window.openShopeeList = openShopeeList;
+window.formatRupiah = formatRupiah;
+window.openShopeeModal = openShopeeModal;
+window.saveShopee = saveShopee;
+window.deleteShopee = deleteShopee;
+window.copyShopeeLink = copyShopeeLink;
+window.actionRandomLink = actionRandomLink;
+
+// Notes
 window.openNoteList = openNoteList;
 window.openNoteModal = openNoteModal;
 window.saveNote = saveNote;
@@ -18,13 +30,7 @@ window.editNote = editNote;
 window.deleteNote = deleteNote;
 window.copyNoteContent = copyNoteContent;
 
-window.generateName = generateName;
-window.openShopeeModal = openShopeeModal;
-window.saveShopee = saveShopee;
-
-window.openNoteModal = openNoteModal;
-window.saveNote = saveNote;
-
+// SMS
 window.toggleSmsLock = toggleSmsLock;
 window.changeSmsServer = changeSmsServer;
 window.buySms = buySms;
@@ -52,18 +58,118 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
+// LOGIKA CEK & SIMPAN IP (AUTO CLEAN 7 HARI)
+// ==========================================
+let currentFetchedIP = "";
+
+window.checkMyIP = async function() {
+    const ipInput = document.getElementById('ip-result');
+    const btnCek = document.getElementById('btn-cek-ip');
+    const btnSave = document.getElementById('btn-save-ip');
+    
+    // Mencegah klik ganda
+    if(btnCek.disabled) return; 
+
+    ipInput.value = "Mengecek...";
+    ipInput.style.color = "var(--fb-text)";
+    btnCek.disabled = true;
+    btnCek.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btnSave.style.display = "none"; // Sembunyikan tombol simpan awal
+    currentFetchedIP = "";
+
+    try {
+        const now = Date.now();
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+        let isUsed = false;
+        const updates = {};
+
+        // 1. Dapatkan IP Asli
+        const response = await fetch('https://api.ipify.org?format=json');
+        if (!response.ok) throw new Error("Gagal API");
+        const data = await response.json();
+        const myIP = data.ip;
+        currentFetchedIP = myIP;
+
+        // 2. Baca Database Firebase ("Tukang Sapu" Aktif)
+        const snap = await db.ref('ip_logs').once('value');
+        if (snap.exists()) {
+            snap.forEach(child => {
+                const logTime = child.val().timestamp;
+                // Jika umur IP sudah lewat 7 hari, tandai untuk dihapus
+                if (now - logTime > sevenDaysMs) {
+                    updates[child.key] = null; 
+                } 
+                // Jika belum 7 hari dan IP sama dengan sekarang
+                else if (child.val().ip === myIP) {
+                    isUsed = true;
+                }
+            });
+
+            // Eksekusi Hapus Masal untuk IP kedaluwarsa
+            if (Object.keys(updates).length > 0) {
+                db.ref('ip_logs').update(updates);
+            }
+        }
+
+        // 3. Tampilkan Hasil ke Layar
+        if (isUsed) {
+            ipInput.value = `${myIP} - TERPAKAI`;
+            ipInput.style.color = "var(--fb-red)"; // Warna Merah Bahaya
+        } else {
+            ipInput.value = `${myIP} - BERSIH`;
+            ipInput.style.color = "var(--fb-green)"; // Warna Hijau Aman
+            btnSave.style.display = "block"; // Tampilkan Tombol Konfirmasi Simpan
+        }
+
+    } catch (error) {
+        ipInput.value = "Gagal memuat IP";
+        ipInput.style.color = "var(--fb-red)";
+    } finally {
+        btnCek.disabled = false;
+        btnCek.innerHTML = 'Cek';
+    }
+};
+
+// Tombol yang hanya muncul saat IP "Bersih" ditekan
+window.saveMyIP = async function() {
+    if (!currentFetchedIP) return;
+    
+    const btnSave = document.getElementById('btn-save-ip');
+    const ipInput = document.getElementById('ip-result');
+    
+    btnSave.disabled = true;
+    btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    try {
+        await db.ref('ip_logs').push({
+            ip: currentFetchedIP,
+            timestamp: Date.now()
+        });
+        
+        ipInput.value = `${currentFetchedIP} - TERCATAT`;
+        ipInput.style.color = "var(--fb-blue)"; // IP Sah jadi milik Anda (Biru)
+        
+        setTimeout(() => {
+            btnSave.style.display = "none";
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
+        }, 1000);
+        
+    } catch(e) {
+        showModal("Gagal", "Gagal menghubungi database IP.", "alert");
+        btnSave.disabled = false;
+        btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
+    }
+};
+
+
+// ==========================================
 // KONTROL LOGIN & TAMPILAN
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
     document.getElementById('login-form').classList.toggle('hidden', isAdmin);
     document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
-    
-    // Tampilkan tombol Edit Shopee hanya jika login
-    const btnShopee = document.getElementById('btn-edit-shopee');
-    const msgShopee = document.getElementById('shopee-login-msg');
-    if(btnShopee) btnShopee.style.display = isAdmin ? 'block' : 'none';
-    if(msgShopee) msgShopee.style.display = isAdmin ? 'none' : 'block';
     
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
@@ -119,19 +225,3 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { btnNext.innerHTML = originalHTML; }, 1000);
     });
 });
-
-// ==========================================
-// LOGIKA CEK IP ADDRESS
-// ==========================================
-window.checkMyIP = async function() {
-    const ipInput = document.getElementById('ip-result');
-    ipInput.value = "Mengecek...";
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        if (!response.ok) throw new Error("Gagal");
-        const data = await response.json();
-        ipInput.value = data.ip;
-    } catch (error) {
-        ipInput.value = "Gagal memuat IP";
-    }
-};
