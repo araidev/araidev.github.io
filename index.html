@@ -3,21 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xurel - Multi Dashboard</title>
+    <title>Xurel - Single Dashboard</title>
     
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <script src="./js/faker.min.js"></script>
+    <script src="./faker.min.js"></script>
+
+    <style>
+        /* Gaya Khusus Untuk Mode Satu Halaman */
+        body { padding-bottom: 80px; }
+        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; padding-top: 70px; display: flex; flex-direction: column; gap: 15px; }
+        .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .action-row { display: flex; gap: 10px; width: 100%; }
+        .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        
+        .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
+        .fab-left:active { transform: scale(0.9); }
+    </style>
 </head>
 <body>
 
-    <nav class="top-nav">
-        <div class="nav-left">
-            <button class="menu-btn" onclick="toggleMainMenu()"><i class="fa-solid fa-bars"></i></button>
+    <nav class="top-nav" style="display: flex; justify-content: space-between; padding: 0 15px; align-items: center;">
+        <div style="font-weight: bold; color: var(--fb-blue); font-size: 18px;"><i class="fa-solid fa-home"></i> Home</div>
+        <div class="nav-right">
+            <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
             <div id="main-menu-popup" class="global-login">
                 <div id="login-form">
                     <div style="font-weight: bold; margin-bottom: 15px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">SISTEM ADMIN</div>
@@ -31,113 +45,81 @@
                 </div>
             </div>
         </div>
-        <div class="nav-tabs-center">
-            <button class="nav-btn active" onclick="switchApp('shopee', this)"><i class="fa-solid fa-store"></i></button>
-            <button class="nav-btn" onclick="switchApp('notes', this)"><i class="fa-solid fa-note-sticky"></i></button>
-            <button class="nav-btn" onclick="switchApp('sms', this)"><i class="fa-solid fa-message"></i></button>
-            <button class="nav-btn" onclick="switchApp('baru', this)"><i class="fa-solid fa-box-open"></i></button>
-        </div>
-        <div class="nav-right"></div>
     </nav>
 
-    <div id="app-shopee" class="app-section active">
-    <div class="content-card" style="padding: 15px;">
-        <input type="text" id="genNameOutput" placeholder="---" 
-               style="width: 100%; padding: 12px; margin-bottom: 12px; text-align: center; font-weight: bold; font-size: 14px; border: 1px solid var(--fb-border); border-radius: 8px; outline: none;">
-        
-        <div style="display: flex; gap: 8px;">
-            <button id="btn-gen" onclick="generateName()" style="flex: 2; padding: 12px; background: var(--fb-blue); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+    <div class="single-page-container">
+        <div class="section-card action-row" style="padding: 10px;">
+            <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
                 <i class="fa-solid fa-shuffle"></i> Acak Data
             </button>
-            
-            <button id="btn-prev" style="flex: 1; background: var(--fb-red); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                <i class="fa-solid fa-chevron-left"></i> Prev
-            </button>
-            
-            <button id="btn-next" style="flex: 1; background: var(--fb-green); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
+            <button id="btn-next-custom" style="background: var(--fb-green); flex: 1;">
                 Next <i class="fa-solid fa-chevron-right"></i>
             </button>
+            <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
+                <i class="fa-solid fa-pen"></i> Edit
+            </button>
         </div>
-    </div>
-    
-    <h3 style="color: var(--fb-muted); font-size: 14px;">LINK SHOPEE</h3>
-    <div id="shopee-container" class="shopee-grid"></div>
-</div>
 
-    <button id="fab-shopee" class="fab" style="display: none; background: var(--fb-red);" onclick="openShopeeModal()"><i class="fas fa-plus"></i></button>
-
-    <div id="app-notes" class="app-section">
-        <div class="notes-subnav">
-            <button id="tab-pub" class="note-tab active" onclick="switchNoteTab('public')">Publik</button>
-            <button id="tab-priv" class="note-tab" onclick="switchNoteTab('private')"><i class="fa-solid fa-lock"></i> Privat</button>
+        <div class="section-card" style="padding: 10px;">
+            <button id="btn-edit-shopee" onclick="openShopeeModal('ID_RANDOM_LOCKED')" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;">
+                <i class="fa-solid fa-link"></i> Edit Link Shopee
+            </button>
+            <p id="shopee-login-msg" style="text-align: center; font-size: 12px; color: var(--fb-muted); margin: 0; padding: 5px;">Login sebagai admin untuk mengedit link Shopee.</p>
         </div>
-        
-        <div id="note-lock-section" class="content-card hidden" style="text-align: center; padding: 40px 20px;">
-            <i class="fa-solid fa-lock" style="font-size: 40px; color: var(--fb-muted); margin-bottom: 15px;"></i>
-            <h3 style="margin-bottom: 10px; font-size: 16px; color: var(--fb-text);">Catatan Terkunci</h3>
-            <p style="font-size: 12px; color: var(--fb-muted); margin-bottom: 20px;">Silakan login melalui <b>Menu Utama</b>.</p>
-            <button class="btn-primary" style="width: auto; padding: 10px 20px;" onclick="toggleMainMenu()">Buka Menu Login</button>
-        </div>
-        <div id="notes-grid" class="notes-grid"></div>
-    </div>
-    
-    <button id="fab-note" class="fab" style="display: none;" onclick="openNoteModal()"><i class="fas fa-plus"></i></button>
 
-    <div id="app-sms" class="app-section sms-wrapper">
-        <div class="content-card sms-top" style="padding: 15px;">
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
-                <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
-                    <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
-                </button>
+        <div class="section-card sms-wrapper" style="padding: 0;">
+            <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
+                    <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
+                        <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
+                    </button>
+                </div>
+                <div class="bal-val" id="sms-balance">Rp 0</div>
             </div>
-            <div class="bal-val" id="sms-balance">Rp 0</div>
-        </div>
-        <div id="sms-active-orders"></div>
-        <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px;">PESAN NOMOR BARU</h3>
-        <div class="price-list" id="sms-prices">
-            <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
-        </div>
-    </div>
-
-    <div id="app-baru" class="app-section">
-        <div class="content-card">
-            <h3 style="margin-bottom: 10px;">Area Fitur Baru</h3>
-            <p style="color: var(--fb-muted); font-size: 14px; margin-bottom: 15px;">Bagian ini sudah diisolasi dalam modul terpisah tanpa merusak menu lainnya.</p>
-            <button class="btn-primary" onclick="jalankanFiturBaru()">Test Modul Baru</button>
+            <div style="padding: 15px;">
+                <div id="sms-active-orders"></div>
+                <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
+                <div class="price-list" id="sms-prices">
+                    <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="universal-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
-            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
-            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
+    <button id="fab-note" class="fab-left" onclick="openNoteModal()"><i class="fa-solid fa-note-sticky"></i></button>
+
+    <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <h3 style="margin-bottom:15px;">Setting Counter Email</h3>
+            <input type="text" id="cfg-email" class="form-input" placeholder="Base Email (misal: aku@upil.com)">
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="cfg-start" class="form-input" placeholder="Start (misal: 1)">
+                <input type="number" id="cfg-end" class="form-input" placeholder="End (misal: 100)">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-email-config')">BATAL</button>
+                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0;" onclick="saveEmailConfig()">SIMPAN</button>
+            </div>
         </div>
     </div>
 
     <div id="modal-shopee-form" class="modal-overlay" onclick="closeModal('modal-shopee-form')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <h3 id="modal-shopee-title" style="margin-bottom:15px;">Tambah Link Shopee</h3>
+        <div class="modal-box" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
+            <h3 id="modal-shopee-title" style="margin-bottom:15px; font-size: 16px;">Edit Link Shopee</h3>
             <input type="hidden" id="shopee-edit-key">
             <input type="text" id="shopee-title" class="form-input" placeholder="Nama Produk">
-            <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; font-family: inherit;"></textarea>
-            <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
-            <select id="shopee-status" class="form-input">
-                <option value="">-- Tanpa Label --</option>
-                <option value="STAR">Star</option>
-                <option value="MALL">Mall</option>
-            </select>
+            <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-shopee-form')">BATAL</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0;" onclick="saveShopee()">SIMPAN</button>
+                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 10px;" onclick="closeModal('modal-shopee-form')">BATAL</button>
+                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 10px;" onclick="saveShopee()">SIMPAN</button>
             </div>
         </div>
     </div>
 
     <div id="modal-note-form" class="modal-overlay" onclick="closeModal('modal-note-form')">
         <div class="modal-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom:15px;">Catatan</h3>
+            <h3 style="margin-bottom:15px;">Tambah Catatan</h3>
             <input type="text" id="note-title" class="form-input" placeholder="Judul (Kosongkan utk auto-number)">
             <textarea id="note-content" class="form-input" style="min-height: 150px; resize: vertical;" placeholder="Tulis sesuatu..."></textarea>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -147,22 +129,6 @@
         </div>
     </div>
 
-    <div id="modal-note-view" class="modal-overlay" onclick="closeModal('modal-note-view')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span id="view-tag" style="font-size:10px; font-weight:bold; background:#eee; padding:4px 10px; border-radius:20px; color:#555"></span>
-                <i class="fa-solid fa-times" style="cursor:pointer; color:#888; font-size:18px;" onclick="closeModal('modal-note-view')"></i>
-            </div>
-            <h2 id="view-title" style="margin-bottom:15px; font-weight:800; font-size:20px;"></h2>
-            <div id="view-content" style="background:#f8f9fa; padding:15px; border-radius:8px; min-height:150px; max-height:50vh; overflow-y:auto; white-space:pre-wrap; word-wrap:break-word; font-size:14px;"></div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="m-btn btn-primary" style="flex:1; margin-left:0; padding:12px;" onclick="editNote()"><i class="fas fa-edit"></i> Edit</button>
-                <button class="m-btn btn-primary" style="flex:1; background:#f39c12; margin-left:0; padding:12px;" onclick="copyNoteContent(this)"><i class="fas fa-copy"></i> Salin</button>
-                <button class="m-btn btn-danger" style="width:50px; margin-left:0; padding:12px;" onclick="deleteNote()"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./main.js"></script>
 </body>
 </html>
