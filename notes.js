@@ -49,30 +49,55 @@ function syncStats() {
 }
 
 function updateStatsUI() {
-    const statsBox = document.getElementById('note-stats-container');
-    if (!statsBox) return;
+    const statsContainer = document.getElementById('note-stats-container');
+    if (!statsContainer) return;
 
-    statsBox.style.cssText = `
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        gap: 15px; 
-        color: #65676B; 
-        font-size: 13px; 
-        font-weight: bold; 
-        white-space: nowrap;
+    // Tampilan Wrapper yang Rapi dan Profesional
+    statsContainer.style.cssText = `
+        background: #f8f9fa;
+        border: 1px solid #e4e6eb;
+        border-radius: 8px;
+        padding: 12px 15px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        margin-bottom: 15px;
     `;
     
-    statsBox.innerHTML = `
-        <div style="display:flex; align-items:center; gap:5px;" title="Total Catatan"><i class="fa-solid fa-folder"></i> <span>${statsData.total}</span></div>
-        <div style="display:flex; align-items:center; gap:5px;" title="Disimpan Hari Ini"><i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span></div>
-        <div style="display:flex; align-items:center; gap:5px;" title="Dihapus Hari Ini"><i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span></div>
+    statsContainer.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#1877f2; font-size:15px;">
+                <i class="fa-solid fa-folder"></i> <span>${statsData.total}</span>
+            </div>
+            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
+        </div>
         
+        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#2ecc71; font-size:15px;">
+                <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
+            </div>
+            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
+        </div>
+
+        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#e74c3c; font-size:15px;">
+                <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
+            </div>
+            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
+        </div>
+
+        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+
         <button id="btn-reset-stat" style="
-            width: 26px; 
-            height: 26px; 
+            width: 32px; 
+            height: 32px; 
             border: none; 
-            background: #bcc0c4; 
+            background: #e4e6eb; 
             border-radius: 50%; 
             display: flex; 
             align-items: center; 
@@ -80,19 +105,24 @@ function updateStatsUI() {
             cursor: pointer; 
             transition: 0.2s;
         " title="Reset Hari Ini">
-            <i class="fas fa-sync-alt" style="font-size: 11px; color: white;"></i>
+            <i class="fas fa-sync-alt" style="font-size: 13px; color: #65676B;"></i>
         </button>
     `;
 
-    const btnReset = statsBox.querySelector('#btn-reset-stat');
-    btnReset.onclick = (e) => { e.preventDefault(); e.stopPropagation(); resetStatsManual(); };
+    const btnReset = statsContainer.querySelector('#btn-reset-stat');
+    btnReset.onclick = (e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+        resetStatsManual(); 
+    };
+    btnReset.onmouseover = () => { btnReset.style.background = '#d8dadf'; btnReset.querySelector('i').style.color = '#1877f2'; };
+    btnReset.onmouseout = () => { btnReset.style.background = '#e4e6eb'; btnReset.querySelector('i').style.color = '#65676B'; };
 }
 
 // ==========================================
 // CORE FUNCTIONS
 // ==========================================
 
-// Memuat data secara otomatis karena Single Page
 document.addEventListener('DOMContentLoaded', () => {
     syncNotes();
     syncStats();
@@ -136,12 +166,10 @@ function syncNotes() {
     });
 }
 
-// Buka Popup Daftar Catatan
 export function openNoteList() {
     document.getElementById('modal-note-list').classList.add('active');
 }
 
-// Buka Popup Form Tambah
 export function openNoteModal() {
     isEditingNote = false; 
     document.getElementById('note-title').value = ""; 
