@@ -14,14 +14,12 @@
     <script src="./faker.min.js"></script>
 
     <style>
-        /* Gaya Khusus Untuk Mode Satu Halaman */
         body { padding-bottom: 80px; }
-        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; padding-top: 70px; display: flex; flex-direction: column; gap: 15px; }
+        /* Jarak atas dikurangi menjadi 55px agar menempel rapi dengan toolbar */
+        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; padding-top: 55px; display: flex; flex-direction: column; gap: 15px; }
         .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
         .action-row { display: flex; gap: 10px; width: 100%; }
         .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        
         .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
         .fab-left:active { transform: scale(0.9); }
     </style>
@@ -49,8 +47,9 @@
     <div class="single-page-container">
         
         <div class="section-card" style="padding: 10px; display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="ip-result" class="form-input" placeholder="IP Address Anda..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: bold; color: var(--fb-text);">
-            <button onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">Cek</button>
+            <input type="text" id="ip-result" class="form-input" placeholder="---" readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); letter-spacing: 1px;">
+            <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; min-width: 60px; text-align: center;">Cek</button>
+            <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i> Catat</button>
         </div>
 
         <div class="section-card action-row" style="padding: 10px;">
@@ -66,10 +65,9 @@
         </div>
 
         <div class="section-card" style="padding: 10px;">
-            <button id="btn-edit-shopee" onclick="openShopeeModal('ID_RANDOM_LOCKED')" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;">
-                <i class="fa-solid fa-link"></i> Edit Link Shopee
+            <button onclick="openShopeeList()" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                <i class="fa-solid fa-store"></i> Buka Menu Shopee
             </button>
-            <p id="shopee-login-msg" style="text-align: center; font-size: 12px; color: var(--fb-muted); margin: 0; padding: 5px;">Login sebagai admin untuk mengedit link Shopee.</p>
         </div>
 
         <div class="section-card sms-wrapper" style="padding: 0;">
@@ -102,6 +100,17 @@
         </div>
     </div>
 
+    <div id="modal-shopee-list" class="modal-overlay" onclick="closeModal('modal-shopee-list')">
+        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px; background: #f0f2f5;" onclick="event.stopPropagation()">
+            <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Link Shopee</h3>
+            <div id="shopee-container" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: auto;">
+                <button class="m-btn" style="flex: 1; background: #fff; border: 1px solid var(--fb-border); color:var(--fb-muted); font-weight: bold; margin-left:0; padding: 12px;" onclick="closeModal('modal-shopee-list')">TUTUP</button>
+                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px; font-weight: bold;" onclick="openShopeeModal()"><i class="fas fa-plus"></i> TAMBAH LINK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
         <div class="modal-box" onclick="event.stopPropagation()">
             <h3 style="margin-bottom:15px;">Setting Counter Email</h3>
@@ -123,6 +132,12 @@
             <input type="hidden" id="shopee-edit-key">
             <input type="text" id="shopee-title" class="form-input" placeholder="Nama Produk">
             <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
+            <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
+            <select id="shopee-status" class="form-input">
+                <option value="">-- Tanpa Label --</option>
+                <option value="STAR">Star</option>
+                <option value="MALL">Mall</option>
+            </select>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 10px;" onclick="closeModal('modal-shopee-form')">BATAL</button>
                 <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 10px;" onclick="saveShopee()">SIMPAN</button>
@@ -132,7 +147,6 @@
 
     <div id="modal-note-list" class="modal-overlay" onclick="closeModal('modal-note-list')">
         <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px;" onclick="event.stopPropagation()">
-            
             <div id="note-stats-container"></div>
             <div id="notes-grid" class="notes-grid" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
             <div style="display: flex; gap: 10px; margin-top: auto;">
