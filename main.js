@@ -2,7 +2,7 @@ import { showModal, closeModal, toggleMainMenu } from './ui.js';
 import { masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
 import { openShopeeModal, saveShopee } from './shopee.js';
-import { openNoteModal, saveNote } from './notes.js';
+import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
 // Daftarkan ke Window
@@ -11,6 +11,12 @@ window.closeModal = closeModal;
 window.toggleMainMenu = toggleMainMenu;
 window.masukSistem = masukSistem;
 window.keluarSistem = keluarSistem;
+window.openNoteList = openNoteList;
+window.openNoteModal = openNoteModal;
+window.saveNote = saveNote;
+window.editNote = editNote;
+window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent;
 
 window.generateName = generateName;
 window.openShopeeModal = openShopeeModal;
