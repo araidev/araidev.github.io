@@ -1,41 +1,23 @@
-import { showModal, closeModal, toggleMainMenu, switchApp } from './modules/ui.js';
-import { masukSistem, keluarSistem, auth } from './modules/firebase.js';
-import { generateName } from './modules/randomName.js';
-// DI BAWAH INI SAYA TAMBAHKAN 'actionRandomLink'
-import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink } from './modules/shopee.js';
-import { switchNoteTab, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './modules/notes.js';
-import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './modules/sms.js';
+import { showModal, closeModal, toggleMainMenu } from './ui.js';
+import { masukSistem, keluarSistem, auth } from './firebase.js';
+import { generateName } from './randomName.js';
+import { openShopeeModal, saveShopee } from './shopee.js';
+import { openNoteModal, saveNote } from './notes.js';
+import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
-// Catatan: Jika Anda sudah mengubah nama filenya menjadi bow.js, 
-// silakan ubah kata 'fiturBaru.js' di bawah ini menjadi 'bow.js'
-import { jalankanFiturBaru } from './modules/fiturBaru.js';
-
-// ========================================================
-// DAFTARKAN FUNGSI KE WINDOW (Agar onclick di HTML berfungsi)
-// ========================================================
+// Daftarkan ke Window
 window.showModal = showModal;
 window.closeModal = closeModal;
 window.toggleMainMenu = toggleMainMenu;
-window.switchApp = switchApp;
-
 window.masukSistem = masukSistem;
 window.keluarSistem = keluarSistem;
 
 window.generateName = generateName;
-
-window.formatRupiah = formatRupiah;
 window.openShopeeModal = openShopeeModal;
 window.saveShopee = saveShopee;
-window.deleteShopee = deleteShopee;
-window.copyShopeeLink = copyShopeeLink;
-window.actionRandomLink = actionRandomLink; // <--- INI TAMBAHANNYA AGAR KARTU ACAK BERFUNGSI
 
-window.switchNoteTab = switchNoteTab;
 window.openNoteModal = openNoteModal;
 window.saveNote = saveNote;
-window.editNote = editNote;
-window.deleteNote = deleteNote;
-window.copyNoteContent = copyNoteContent;
 
 window.toggleSmsLock = toggleSmsLock;
 window.changeSmsServer = changeSmsServer;
@@ -43,25 +25,44 @@ window.buySms = buySms;
 window.copyPhoneNumber = copyPhoneNumber;
 window.actSms = actSms;
 
-window.jalankanFiturBaru = jalankanFiturBaru;
+// ==========================================
+// KONFIGURASI & COUNTER EMAIL
+// ==========================================
+window.openEmailConfig = function() {
+    document.getElementById('cfg-email').value = localStorage.getItem('xurel_base_email') || "";
+    document.getElementById('cfg-start').value = localStorage.getItem('xurel_email_start') || "1";
+    document.getElementById('cfg-end').value = localStorage.getItem('xurel_email_end') || "100";
+    document.getElementById('modal-email-config').classList.add('active');
+};
 
-// ========================================================
-// PENGENDALI STATUS LOGIN & TAMPILAN
-// ========================================================
+window.saveEmailConfig = function() {
+    localStorage.setItem('xurel_base_email', document.getElementById('cfg-email').value);
+    localStorage.setItem('xurel_email_start', document.getElementById('cfg-start').value);
+    localStorage.setItem('xurel_email_end', document.getElementById('cfg-end').value);
+    
+    let startVal = parseInt(document.getElementById('cfg-start').value) || 1;
+    localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
+    closeModal('modal-email-config');
+};
+
+// ==========================================
+// KONTROL LOGIN & TAMPILAN
+// ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
     document.getElementById('login-form').classList.toggle('hidden', isAdmin);
     document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
     
-    // Tampilkan tombol Plus (+) Shopee hanya jika login & sedang di tab Shopee
-    const fabShopee = document.getElementById('fab-shopee');
-    const isShopeeActive = document.getElementById('app-shopee').classList.contains('active');
-    if (fabShopee) fabShopee.style.display = (isAdmin && isShopeeActive) ? 'flex' : 'none';
+    // Tampilkan tombol Edit Shopee hanya jika login
+    const btnShopee = document.getElementById('btn-edit-shopee');
+    const msgShopee = document.getElementById('shopee-login-msg');
+    if(btnShopee) btnShopee.style.display = isAdmin ? 'block' : 'none';
+    if(msgShopee) msgShopee.style.display = isAdmin ? 'none' : 'block';
     
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
-// Menutup menu pop-up utama saat klik di luar area
+// Tutup menu saat klik di luar
 document.addEventListener('click', function(e) {
     const popup = document.getElementById('main-menu-popup');
     const btn = document.querySelector('.menu-btn');
@@ -70,47 +71,45 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ========================================================
-// LOGIKA SWIPE (GESER LAYAR) UNTUK PINDAH MENU
-// ========================================================
-let touchStartX = 0;
-let touchEndX = 0;
-const minSwipeDistance = 70; // Minimal jarak geser jari agar tidak terpencet tidak sengaja
-
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, {passive: true});
-
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, {passive: true});
-
-function handleSwipe() {
-    // Matikan fitur swipe jika sedang ada Modal (Pop-up) yang terbuka
-    if(document.querySelector('.modal-overlay.active')) return;
-
-    // Urutan tab menu Anda
-    const appsOrder = ['shopee', 'notes', 'sms', 'baru'];
-    const currentActiveApp = document.querySelector('.app-section.active');
+// ==========================================
+// LOGIKA TOMBOL 'NEXT' EMAIL
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const btnNext = document.getElementById('btn-next-custom');
     
-    if(!currentActiveApp) return;
-    
-    const currentAppId = currentActiveApp.id.replace('app-', '');
-    let currentIndex = appsOrder.indexOf(currentAppId);
+    btnNext?.addEventListener('click', async () => {
+        let base = localStorage.getItem('xurel_base_email');
+        if (!base) return showModal("Peringatan", "Silakan setting Base Email melalui tombol Edit terlebih dahulu.", "alert");
 
-    // Geser ke Kiri (Membuka menu sebelah Kanan)
-    if (touchStartX - touchEndX > minSwipeDistance) {
-        if (currentIndex < appsOrder.length - 1) {
-            const nextBtn = document.querySelectorAll('.nav-btn')[currentIndex + 1];
-            window.switchApp(appsOrder[currentIndex + 1], nextBtn);
+        let index = parseInt(localStorage.getItem('xurel_email_index') || 0);
+        let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
+        let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
+
+        index++;
+        if(index > endCount) index = startCount; // Ulangi dari start jika melebihi batas
+
+        localStorage.setItem('xurel_email_index', index.toString());
+        
+        const parts = base.split('@');
+        let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
+        
+        try {
+            if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
+            else throw new Error("Fallback");
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = newEmail;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
         }
-    } 
-    // Geser ke Kanan (Membuka menu sebelah Kiri)
-    else if (touchEndX - touchStartX > minSwipeDistance) {
-        if (currentIndex > 0) {
-            const prevBtn = document.querySelectorAll('.nav-btn')[currentIndex - 1];
-            window.switchApp(appsOrder[currentIndex - 1], prevBtn);
-        }
-    }
-}
+        
+        const originalHTML = btnNext.innerHTML;
+        btnNext.innerHTML = '<i class="fa-solid fa-check"></i> Disalin';
+        setTimeout(() => { btnNext.innerHTML = originalHTML; }, 1000);
+    });
+});
