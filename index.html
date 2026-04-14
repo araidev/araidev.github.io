@@ -28,8 +28,7 @@
 </head>
 <body>
 
-    <nav class="top-nav" style="display: flex; justify-content: space-between; padding: 0 15px; align-items: center;">
-        <div style="font-weight: bold; color: var(--fb-blue); font-size: 18px;"><i class="fa-solid fa-home"></i> Home</div>
+    <nav class="top-nav" style="display: flex; justify-content: flex-end; padding: 0 15px; align-items: center;">
         <div class="nav-right">
             <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
             <div id="main-menu-popup" class="global-login">
@@ -48,6 +47,12 @@
     </nav>
 
     <div class="single-page-container">
+        
+        <div class="section-card" style="padding: 10px; display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="ip-result" class="form-input" placeholder="IP Address Anda..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: bold; color: var(--fb-text);">
+            <button onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">Cek</button>
+        </div>
+
         <div class="section-card action-row" style="padding: 10px;">
             <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
                 <i class="fa-solid fa-shuffle"></i> Acak Data
@@ -87,7 +92,15 @@
         </div>
     </div>
 
-    <button id="fab-note" class="fab-left" onclick="openNoteModal()"><i class="fa-solid fa-note-sticky"></i></button>
+    <button id="fab-note" class="fab-left" onclick="openNoteList()"><i class="fa-solid fa-note-sticky"></i></button>
+
+    <div id="universal-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
+            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
+            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
+        </div>
+    </div>
 
     <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
         <div class="modal-box" onclick="event.stopPropagation()">
@@ -117,14 +130,42 @@
         </div>
     </div>
 
+    <div id="modal-note-list" class="modal-overlay" onclick="closeModal('modal-note-list')">
+        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px;" onclick="event.stopPropagation()">
+            <h3 style="text-align: center; margin-bottom: 10px; color: var(--fb-text);">Daftar Catatan</h3>
+            <div id="note-stats-container" style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--fb-border);"></div>
+            <div id="notes-grid" class="notes-grid" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: auto;">
+                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 12px;" onclick="closeModal('modal-note-list')">TUTUP</button>
+                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-note-form" class="modal-overlay" onclick="closeModal('modal-note-form')">
         <div class="modal-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom:15px;">Tambah Catatan</h3>
+            <h3 style="margin-bottom:15px;">Catatan Baru</h3>
             <input type="text" id="note-title" class="form-input" placeholder="Judul (Kosongkan utk auto-number)">
             <textarea id="note-content" class="form-input" style="min-height: 150px; resize: vertical;" placeholder="Tulis sesuatu..."></textarea>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-note-form')">BATAL</button>
                 <button class="m-btn btn-primary" style="flex: 2; margin-left: 0;" onclick="saveNote()">SIMPAN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-note-view" class="modal-overlay" onclick="closeModal('modal-note-view')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span id="view-tag" style="font-size:10px; font-weight:bold; background:#eee; padding:4px 10px; border-radius:20px; color:#555"></span>
+                <i class="fa-solid fa-times" style="cursor:pointer; color:#888; font-size:18px;" onclick="closeModal('modal-note-view')"></i>
+            </div>
+            <h2 id="view-title" style="margin-bottom:15px; font-weight:800; font-size:20px;"></h2>
+            <div id="view-content" style="background:#f8f9fa; padding:15px; border-radius:8px; min-height:150px; max-height:50vh; overflow-y:auto; white-space:pre-wrap; word-wrap:break-word; font-size:14px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="m-btn btn-primary" style="flex:1; margin-left:0; padding:12px;" onclick="editNote()"><i class="fas fa-edit"></i> Edit</button>
+                <button class="m-btn btn-primary" style="flex:1; background:#f39c12; margin-left:0; padding:12px;" onclick="copyNoteContent(this)"><i class="fas fa-copy"></i> Salin</button>
+                <button class="m-btn btn-danger" style="width:50px; margin-left:0; padding:12px;" onclick="deleteNote()"><i class="fas fa-trash"></i></button>
             </div>
         </div>
     </div>
