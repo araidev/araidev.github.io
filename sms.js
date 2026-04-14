@@ -1,4 +1,6 @@
 import { showModal } from './ui.js';
+// PERBAIKAN: Mengimpor database Firebase agar bisa menyimpan histori
+import { db } from './firebase.js'; 
 
 // ==========================================
 // 1. KONFIGURASI PROVIDER & STATE
@@ -23,11 +25,8 @@ let isPolling = false;
 
 let activeOrders = [];
 let orderStates = {};
-
-// CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
-// Pemicu dimuat otomatis untuk mode Single Page
 document.addEventListener('DOMContentLoaded', () => { if(!smsInitialized) initSms(); });
 
 function formatPrice(price) {
@@ -301,9 +300,6 @@ async function loadSmsPrices() {
     }
 }
 
-// 1. Tampilan ID pembelian diubah jadi 2 digit terakhir diawali #.
-// 2. Angka OTP diubah menjadi Biru dengan pemisah spasi per 3 digit.
-// 3. Font ditebalkan (font-weight: 900).
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
@@ -313,9 +309,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     if (activeProviderKey === "otpcepat") borderColor = "#e74c3c"; 
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
     
-    // Perubahan 1: ID pembelian menjadi 2 digit terakhir dengan #
     let displayId = "#" + String(oId).slice(-2);
-
     const recycledDot = isRecycled ? `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>` : '';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" data-created="${Date.now()}" style="border: 2px solid ${borderColor};">
@@ -349,18 +343,24 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
 
 export async function buySms(pid, price, name, extra = "~", rank = "S") {
     let operator = extra === "~" ? "any" : extra;
-    executeBuySms(pid, price, name, operator, rank);
+    executeBuySms(pid, price, name, operator, rank, false); // isAutoRetry = false
 }
 window.buySms = buySms;
 
-export async function executeBuySms(pid, price, name, operator, rank = "") {
+// PERBAIKAN: Penambahan parameter isAutoRetry agar saat auto-replace tidak muncul popup
+export async function executeBuySms(pid, price, name, operator, rank = "", isAutoRetry = false) {
     const pText = formatPrice(price);
     let opText = "";
     if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco") && operator !== "any") opText = ` (Prov: ${operator.toUpperCase()})`;
     else if (activeProviderKey === "smsbower" && operator !== "any") opText = ` (ID: ${operator})`;
 
-    if(!await showModal("Pesan Baru", `Beli nomor untuk ${name}${opText} seharga ${pText}?`, "confirm")) {
-        return;
+    // Jika bukan auto-retry, tampilkan popup konfirmasi
+    if (!isAutoRetry) {
+        if(!await showModal("Pesan Baru", `Beli nomor untuk ${name}${opText} seharga ${pText}?`, "confirm")) {
+            return;
+        }
+    } else {
+        document.getElementById('sms-balance').innerText = "Mencari ulang...";
     }
 
     let payload;
@@ -379,6 +379,41 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         const o = j.data.orders[0];
         const newPhone = o.phone || o.phone_number || o.phoneNumber || 'Mencari Nomor...';
         
+        // ========================================================
+        // FITUR AUTO-FILTER (Pengecekan Nomor Bekas di Firebase)
+        // ========================================================
+        let isRecycledFirebase = false;
+        if (newPhone !== 'Mencari Nomor...') {
+            try {
+                // Mengecek apakah nomor ini pernah masuk di sms_history
+                const snap = await db.ref('sms_history').orderByChild('phone').equalTo(newPhone).once('value');
+                if (snap.exists()) {
+                    isRecycledFirebase = true;
+                }
+            } catch(e) {
+                console.warn("Gagal cek histori Firebase, melanjutkan tanpa filter...");
+            }
+        }
+
+        // Jika terdeteksi bekas (oleh Firebase kita ATAU dari provider worker)
+        if (isRecycledFirebase || o.is_recycled) {
+            console.log(`[Auto-Filter] Nomor bekas terdeteksi: ${newPhone}. Membatalkan...`);
+            
+            // Batalkan langsung ke API
+            await apiCall('/order-action', 'POST', { id: o.id, action: 'cancel' });
+            
+            // Ubah teks UI
+            document.getElementById('sms-balance').innerText = "Filter Aktif... Retry";
+            
+            // Pesan ulang secara otomatis setelah jeda 1.5 detik
+            setTimeout(() => {
+                executeBuySms(pid, price, name, operator, rank, true); // true = isAutoRetry
+            }, 1500);
+            
+            return; // Hentikan proses pembuatan kartu HTML untuk nomor bekas ini
+        }
+        // ========================================================
+
         let initialExpire = Date.now() + (20 * 60000);
         if (o.expiredAt) {
             let exp = parseInt(o.expiredAt);
@@ -400,13 +435,17 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         let replaceState = 'disabled'; 
 
         const container = document.getElementById('sms-active-orders');
-        const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
+        const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, false); // o.is_recycled pasti false kalau lolos filter
         container.insertAdjacentHTML('afterbegin', cardHTML);
 
         pollSms(); updateSmsBal();
         setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 150);
     } else {
-        showModal("Gagal", j.error?.message || j.message || j.error || "Gagal memesan stok.", "alert");
+        if (!isAutoRetry) {
+            showModal("Gagal", j.error?.message || j.message || j.error || "Gagal memesan stok.", "alert");
+        } else {
+            document.getElementById('sms-balance').innerText = "Gagal Retry (Habis)";
+        }
     }
 }
 window.executeBuySms = executeBuySms;
@@ -530,7 +569,6 @@ function renderSmsOrders(orders) {
         const resendState = o.otp_code ? '' : 'disabled';
         const isDone = !!o.otp_code;
 
-        // Perubahan 2: OTP warna Biru dengan pemisah spasi per 3 digit & font tebal
         let otpDisplay;
         if (o.otp_code) {
             let formattedOtp = o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ');
@@ -554,9 +592,6 @@ function renderSmsOrders(orders) {
             const phoneBox = existingCard.querySelector('.phone-box');
             if (phoneBox) {
                 phoneBox.setAttribute('onclick', `copyPhoneNumber('${phone}', 'copy-icon-${o.id}')`);
-                if (o.is_recycled && !existingCard.querySelector('.recycled-dot')) {
-                    phoneBox.insertAdjacentHTML('beforeend', `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>`);
-                }
             }
 
             const otpContainer = existingCard.querySelector('.otp-container');
@@ -565,7 +600,6 @@ function renderSmsOrders(orders) {
             const priceBox = existingCard.querySelector('.price-box');
             if (priceBox && serverPrice) priceBox.innerHTML = priceDisplay;
 
-            // Perubahan 1 (Update ID): ID menjadi 2 digit terakhir dengan #
             let displayNewId = "#" + String(o.id).slice(-2);
             const spans = existingCard.querySelectorAll('span');
             spans.forEach(sp => { 
@@ -590,7 +624,7 @@ function renderSmsOrders(orders) {
                 if(btnReplace && btnReplace.disabled && (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey))) btnReplace.disabled = false;
             }
         } else {
-            const cardHTML = createCardHTML(o.id, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone, o.is_recycled);
+            const cardHTML = createCardHTML(o.id, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone, false);
             container.insertAdjacentHTML('afterbegin', cardHTML);
         }
     });
@@ -670,6 +704,33 @@ export async function actSms(action, id) {
         const pid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
         const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
         const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
+        const phoneStr = localStorage.getItem(`phone_${activeProviderKey}_${id}`);
+
+        // ========================================================
+        // PERBAIKAN: SIMPAN KE FIREBASE SAAT PESANAN SELESAI (DONE)
+        // ========================================================
+        if (action === 'finish') {
+            const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
+            let finalOtp = "Selesai";
+            if (oldCard) {
+                const otpSpan = oldCard.querySelector('.otp-container span');
+                if (otpSpan) finalOtp = otpSpan.innerText.trim();
+            }
+            
+            try {
+                db.ref('sms_history').push({
+                    provider: activeProviderKey,
+                    phone: phoneStr || "08XXX",
+                    otp: finalOtp,
+                    price: price || 0,
+                    timestamp: Date.now()
+                });
+                console.log("Berhasil mencatat histori ke Firebase.");
+            } catch(e) {
+                console.error("Gagal simpan histori", e);
+            }
+        }
+        // ========================================================
 
         localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
         localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
@@ -685,72 +746,8 @@ export async function actSms(action, id) {
 
         if (action === 'replace' && pid) {
             delete orderStates[id]; 
-            const payload = (activeProviderKey === "herosms") ? { product_id: String(pid), price: price, operator: oldOp } : { product_id: parseInt(pid) };
-            const n = await apiCall('/create-order', 'POST', payload);
-            const nSuccess = n.success === true || n.status === "success";
-            
-            if (nSuccess && n.data) {
-                const od = n.data.orders[0];
-                const newPhone = od.phone || od.phone_number || od.phoneNumber || 'Mencari Nomor...';
-                
-                let initialExpire = Date.now() + (20 * 60000);
-                if (od.expiredAt) {
-                    let exp = parseInt(od.expiredAt);
-                    initialExpire = exp < 10000000000 ? exp * 1000 : exp;
-                }
-
-                localStorage.setItem(`phone_${activeProviderKey}_${od.id}`, newPhone);
-                localStorage.setItem(`price_${activeProviderKey}_${od.id}`, price);
-                localStorage.setItem(`pid_${activeProviderKey}_${od.id}`, pid);
-                localStorage.setItem(`timer_${activeProviderKey}_${od.id}`, initialExpire);
-                localStorage.setItem(`op_${activeProviderKey}_${od.id}`, oldOp);
-
-                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-                if (oldCard) {
-                    oldCard.id = `order-${activeProviderKey}-${od.id}`;
-                    oldCard.setAttribute('data-created', Date.now()); 
-                    
-                    const phoneBoxSpan = oldCard.querySelector('.phone-text-span');
-                    if (phoneBoxSpan) phoneBoxSpan.innerText = newPhone;
-
-                    const otpContainer = oldCard.querySelector('.otp-container');
-                    if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-
-                    const timerEl = oldCard.querySelector('.sms-timer');
-                    if (timerEl) { timerEl.dataset.id = od.id; timerEl.innerText = '--:--'; }
-
-                    const btnDone = oldCard.querySelector('.btn-done');
-                    if (btnDone) { btnDone.disabled = true; btnDone.style.background = ''; btnDone.style.borderColor = ''; btnDone.style.color = ''; btnDone.setAttribute('onclick', `actSms('finish', '${od.id}')`); }
-                    
-                    const btnResend = oldCard.querySelector('.btn-resend');
-                    if (btnResend) { btnResend.disabled = true; btnResend.setAttribute('onclick', `actSms('resend', '${od.id}')`); }
-                    
-                    const btnCancel = oldCard.querySelector('.btn-cancel');
-                    if (btnCancel) { btnCancel.disabled = true; btnCancel.setAttribute('onclick', `actSms('cancel', '${od.id}')`); }
-                    
-                    const btnReplace = oldCard.querySelector('.btn-replace');
-                    if (btnReplace) { btnReplace.disabled = true; btnReplace.setAttribute('onclick', `actSms('replace', '${od.id}')`); }
-                    
-                    const hideBtn = oldCard.querySelector('.hide-btn-icon');
-                    if (hideBtn) hideBtn.setAttribute('onclick', `hideSmsCard('${od.id}')`);
-
-                    let displayNewId = "#" + String(od.id).slice(-2);
-                    const spans = oldCard.querySelectorAll('span');
-                    spans.forEach(sp => { 
-                        if (sp.innerText.trim().startsWith('#')) sp.innerText = displayNewId; 
-                    });
-                    
-                    const copyIcon = oldCard.querySelector('.fa-copy, .fa-circle-check');
-                    if (copyIcon) copyIcon.id = `copy-icon-${od.id}`;
-                    
-                    const phoneBox = oldCard.querySelector('.phone-box');
-                    if (phoneBox) phoneBox.setAttribute('onclick', `copyPhoneNumber('${newPhone}', 'copy-icon-${od.id}')`);
-                }
-            } else { 
-                showModal("Gagal Pesan Baru", n.error?.message || n.message || n.error || "Gagal mengganti stok.", "alert"); 
-                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-                if (oldCard) oldCard.remove();
-            }
+            // Langsung beli otomatis tanpa popup konfirmasi
+            executeBuySms(pid, price, "Ganti Nomor", oldOp, "", true);
         }
         pollSms(); updateSmsBal();
     } else { 
@@ -759,7 +756,7 @@ export async function actSms(action, id) {
             const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
             if (oldCard) {
                 const otpContainer = oldCard.querySelector('.otp-container');
-                if (otpContainer) otpContainer.innerHTML = `<div class=\"loader-bars\"><span></span><span></span><span></span></div>`;
+                if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
             }
         }
     }
