@@ -13,7 +13,6 @@ window.masukSistem = masukSistem;
 window.keluarSistem = keluarSistem;
 window.generateName = generateName;
 
-// Shopee
 window.openShopeeList = openShopeeList;
 window.formatRupiah = formatRupiah;
 window.openShopeeModal = openShopeeModal;
@@ -22,7 +21,6 @@ window.deleteShopee = deleteShopee;
 window.copyShopeeLink = copyShopeeLink;
 window.actionRandomLink = actionRandomLink;
 
-// Notes
 window.openNoteList = openNoteList;
 window.openNoteModal = openNoteModal;
 window.saveNote = saveNote;
@@ -30,7 +28,6 @@ window.editNote = editNote;
 window.deleteNote = deleteNote;
 window.copyNoteContent = copyNoteContent;
 
-// SMS
 window.toggleSmsLock = toggleSmsLock;
 window.changeSmsServer = changeSmsServer;
 window.buySms = buySms;
@@ -67,61 +64,72 @@ window.checkMyIP = async function() {
     const btnCek = document.getElementById('btn-cek-ip');
     const btnSave = document.getElementById('btn-save-ip');
     
-    // Mencegah klik ganda
     if(btnCek.disabled) return; 
 
     ipInput.value = "Mengecek...";
     ipInput.style.color = "var(--fb-text)";
     btnCek.disabled = true;
     btnCek.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    btnSave.style.display = "none"; // Sembunyikan tombol simpan awal
+    btnSave.style.display = "none"; 
     currentFetchedIP = "";
 
     try {
-        const now = Date.now();
-        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-        let isUsed = false;
-        const updates = {};
+        // 1. Ambil IP dengan Sistem Fallback (Cadangan API jika diblokir)
+        let myIP = "";
+        try {
+            const res = await fetch('https://api.ipify.org?format=json', { cache: "no-store" });
+            const data = await res.json();
+            myIP = data.ip;
+        } catch (e1) {
+            try {
+                // Cadangan 1
+                const res2 = await fetch('https://freeipapi.com/api/json', { cache: "no-store" });
+                const data2 = await res2.json();
+                myIP = data2.ipAddress;
+            } catch (e2) {
+                throw new Error("Semua server pemeriksa IP gagal diakses.");
+            }
+        }
 
-        // 1. Dapatkan IP Asli
-        const response = await fetch('https://api.ipify.org?format=json');
-        if (!response.ok) throw new Error("Gagal API");
-        const data = await response.json();
-        const myIP = data.ip;
         currentFetchedIP = myIP;
 
-        // 2. Baca Database Firebase ("Tukang Sapu" Aktif)
-        const snap = await db.ref('ip_logs').once('value');
-        if (snap.exists()) {
-            snap.forEach(child => {
-                const logTime = child.val().timestamp;
-                // Jika umur IP sudah lewat 7 hari, tandai untuk dihapus
-                if (now - logTime > sevenDaysMs) {
-                    updates[child.key] = null; 
-                } 
-                // Jika belum 7 hari dan IP sama dengan sekarang
-                else if (child.val().ip === myIP) {
-                    isUsed = true;
-                }
-            });
+        // 2. Cek Firebase (Dibungkus try-catch agar jika belum login tidak error total)
+        let isUsed = false;
+        try {
+            const now = Date.now();
+            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+            const updates = {};
 
-            // Eksekusi Hapus Masal untuk IP kedaluwarsa
-            if (Object.keys(updates).length > 0) {
-                db.ref('ip_logs').update(updates);
+            const snap = await db.ref('ip_logs').once('value');
+            if (snap.exists()) {
+                snap.forEach(child => {
+                    const logTime = child.val().timestamp;
+                    if (now - logTime > sevenDaysMs) {
+                        updates[child.key] = null; 
+                    } else if (child.val().ip === myIP) {
+                        isUsed = true;
+                    }
+                });
+                if (Object.keys(updates).length > 0) {
+                    db.ref('ip_logs').update(updates);
+                }
             }
+        } catch (dbError) {
+            console.warn("Database terkunci atau gangguan, melanjutkan tanpa cek histori.");
         }
 
         // 3. Tampilkan Hasil ke Layar
         if (isUsed) {
             ipInput.value = `${myIP} - TERPAKAI`;
-            ipInput.style.color = "var(--fb-red)"; // Warna Merah Bahaya
+            ipInput.style.color = "var(--fb-red)";
         } else {
             ipInput.value = `${myIP} - BERSIH`;
-            ipInput.style.color = "var(--fb-green)"; // Warna Hijau Aman
-            btnSave.style.display = "block"; // Tampilkan Tombol Konfirmasi Simpan
+            ipInput.style.color = "var(--fb-green)";
+            btnSave.style.display = "block"; 
         }
 
     } catch (error) {
+        console.error(error);
         ipInput.value = "Gagal memuat IP";
         ipInput.style.color = "var(--fb-red)";
     } finally {
@@ -130,7 +138,6 @@ window.checkMyIP = async function() {
     }
 };
 
-// Tombol yang hanya muncul saat IP "Bersih" ditekan
 window.saveMyIP = async function() {
     if (!currentFetchedIP) return;
     
@@ -147,7 +154,7 @@ window.saveMyIP = async function() {
         });
         
         ipInput.value = `${currentFetchedIP} - TERCATAT`;
-        ipInput.style.color = "var(--fb-blue)"; // IP Sah jadi milik Anda (Biru)
+        ipInput.style.color = "var(--fb-blue)"; 
         
         setTimeout(() => {
             btnSave.style.display = "none";
@@ -156,7 +163,7 @@ window.saveMyIP = async function() {
         }, 1000);
         
     } catch(e) {
-        showModal("Gagal", "Gagal menghubungi database IP.", "alert");
+        showModal("Gagal", "Gagal menyimpan. Pastikan Anda sudah Login Admin.", "alert");
         btnSave.disabled = false;
         btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
     }
@@ -174,7 +181,6 @@ auth.onAuthStateChanged(user => {
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
-// Tutup menu saat klik di luar
 document.addEventListener('click', function(e) {
     const popup = document.getElementById('main-menu-popup');
     const btn = document.querySelector('.menu-btn');
@@ -198,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
 
         index++;
-        if(index > endCount) index = startCount; // Ulangi dari start jika melebihi batas
+        if(index > endCount) index = startCount;
 
         localStorage.setItem('xurel_email_index', index.toString());
         
