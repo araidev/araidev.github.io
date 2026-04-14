@@ -33,27 +33,3 @@ export function showModal(title, msg, type='confirm') {
 
 export function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 export function toggleMainMenu() { document.getElementById('main-menu-popup').classList.toggle('active'); }
-
-export function switchApp(appId, btnElement) {
-    document.querySelectorAll('.app-section').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById('app-' + appId).classList.add('active');
-    btnElement.classList.add('active');
-    
-    const fabNote = document.getElementById('fab-note');
-    const fabShopee = document.getElementById('fab-shopee');
-    
-    // Logika Tombol Plus Notes
-    if(fabNote) {
-        fabNote.style.display = (appId === 'notes' && document.getElementById('note-lock-section').classList.contains('hidden')) ? 'flex' : 'none';
-    }
-    
-    // Logika Tombol Plus Shopee
-    if(fabShopee) {
-        const isAdmin = !document.getElementById('logout-form').classList.contains('hidden');
-        fabShopee.style.display = (appId === 'shopee' && isAdmin) ? 'flex' : 'none';
-    }
-    
-    window.dispatchEvent(new CustomEvent('appSwitched', { detail: appId }));
-}
