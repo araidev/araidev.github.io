@@ -211,7 +211,6 @@ export function renderSvcoOperatorList(selectedPrice) {
 }
 window.renderSvcoOperatorList = renderSvcoOperatorList;
 
-
 async function loadSmsPrices() {
     const json = await apiCall('/get-prices');
     const box = document.getElementById('sms-prices');
@@ -308,7 +307,9 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     if (activeProviderKey === "otpcepat") borderColor = "#e74c3c"; 
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
     
+    // PEMOTONGAN ID ORDER JADI 2 DIGIT
     let displayId = "#" + String(oId).slice(-2);
+    
     const recycledDot = isRecycled ? `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>` : '';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" data-created="${Date.now()}" style="border: 2px solid ${borderColor};">
@@ -375,21 +376,10 @@ export async function executeBuySms(pid, price, name, operator, rank = "", isAut
     if(isSuccess && j.data) {
         const o = j.data.orders[0];
         const newPhone = o.phone || o.phone_number || o.phoneNumber || 'Mencari Nomor...';
-        
-        // AUTO-FILTER FIREBASE
-        let isRecycledFirebase = false;
-        if (newPhone !== 'Mencari Nomor...') {
-            try {
-                const snap = await db.ref('sms_history').orderByChild('phone').equalTo(newPhone).once('value');
-                if (snap.exists()) {
-                    isRecycledFirebase = true;
-                }
-            } catch(e) { console.warn("Firebase Filter Error"); }
-        }
 
-        if (isRecycledFirebase || o.is_recycled) {
+        if (o.is_recycled) {
             await apiCall('/order-action', 'POST', { id: o.id, action: 'cancel' });
-            document.getElementById('sms-balance').innerText = "Filter Aktif...";
+            document.getElementById('sms-balance').innerText = "Filter API Aktif...";
             setTimeout(() => { executeBuySms(pid, price, name, operator, rank, true); }, 1500);
             return; 
         }
@@ -415,7 +405,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "", isAut
         let replaceState = 'disabled'; 
 
         const container = document.getElementById('sms-active-orders');
-        const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, false); 
+        const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
         container.insertAdjacentHTML('afterbegin', cardHTML);
 
         pollSms(); updateSmsBal();
@@ -429,7 +419,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "", isAut
 window.executeBuySms = executeBuySms;
 
 // ==========================================
-// FIX: LOGIKA POLLING YANG LEBIH AMAN (KEEP ALIVE)
+// FIX FINAL: POLLING KARTU ABADI
 // ==========================================
 async function pollSms() {
     if (isPolling) return;
@@ -444,32 +434,28 @@ async function pollSms() {
             }
         }
 
+        const container = document.getElementById('sms-active-orders');
+        localIds.forEach(id => {
+            const cardId = `order-${activeProviderKey}-${id}`;
+            if (!document.getElementById(cardId)) {
+                const phone = localStorage.getItem(`phone_${activeProviderKey}_${id}`) || 'Mencari Nomor...';
+                const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
+                const op = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "";
+                const rank = localStorage.getItem(`rank_${activeProviderKey}_${id}`) || "";
+                const priceDisplay = formatPrice(price) + getOperatorBadge(activeProviderKey, op, rank);
+                const otpDisplay = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+                
+                const cardHTML = createCardHTML(id, phone, priceDisplay, 'disabled', 'disabled', 'disabled', otpDisplay, false, false);
+                container.insertAdjacentHTML('afterbegin', cardHTML);
+            }
+        });
+
         if (localIds.length === 0) { isPolling = false; return; }
 
         const j = await apiCall('/get-active', 'POST', { ids: localIds });
         const isSuccess = j.success === true || j.status === "success";
         
         if(isSuccess && j.data) {
-            const serverIds = j.data.map(o => String(o.id));
-            
-            // PERBAIKAN: Hanya hapus localStorage jika pesanan sudah benar-benar hilang dari server
-            // TAPI, jangan langsung hapus kartu di UI jika baru saja dipesan (kurang dari 15 detik)
-            localIds.forEach(id => {
-                const card = document.getElementById(`order-${activeProviderKey}-${id}`);
-                const createdTime = card ? parseInt(card.getAttribute('data-created') || 0) : 0;
-                const age = Date.now() - createdTime;
-
-                if (!serverIds.includes(id) && age > 15000) {
-                    localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
-                    localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
-                    localStorage.removeItem(`price_${activeProviderKey}_${id}`);
-                    localStorage.removeItem(`pid_${activeProviderKey}_${id}`);
-                    localStorage.removeItem(`op_${activeProviderKey}_${id}`);
-                    localStorage.removeItem(`rank_${activeProviderKey}_${id}`);
-                    if (card) card.remove();
-                }
-            });
-
             activeOrders = j.data; 
             renderSmsOrders(j.data);
         }
@@ -500,7 +486,6 @@ export function copyPhoneNumber(txt, iconId) {
 window.copyPhoneNumber = copyPhoneNumber;
 
 function renderSmsOrders(orders) {
-    const container = document.getElementById('sms-active-orders');
     if(!orders || !orders.length) return;
 
     orders.forEach(o => {
@@ -508,14 +493,16 @@ function renderSmsOrders(orders) {
 
         const serverPhone = o.phone || o.phone_number || o.phoneNumber;
         const phone = serverPhone || localStorage.getItem(`phone_${activeProviderKey}_${o.id}`) || 'Mencari Nomor...';
+        if(serverPhone) localStorage.setItem(`phone_${activeProviderKey}_${o.id}`, serverPhone);
 
         const serverPrice = o.price || o.cost || localStorage.getItem(`price_${activeProviderKey}_${o.id}`);
-        let expireTime = o.expiredAt ? (parseInt(o.expiredAt) < 10000000000 ? parseInt(o.expiredAt)*1000 : parseInt(o.expiredAt)) : (localStorage.getItem(`timer_${activeProviderKey}_${o.id}`) || Date.now() + 1200000);
+        if(serverPrice) localStorage.setItem(`price_${activeProviderKey}_${o.id}`, serverPrice);
 
         const savedOp = localStorage.getItem(`op_${activeProviderKey}_${o.id}`) || "";
         const savedRank = localStorage.getItem(`rank_${activeProviderKey}_${o.id}`) || "";
         const priceDisplay = formatPrice(serverPrice) + getOperatorBadge(activeProviderKey, savedOp, savedRank);
         
+        // OTP BIRU, SPASI DI TENGAH, FONT TEBAL 900
         let otpDisplay = o.otp_code ? `<span style="color:var(--fb-blue); letter-spacing:4px; font-size:26px; font-weight:900; font-family:monospace;">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
 
         const cardId = `order-${activeProviderKey}-${o.id}`;
@@ -526,16 +513,28 @@ function renderSmsOrders(orders) {
             existingCard.querySelector('.otp-container').innerHTML = otpDisplay;
             existingCard.querySelector('.price-box').innerHTML = priceDisplay;
 
+            // Pastikan ID tetap 2 Digit saat dirender ulang
+            let displayNewId = String(o.id).slice(-2);
+            const spans = existingCard.querySelectorAll('span');
+            spans.forEach(sp => { 
+                if (sp.innerText.trim().startsWith('#')) sp.innerText = `#${displayNewId}`; 
+            });
+
             if (o.otp_code) {
                 const btnDone = existingCard.querySelector('.btn-done');
-                btnDone.disabled = false; btnDone.style.background = "#e6f4ea"; btnDone.style.color = "var(--fb-green)";
-                existingCard.querySelector('.btn-resend').disabled = false;
-                existingCard.querySelector('.btn-cancel').disabled = true;
-                existingCard.querySelector('.btn-replace').disabled = true;
+                if(btnDone) { btnDone.disabled = false; btnDone.style.background = "#e6f4ea"; btnDone.style.color = "var(--fb-green)"; btnDone.style.borderColor = "var(--fb-green)"; }
+                const btnResend = existingCard.querySelector('.btn-resend');
+                if(btnResend) btnResend.disabled = false;
+                const btnCancel = existingCard.querySelector('.btn-cancel');
+                if(btnCancel) btnCancel.disabled = true;
+                const btnReplace = existingCard.querySelector('.btn-replace');
+                if(btnReplace) btnReplace.disabled = true;
             }
-        } else {
-            const cardHTML = createCardHTML(o.id, phone, priceDisplay, 'disabled', 'disabled', 'disabled', otpDisplay, !!o.otp_code, false);
-            container.insertAdjacentHTML('afterbegin', cardHTML);
+            
+            const phoneBox = existingCard.querySelector('.phone-box');
+            if (phoneBox && o.is_recycled && !existingCard.querySelector('.recycled-dot')) {
+                phoneBox.insertAdjacentHTML('beforeend', `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>`);
+            }
         }
     });
 }
@@ -545,6 +544,7 @@ function updateSmsTimers() {
     document.querySelectorAll('.sms-timer').forEach(el => {
         const id = el.dataset.id;
         const end = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`));
+        
         if(end) {
             const diff = Math.max(0, Math.floor((end - now)/1000));
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
@@ -553,8 +553,24 @@ function updateSmsTimers() {
             if(card) {
                 const isOtpReady = card.querySelector('.otp-container span');
                 if(!isOtpReady) {
-                    if (diff <= 1080 || ["smsbower", "otpcepat"].includes(activeProviderKey)) card.querySelector('.btn-cancel').disabled = false;
-                    if (diff <= 1080 && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) card.querySelector('.btn-replace').disabled = false;
+                    if (diff <= 1080 || ["smsbower", "otpcepat"].includes(activeProviderKey)) {
+                        const btnCancel = card.querySelector('.btn-cancel');
+                        if(btnCancel) btnCancel.disabled = false;
+                    }
+                    if (diff <= 1080 && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) {
+                        const btnReplace = card.querySelector('.btn-replace');
+                        if(btnReplace) btnReplace.disabled = false;
+                    }
+                }
+
+                if (diff <= 0) {
+                    localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
+                    localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
+                    localStorage.removeItem(`price_${activeProviderKey}_${id}`);
+                    localStorage.removeItem(`pid_${activeProviderKey}_${id}`);
+                    localStorage.removeItem(`op_${activeProviderKey}_${id}`);
+                    localStorage.removeItem(`rank_${activeProviderKey}_${id}`);
+                    card.remove();
                 }
             }
         }
@@ -569,18 +585,45 @@ export async function actSms(action, id) {
     if(!await showModal(action.toUpperCase(), "Lanjutkan aksi?", "confirm")) return;
 
     const j = await apiCall('/order-action', 'POST', { id, action: (action === 'replace' ? 'cancel' : action) });
-    if(j.success || JSON.stringify(j).toUpperCase().includes("SUCCESS") || JSON.stringify(j).toUpperCase().includes("OK")) {
+    
+    if(j.success || JSON.stringify(j).toUpperCase().includes("SUCCESS") || JSON.stringify(j).toUpperCase().includes("OK") || JSON.stringify(j).toUpperCase().includes("NOT FOUND")) {
+        
         if(action === 'finish') {
             const phoneStr = localStorage.getItem(`phone_${activeProviderKey}_${id}`);
             const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
-            db.ref('sms_history').push({ provider: activeProviderKey, phone: phoneStr, price: price, timestamp: Date.now() });
+            
+            try {
+                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
+                let finalOtp = "Selesai";
+                if (oldCard) {
+                    const otpSpan = oldCard.querySelector('.otp-container span');
+                    if (otpSpan) finalOtp = otpSpan.innerText.replace(/\s+/g, '').trim();
+                }
+                
+                db.ref('sms_history').push({ 
+                    provider: activeProviderKey, 
+                    phone: phoneStr || "08XXX", 
+                    otp: finalOtp,
+                    price: price || 0, 
+                    timestamp: Date.now() 
+                });
+                console.log("Berhasil mencatat histori ke Firebase.");
+            } catch(e) {
+                console.error("Gagal simpan histori", e);
+            }
         }
         
         if (action !== 'resend') {
             localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
             localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
+            localStorage.removeItem(`price_${activeProviderKey}_${id}`);
+            localStorage.removeItem(`pid_${activeProviderKey}_${id}`);
+            localStorage.removeItem(`op_${activeProviderKey}_${id}`);
+            localStorage.removeItem(`rank_${activeProviderKey}_${id}`);
+            
             const card = document.getElementById(`order-${activeProviderKey}-${id}`);
             if(card) card.remove();
+            
             if(action === 'replace') {
                 const pid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
                 const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
@@ -589,6 +632,8 @@ export async function actSms(action, id) {
             }
         }
         pollSms(); updateSmsBal();
+    } else {
+        showModal("Gagal", j.message || j.error?.message || j.error || "Ditolak oleh server API.", "alert"); 
     }
 }
 window.actSms = actSms;
