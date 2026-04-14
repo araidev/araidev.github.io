@@ -1,4 +1,5 @@
 import { showModal } from './ui.js';
+import { db } from './firebase.js'; 
 
 // ==========================================
 // 1. KONFIGURASI PROVIDER & STATE
@@ -27,7 +28,15 @@ let orderStates = {};
 // CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
-window.addEventListener('appSwitched', (e) => { if(e.detail === 'sms' && !smsInitialized) initSms(); });
+// FIX: Pemicu untuk Single Page (Menggantikan appSwitched)
+function tryInitSms() {
+    if (!smsInitialized) initSms();
+}
+if (document.readyState === "loading") {
+    document.addEventListener('DOMContentLoaded', tryInitSms);
+} else {
+    tryInitSms();
+}
 
 function formatPrice(price) {
     if (activeProviderKey === "herosms") return `${price}`;
@@ -164,9 +173,6 @@ async function updateSmsBal() {
     else document.getElementById('sms-balance').innerText = "Offline";
 }
 
-// ==========================================
-// RENDER UI KHUSUS SVCO (2 LANGKAH)
-// ==========================================
 export function renderSvcoPriceList() {
     const box = document.getElementById('sms-prices');
     if (!cachedSvcoData) return;
@@ -260,7 +266,6 @@ async function loadSmsPrices() {
                 let pid = shopeeData.serviceId || "1"; 
                 let countryId = shopeeData.country || 1; 
 
-                // MURNI FILTER HARGA DAN PENGURUTAN (DESCENDING)
                 let prices = (shopeeData.customPrice || [])
                     .filter(p => parseFloat(p.price) <= 0.06885) 
                     .sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
@@ -304,7 +309,7 @@ async function loadSmsPrices() {
     }
 }
 
-// === Modifikasi: Penambahan Parameter isRecycled ===
+// UI BARU: ID 2 DIGIT & FONT TEBAL
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
@@ -314,10 +319,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     if (activeProviderKey === "otpcepat") borderColor = "#e74c3c"; 
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
     
-    // UI BARU: PEMOTONGAN ID ORDER JADI 2 DIGIT
     let displayId = "#" + String(oId).slice(-2);
-
-    // === Modifikasi: Inject Red Dot Html ===
     const recycledDot = isRecycled ? `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>` : '';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" data-created="${Date.now()}" style="border: 2px solid ${borderColor};">
@@ -402,7 +404,6 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         let replaceState = 'disabled'; 
 
         const container = document.getElementById('sms-active-orders');
-        // === Modifikasi: Lempar o.is_recycled ke UI builder ===
         const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
         container.insertAdjacentHTML('afterbegin', cardHTML);
 
@@ -414,6 +415,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 }
 window.executeBuySms = executeBuySms;
 
+// LOGIKA POLLING MURNI DARI KODE SEMPURNA ANDA (TANPA CLOUD SYNC)
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
@@ -533,7 +535,7 @@ function renderSmsOrders(orders) {
         const resendState = o.otp_code ? '' : 'disabled';
         const isDone = !!o.otp_code;
         
-        // UI BARU: OTP BIRU, SPASI DI TENGAH, FONT TEBAL 900
+        // UI BARU: OTP BIRU BERSAPSI, FONT 900
         let otpDisplay = o.otp_code ? `<span style="color:var(--fb-blue); letter-spacing:4px; font-size:26px; font-weight:900; font-family:monospace;">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         
         const cancelState = (passed2Mins || ["smsbower", "otpcepat"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
@@ -551,7 +553,6 @@ function renderSmsOrders(orders) {
             const phoneBox = existingCard.querySelector('.phone-box');
             if (phoneBox) {
                 phoneBox.setAttribute('onclick', `copyPhoneNumber('${phone}', 'copy-icon-${o.id}')`);
-                // === Modifikasi: Pastikan dot merah ada jika di-refresh ===
                 if (o.is_recycled && !existingCard.querySelector('.recycled-dot')) {
                     phoneBox.insertAdjacentHTML('beforeend', `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>`);
                 }
@@ -563,7 +564,7 @@ function renderSmsOrders(orders) {
             const priceBox = existingCard.querySelector('.price-box');
             if (priceBox && serverPrice) priceBox.innerHTML = priceDisplay;
 
-            // UI BARU: PASTIKAN ID TETAP 2 DIGIT SAAT DIRENDER ULANG
+            // UI BARU: JAGA AGAR ID TETAP 2 DIGIT SAAT DI UPDATE
             let displayNewId = String(o.id).slice(-2);
             const spans = existingCard.querySelectorAll('span');
             spans.forEach(sp => { 
@@ -588,7 +589,6 @@ function renderSmsOrders(orders) {
                 if(btnReplace && btnReplace.disabled && (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey))) btnReplace.disabled = false;
             }
         } else {
-            // === Modifikasi: Lempar o.is_recycled saat build dari get-active ===
             const cardHTML = createCardHTML(o.id, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone, o.is_recycled);
             container.insertAdjacentHTML('afterbegin', cardHTML);
         }
@@ -621,8 +621,6 @@ function updateSmsTimers() {
             }
         }
     });
-
-    // Modifikasi: Blok kode auto-cancel 10 menit dari frontend telah dihapus.
 }
 
 export async function actSms(action, id) {
@@ -671,6 +669,26 @@ export async function actSms(action, id) {
         const pid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
         const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
         const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
+        const phoneStr = localStorage.getItem(`phone_${activeProviderKey}_${id}`);
+
+        // FIX: PUSH KE FIREBASE HISTORY SAJA (Aman, tidak memicu polling error)
+        if(action === 'finish') {
+            try {
+                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
+                let finalOtp = "Selesai";
+                if (oldCard) {
+                    const otpSpan = oldCard.querySelector('.otp-container span');
+                    if (otpSpan) finalOtp = otpSpan.innerText.replace(/\s+/g, '').trim();
+                }
+                db.ref('sms_history').push({ 
+                    provider: activeProviderKey, 
+                    phone: phoneStr || "08XXX", 
+                    otp: finalOtp,
+                    price: price || 0, 
+                    timestamp: Date.now() 
+                });
+            } catch(e) {}
+        }
 
         localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
         localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
@@ -735,7 +753,6 @@ export async function actSms(action, id) {
                     const hideBtn = oldCard.querySelector('.hide-btn-icon');
                     if (hideBtn) hideBtn.setAttribute('onclick', `hideSmsCard('${od.id}')`);
 
-                    // UI BARU: PASTIKAN ID REPLACE JUGA TERPOTONG 2 DIGIT
                     let displayNewId = String(od.id).slice(-2);
                     const spans = oldCard.querySelectorAll('span');
                     spans.forEach(sp => { 
