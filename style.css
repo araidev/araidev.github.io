@@ -10,6 +10,21 @@ body { background-color: var(--fb-bg); color: var(--fb-text); padding-top: 60px;
 
 input, textarea { user-select: auto !important; pointer-events: auto !important; }
 
+/* ================= TOP DRAWER LOGIC ================= */
+.top-drawer-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.top-drawer-content.active {
+    max-height: 500px; /* Nilai besar agar muat semua konten laci */
+    opacity: 1;
+    pointer-events: auto;
+}
+
 /* ================= TOP NAVIGATION ================= */
 .top-nav {
     position: fixed; top: 0; left: 0; width: 100%; height: 60px;
@@ -24,7 +39,6 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 }
 .menu-btn:hover { background: var(--fb-hover); }
 
-/* Dropdown Hamburger Kiri (Pusat Login/Logout) */
 .global-login {
     display: none; position: absolute; top: 50px; left: 0; background: var(--fb-card); 
     padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 260px; border: 1px solid var(--fb-border); z-index: 1001;
@@ -35,16 +49,6 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 .btn-primary:hover { background: #1558b0; }
 .btn-danger { width: 100%; padding: 12px 10px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
 
-.nav-tabs-center { display: flex; height: 100%; gap: 10px; }
-.nav-btn {
-    width: 90px; height: 100%; border: none; background: transparent; color: var(--fb-muted); font-size: 22px; 
-    cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; display: flex; justify-content: center; align-items: center;
-}
-.nav-btn:hover { background: var(--fb-hover); border-radius: 8px; margin: 5px 0; height: calc(100% - 10px); }
-.nav-btn.active { color: var(--fb-blue); border-bottom-color: var(--fb-blue); border-radius: 0; margin: 0; height: 100%; background: transparent; }
-.nav-right { width: 50px; }
-
-/* ================= APP CONTAINERS ================= */
 .app-section { display: none; padding: 20px 10px; max-width: 800px; margin: 0 auto; animation: fadeIn 0.3s ease; position: relative; z-index: 1; }
 .app-section.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -52,26 +56,12 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 .content-card { background: var(--fb-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; position: relative; z-index: 2; }
 .hidden { display: none !important; }
 
-/* ================= CSS SHOPEE (A1) ================= */
-.generate-box { display: flex; gap: 10px; }
-.generate-box input { flex: 1; padding: 12px; border: 1px solid var(--fb-border); border-radius: 8px; font-weight: bold; text-align: center; }
-.generate-box button { background: var(--fb-blue); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-
-.shopee-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
+/* ================= CSS SHOPEE ================= */
 .shopee-item-wrapper { display: flex; border-radius: 10px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 .shopee-copy-btn { width: 85px; background: rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; cursor: pointer; transition: 0.2s; }
 .shopee-copy-btn:hover { background: rgba(0,0,0,0.3); }
-.shopee-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 10px; color: white; text-decoration: none; font-weight: 600; text-align: center; gap: 5px; min-height: 85px;}
-.shopee-details { display: flex; gap: 5px; font-size: 11px; }
-.badge-status { background: rgba(0,0,0,0.2); padding: 3px 6px; border-radius: 6px; }
-.admin-controls { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; }
-.btn-ctrl { background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; color: var(--fb-text); display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
 
-/* ================= CSS NOTES (A2) ================= */
-.notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
-.note-tab { border: none; background: transparent; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fb-muted); }
-.note-tab.active { background: white; color: var(--fb-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-
+/* ================= CSS NOTES ================= */
 .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
 .note-card { background: white; padding: 15px; border-radius: 12px; border: 1px solid var(--fb-border); cursor: pointer; height: 110px; position: relative; }
 .note-card:hover { background: #f8f9fa; }
@@ -79,82 +69,26 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 .note-preview { font-size: 11px; color: var(--fb-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .note-date { position: absolute; bottom: 10px; left: 10px; font-size: 8.5px; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; color: #888; font-weight: 600; border: 1px solid #eee; text-transform: uppercase; }
 
-.text-link { color: var(--fb-blue); text-decoration: none; font-weight: 500; }
-.text-link:hover { text-decoration: underline; color: #1558b0; }
-
-.fab { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background: var(--fb-blue); color: white; border-radius: 50%; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 10px rgba(24,119,242,0.4); cursor: pointer; border: none; z-index: 500; }
-
 /* ================= CSS SMS ================= */
-.sms-wrapper { --sms-grn: var(--fb-green); --sms-blu: var(--fb-blue); --sms-org: var(--fb-red); }
-.sms-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.sms-select { padding: 8px; border-radius: 8px; border: 1px solid var(--fb-border); font-weight: bold; outline: none; }
-.sms-select:disabled { opacity: 0.6; cursor: not-allowed; }
-.bal-val { font-weight: bold; color: var(--sms-grn); font-size: 16px; background: #e6f4ea; padding: 5px 12px; border-radius: 15px; }
-
+.bal-val { font-weight: bold; color: var(--fb-green); font-size: 16px; background: #e6f4ea; padding: 5px 12px; border-radius: 15px; }
 .price-list { border: 1px solid var(--fb-border); border-radius: 12px; overflow: hidden; background: white; }
 .price-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--fb-border); cursor: pointer; }
 .price-item:hover { background: #f8f9fa; }
 .price-item:last-child { border-bottom: none; }
-
-.order-card { border: 1px solid var(--fb-border); background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-
-.phone-box { 
-    font-size: 24px; font-weight: bold; font-family: monospace; cursor: pointer; 
-    padding: 10px 0; color: var(--fb-text); display: flex; align-items: center; justify-content: flex-start; gap: 10px; 
-    width: 100%;
-}
-.phone-box i { font-size: 20px; transition: color 0.2s ease; }
-
-.btn-grid-4 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.sms-btn { flex: 1 1 calc(50% - 8px); padding: 12px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer; border: 1px solid var(--fb-border); background: var(--fb-bg); color: var(--fb-muted); text-transform: uppercase; text-align: center; transition: 0.2s;}
-.sms-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.sms-btn:not(:disabled):hover { background: var(--fb-hover); color: var(--fb-text); }
-
-.loader-bars { display: flex; align-items: center; justify-content: center; gap: 4px; height: 20px;}
-.loader-bars span { display: block; width: 4px; height: 100%; background-color: var(--fb-muted); border-radius: 2px; animation: bounceBar 1.2s infinite ease-in-out; }
-.loader-bars span:nth-child(1) { animation-delay: -0.24s; }
-.loader-bars span:nth-child(2) { animation-delay: -0.12s; }
-.loader-bars span:nth-child(3) { animation-delay: 0s; }
-@keyframes bounceBar { 0%, 40%, 100% { transform: scaleY(0.4); opacity: 0.5; } 20% { transform: scaleY(1); opacity: 1; background-color: var(--fb-blue); } }
+.phone-box { font-size: 24px; font-weight: bold; font-family: monospace; cursor: pointer; padding: 10px 0; color: var(--fb-text); display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; }
 
 /* ================= MODAL UNIVERSAL & NOTES ================= */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
 .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
 #universal-modal { z-index: 9999 !important; background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
 .modal-box { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-
-/* Tombol Konfirmasi Diperbesar */
 .m-btn { padding: 14px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; border: none; margin-left: 8px; transition: 0.2s; text-transform: uppercase; }
 .m-btn:hover { opacity: 0.8; }
 
 /* ================= RESPONSIVE LAYOUT (KHUSUS HP) ================= */
 @media screen and (max-width: 600px) {
-    /* Mengecilkan lebar tombol menu atas agar muat 4 tombol di HP */
-    .nav-btn { 
-        width: 65px; 
-        font-size: 18px; 
-    }
-    .nav-tabs-center { 
-        gap: 2px; 
-    }
-    .nav-left, .nav-right { 
-        width: 40px; 
-    }
-
-    /* Membuat form "Acak Data" menyusun ke bawah di layar kecil */
-    .generate-box { 
-        flex-direction: column; 
-    }
-    .generate-box button { 
-        width: 100%; 
-    }
-
-    /* Menyesuaikan grid agar pas di layar HP yang sempit */
-    .shopee-grid { 
-        grid-template-columns: 1fr; 
-    }
-    .notes-grid { 
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 8px; 
-    }
+    .nav-btn { width: 65px; font-size: 18px; }
+    .nav-tabs-center { gap: 2px; }
+    .nav-left, .nav-right { width: 40px; }
+    .notes-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
