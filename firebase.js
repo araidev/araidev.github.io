@@ -20,10 +20,20 @@ export const auth = firebase.auth();
 export function masukSistem() {
     const e = document.getElementById('global-email').value; 
     const p = document.getElementById('global-pass').value;
+    
+    // Pastikan email dan password tidak kosong
+    if (!e || !p) {
+        return showModal("Peringatan", "Email dan Password tidak boleh kosong!", "alert");
+    }
+
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .then(() => auth.signInWithEmailAndPassword(e, p))
     .then(() => document.getElementById('main-menu-popup').classList.remove('active'))
-    .catch(() => showModal("Gagal Login", "Periksa kembali Email atau Password Anda.", "alert"));
+    .catch((error) => {
+        console.error("Error Firebase:", error);
+        // Tampilkan pesan error langsung dari Firebase ke layar
+        showModal("Gagal Login", "Error: " + error.message, "alert"); 
+    });
 }
 
 export function keluarSistem() { 
