@@ -5,7 +5,7 @@ import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
-// Daftarkan fungsi ke objek window agar bisa diakses HTML
+// Daftarkan ke Window
 window.showModal = showModal;
 window.closeModal = closeModal;
 window.toggleMainMenu = toggleMainMenu;
@@ -185,6 +185,7 @@ window.saveMyIP = async function() {
         btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
     }
 };
+
 
 // ==========================================
 // KONTROL LOGIN & TAMPILAN

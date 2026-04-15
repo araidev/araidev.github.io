@@ -20,7 +20,7 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 }
 
 .top-drawer-content.active {
-    max-height: 500px; /* Cukup besar untuk menampilkan isi laci */
+    max-height: 800px; /* Ukuran maksimal untuk menampung isi laci */
     opacity: 1;
     pointer-events: auto;
 }
@@ -39,7 +39,7 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 }
 .menu-btn:hover { background: var(--fb-hover); }
 
-/* Dropdown Hamburger Kiri */
+/* Dropdown Hamburger Kiri (Pusat Login/Logout) */
 .global-login {
     display: none; position: absolute; top: 50px; left: 0; background: var(--fb-card); 
     padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 260px; border: 1px solid var(--fb-border); z-index: 1001;
@@ -67,7 +67,7 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 .content-card { background: var(--fb-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; position: relative; z-index: 2; }
 .hidden { display: none !important; }
 
-/* ================= CSS SHOPEE ================= */
+/* ================= CSS SHOPEE (A1) ================= */
 .generate-box { display: flex; gap: 10px; }
 .generate-box input { flex: 1; padding: 12px; border: 1px solid var(--fb-border); border-radius: 8px; font-weight: bold; text-align: center; }
 .generate-box button { background: var(--fb-blue); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
@@ -82,7 +82,7 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 .admin-controls { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; }
 .btn-ctrl { background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; color: var(--fb-text); display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
 
-/* ================= CSS NOTES ================= */
+/* ================= CSS NOTES (A2) ================= */
 .notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
 .note-tab { border: none; background: transparent; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fb-muted); }
 .note-tab.active { background: white; color: var(--fb-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
