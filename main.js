@@ -5,7 +5,7 @@ import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
-// Daftarkan ke Window
+// Daftarkan fungsi ke objek window agar bisa diakses HTML
 window.showModal = showModal;
 window.closeModal = closeModal;
 window.toggleMainMenu = toggleMainMenu;
@@ -76,7 +76,7 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// LOGIKA CEK & SIMPAN IP
+// LOGIKA CEK & SIMPAN IP (AUTO CLEAN 7 HARI)
 // ==========================================
 let currentFetchedIP = "";
 
@@ -133,7 +133,7 @@ window.checkMyIP = async function() {
                 }
             }
         } catch (dbError) {
-            console.warn("Database terkunci atau gangguan.");
+            console.warn("Database terkunci atau gangguan, melanjutkan tanpa cek histori.");
         }
 
         if (isUsed) {
@@ -146,6 +146,7 @@ window.checkMyIP = async function() {
         }
 
     } catch (error) {
+        console.error(error);
         ipInput.value = "Gagal memuat IP";
         ipInput.style.color = "var(--fb-red)";
     } finally {
@@ -156,30 +157,43 @@ window.checkMyIP = async function() {
 
 window.saveMyIP = async function() {
     if (!currentFetchedIP) return;
+    
     const btnSave = document.getElementById('btn-save-ip');
     const ipInput = document.getElementById('ip-result');
+    
     btnSave.disabled = true;
     btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
     try {
-        await db.ref('ip_logs').push({ ip: currentFetchedIP, timestamp: Date.now() });
+        await db.ref('ip_logs').push({
+            ip: currentFetchedIP,
+            timestamp: Date.now()
+        });
+        
         ipInput.value = `${currentFetchedIP} - TERCATAT`;
         ipInput.style.color = "var(--fb-blue)"; 
+        
         setTimeout(() => {
             btnSave.style.display = "none";
             btnSave.disabled = false;
             btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
         }, 1000);
+        
     } catch(e) {
-        showModal("Gagal", "Gagal menyimpan. Pastikan Admin Login.", "alert");
+        showModal("Gagal", "Gagal menyimpan. Pastikan Anda sudah Login Admin.", "alert");
         btnSave.disabled = false;
+        btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
     }
 };
 
+// ==========================================
+// KONTROL LOGIN & TAMPILAN
+// ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
     document.getElementById('login-form').classList.toggle('hidden', isAdmin);
     document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
+    
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
@@ -191,12 +205,15 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ==========================================
 // LOGIKA TOMBOL 'NEXT' EMAIL
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnNext = document.getElementById('btn-next-custom');
+    
     btnNext?.addEventListener('click', async () => {
         let base = localStorage.getItem('xurel_base_email');
-        if (!base) return showModal("Peringatan", "Setting Base Email dulu.", "alert");
+        if (!base) return showModal("Peringatan", "Silakan setting Base Email melalui tombol Edit terlebih dahulu.", "alert");
 
         let index = parseInt(localStorage.getItem('xurel_email_index') || 0);
         let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
@@ -204,17 +221,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         index++;
         if(index > endCount) index = startCount;
+
         localStorage.setItem('xurel_email_index', index.toString());
         
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
         try {
-            await navigator.clipboard.writeText(newEmail);
+            if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
+            else throw new Error("Fallback");
         } catch (err) {
             const textArea = document.createElement("textarea");
             textArea.value = newEmail;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
             document.body.appendChild(textArea);
+            textArea.focus();
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);

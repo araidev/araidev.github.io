@@ -16,7 +16,7 @@
 
     <style>
         body { padding-bottom: 80px; }
-        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; padding-top: 25px; display: flex; flex-direction: column; gap: 15px; }
+        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; padding-top: 25px; display: flex; flex-direction: column; gap: 10px; }
         .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .action-row { display: flex; gap: 10px; width: 100%; }
         .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -46,28 +46,40 @@
 
     <div class="single-page-container">
         
-        <div class="section-card" style="padding: 10px; display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="ip-result" class="form-input" placeholder="IP Address Anda..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); letter-spacing: 1px;">
-            <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; min-width: 60px; text-align: center;">Cek</button>
-            <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i> Catat</button>
-        </div>
-
-        <div class="section-card action-row" style="padding: 10px;">
-            <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
-                <i class="fa-solid fa-shuffle"></i> Acak Data
-            </button>
-            <button id="btn-next-custom" style="background: var(--fb-green); flex: 1;">
-                Next <i class="fa-solid fa-chevron-right"></i>
-            </button>
-            <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
-                <i class="fa-solid fa-pen"></i> Edit
+        <div style="display: flex; justify-content: center; margin-bottom: 5px;">
+            <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: white; border: 1px solid var(--fb-border); padding: 8px 20px; border-radius: 20px; color: var(--fb-muted); font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <i class="fa-solid fa-toolbox"></i> ALAT EKSTRA <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: 0.3s;"></i>
             </button>
         </div>
 
-        <div class="section-card" style="padding: 10px;">
-            <button onclick="openShopeeList()" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                <i class="fa-solid fa-store"></i> Buka Menu Shopee
-            </button>
+        <div id="top-drawer" class="top-drawer-content">
+            <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 10px;">
+                
+                <div class="section-card" style="padding: 10px; display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="ip-result" class="form-input" placeholder="IP Address Anda..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); letter-spacing: 1px;">
+                    <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; min-width: 60px; text-align: center;">Cek</button>
+                    <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i> Catat</button>
+                </div>
+
+                <div class="section-card action-row" style="padding: 10px;">
+                    <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
+                        <i class="fa-solid fa-shuffle"></i> Acak Data
+                    </button>
+                    <button id="btn-next-custom" style="background: var(--fb-green); flex: 1;">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
+                        <i class="fa-solid fa-pen"></i> Edit
+                    </button>
+                </div>
+
+                <div class="section-card" style="padding: 10px;">
+                    <button onclick="openShopeeList()" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        <i class="fa-solid fa-store"></i> Buka Menu Shopee
+                    </button>
+                </div>
+
+            </div>
         </div>
 
         <div class="section-card sms-wrapper" style="padding: 0;">
