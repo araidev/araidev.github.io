@@ -33,13 +33,13 @@ window.toggleTopDrawer = function() {
     } else {
         icon.style.transform = "rotate(0deg)";
         btn.style.color = "var(--fb-muted)";
-        btn.style.background = "var(--fb-bg)";
-        btn.style.borderColor = "var(--fb-border)";
+        btn.style.background = "#f0f2f5";
+        btn.style.borderColor = "#ccd0d5";
     }
 };
 
 // ==========================================
-// KONFIGURASI & COUNTER EMAIL
+// KONFIGURASI & COUNTER EMAIL AMAN REFRESH
 // ==========================================
 window.openEmailConfig = function() {
     document.getElementById('cfg-email').value = localStorage.getItem('xurel_base_email') || "";
@@ -57,7 +57,7 @@ window.saveEmailConfig = function() {
     let endVal = parseInt(document.getElementById('cfg-end').value) || 100;
     let currentIndexStr = localStorage.getItem('xurel_email_index');
     
-    // Jangan reset index jika masih dalam rentang, agar tidak kembali ke awal
+    // Jangan ulangi dari awal jika hitungan masih di dalam batas wajar saat ini
     if (!currentIndexStr) {
         localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
     } else {
@@ -73,13 +73,13 @@ window.saveEmailConfig = function() {
 // LOGIKA NEXT & PREV EMAIL (KOLOM MULTIFUNGSI)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    const btnNext = document.getElementById('btn-next-email');
-    const btnPrev = document.getElementById('btn-prev-email');
-    const ipInput = document.getElementById('ip-result'); // Target Kolom IP
+    const btnNext = document.getElementById('btn-next-custom');
+    const btnPrev = document.getElementById('btn-prev-custom');
+    const ipInput = document.getElementById('ip-result');
 
     async function handleEmailCount(direction, btnElement) {
         let base = localStorage.getItem('xurel_base_email');
-        if (!base) return showModal("Peringatan", "Silakan setting Base Email melalui tombol Edit terlebih dahulu.", "alert");
+        if (!base) return showModal("Peringatan", "Silakan setting Base Email (Edit) terlebih dahulu.", "alert");
 
         let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
         let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
@@ -99,13 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
             index--;
         }
 
-        // Menyimpan progres ke local storage agar aman saat direfresh
+        // Menyimpan progres permanen
         localStorage.setItem('xurel_email_index', index.toString());
         
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
-        // Auto Copy ke Clipboard
+        // Auto Copy
         try {
             if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
             else throw new Error("Fallback");
@@ -117,19 +117,31 @@ document.addEventListener('DOMContentLoaded', () => {
             document.execCommand('copy'); document.body.removeChild(textArea);
         }
         
-        // Menampilkan Hasil di Kolom IP
+        // Tampilkan Hasil di Kolom IP
         if (ipInput) {
             ipInput.value = newEmail;
             ipInput.style.color = "var(--fb-blue)";
         }
         
-        const originalHTML = btnElement.innerHTML;
-        btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
-        setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1000);
+        if (btnElement) {
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
+            setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1000);
+        }
     }
 
-    btnNext?.addEventListener('click', function() { handleEmailCount(1, this); });
-    btnPrev?.addEventListener('click', function() { handleEmailCount(-1, this); });
+    // Trik "Clone Node" untuk membunuh kode duplikat lama di file randomName.js
+    if (btnNext) {
+        const newBtnNext = btnNext.cloneNode(true);
+        btnNext.parentNode.replaceChild(newBtnNext, btnNext);
+        newBtnNext.addEventListener('click', function() { handleEmailCount(1, this); });
+    }
+    
+    if (btnPrev) {
+        const newBtnPrev = btnPrev.cloneNode(true);
+        btnPrev.parentNode.replaceChild(newBtnPrev, btnPrev);
+        newBtnPrev.addEventListener('click', function() { handleEmailCount(-1, this); });
+    }
 });
 
 // ==========================================
@@ -208,7 +220,7 @@ window.saveMyIP = async function() {
 };
 
 // ==========================================
-// KONTROL LOGIN & TAMPILAN
+// KONTROL LOGIN
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
