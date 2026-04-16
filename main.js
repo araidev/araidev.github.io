@@ -5,37 +5,17 @@ import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
-// Daftarkan ke Window
-window.showModal = showModal;
-window.closeModal = closeModal;
-window.toggleMainMenu = toggleMainMenu;
-window.masukSistem = masukSistem;
-window.keluarSistem = keluarSistem;
-window.generateName = generateName;
-
-window.openShopeeList = openShopeeList;
-window.formatRupiah = formatRupiah;
-window.openShopeeModal = openShopeeModal;
-window.saveShopee = saveShopee;
-window.deleteShopee = deleteShopee;
-window.copyShopeeLink = copyShopeeLink;
-window.actionRandomLink = actionRandomLink;
-
-window.openNoteList = openNoteList;
-window.openNoteModal = openNoteModal;
-window.saveNote = saveNote;
-window.editNote = editNote;
-window.deleteNote = deleteNote;
-window.copyNoteContent = copyNoteContent;
-
-window.toggleSmsLock = toggleSmsLock;
-window.changeSmsServer = changeSmsServer;
-window.buySms = buySms;
-window.copyPhoneNumber = copyPhoneNumber;
-window.actSms = actSms;
+window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
+window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
+window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
+window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
+window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; window.openNoteModal = openNoteModal;
+window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent; window.toggleSmsLock = toggleSmsLock; window.changeSmsServer = changeSmsServer;
+window.buySms = buySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 
 // ==========================================
-// LOGIKA LACI (DRAWER)
+// LOGIKA TENGAH TOOLBAR LACI
 // ==========================================
 window.toggleTopDrawer = function() {
     const drawer = document.getElementById('top-drawer');
@@ -47,11 +27,11 @@ window.toggleTopDrawer = function() {
     if (isOpen) {
         icon.style.transform = "rotate(180deg)";
         btn.style.color = "var(--fb-blue)";
-        btn.style.borderColor = "var(--fb-blue)";
+        btn.style.background = "#e7f3ff";
     } else {
         icon.style.transform = "rotate(0deg)";
         btn.style.color = "var(--fb-muted)";
-        btn.style.borderColor = "var(--fb-border)";
+        btn.style.background = "#f0f2f5";
     }
 };
 
@@ -70,13 +50,14 @@ window.saveEmailConfig = function() {
     localStorage.setItem('xurel_email_start', document.getElementById('cfg-start').value);
     localStorage.setItem('xurel_email_end', document.getElementById('cfg-end').value);
     
+    // Saat disimpan, posisikan index di 1 angka sebelum start agar klik 'next' pertama menghasilkan angka start.
     let startVal = parseInt(document.getElementById('cfg-start').value) || 1;
     localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
     closeModal('modal-email-config');
 };
 
 // ==========================================
-// LOGIKA CEK & SIMPAN IP (AUTO CLEAN 7 HARI)
+// LOGIKA CEK & SIMPAN IP
 // ==========================================
 let currentFetchedIP = "";
 
@@ -101,88 +82,52 @@ window.checkMyIP = async function() {
             const data = await res.json();
             myIP = data.ip;
         } catch (e1) {
-            try {
-                const res2 = await fetch('https://freeipapi.com/api/json', { cache: "no-store" });
-                const data2 = await res2.json();
-                myIP = data2.ipAddress;
-            } catch (e2) {
-                throw new Error("Semua server pemeriksa IP gagal diakses.");
-            }
+            const res2 = await fetch('https://freeipapi.com/api/json', { cache: "no-store" });
+            const data2 = await res2.json();
+            myIP = data2.ipAddress;
         }
 
         currentFetchedIP = myIP;
-
         let isUsed = false;
         try {
             const now = Date.now();
-            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-            const updates = {};
-
             const snap = await db.ref('ip_logs').once('value');
             if (snap.exists()) {
                 snap.forEach(child => {
-                    const logTime = child.val().timestamp;
-                    if (now - logTime > sevenDaysMs) {
-                        updates[child.key] = null; 
-                    } else if (child.val().ip === myIP) {
-                        isUsed = true;
-                    }
+                    if (now - child.val().timestamp > 7 * 24 * 60 * 60 * 1000) db.ref('ip_logs/'+child.key).remove();
+                    else if (child.val().ip === myIP) isUsed = true;
                 });
-                if (Object.keys(updates).length > 0) {
-                    db.ref('ip_logs').update(updates);
-                }
             }
-        } catch (dbError) {
-            console.warn("Database terkunci atau gangguan, melanjutkan tanpa cek histori.");
-        }
+        } catch (dbError) { console.warn("Lanjut tanpa cek histori."); }
 
         if (isUsed) {
-            ipInput.value = `${myIP} - TERPAKAI`;
-            ipInput.style.color = "var(--fb-red)";
+            ipInput.value = `${myIP} - TERPAKAI`; ipInput.style.color = "var(--fb-red)";
         } else {
-            ipInput.value = `${myIP} - BERSIH`;
-            ipInput.style.color = "var(--fb-green)";
+            ipInput.value = `${myIP} - BERSIH`; ipInput.style.color = "var(--fb-green)";
             btnSave.style.display = "block"; 
         }
 
     } catch (error) {
-        console.error(error);
-        ipInput.value = "Gagal memuat IP";
-        ipInput.style.color = "var(--fb-red)";
+        ipInput.value = "Gagal memuat IP"; ipInput.style.color = "var(--fb-red)";
     } finally {
-        btnCek.disabled = false;
-        btnCek.innerHTML = 'Cek';
+        btnCek.disabled = false; btnCek.innerHTML = 'IP';
     }
 };
 
 window.saveMyIP = async function() {
     if (!currentFetchedIP) return;
-    
     const btnSave = document.getElementById('btn-save-ip');
     const ipInput = document.getElementById('ip-result');
-    
-    btnSave.disabled = true;
-    btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btnSave.disabled = true; btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
     try {
-        await db.ref('ip_logs').push({
-            ip: currentFetchedIP,
-            timestamp: Date.now()
-        });
-        
+        await db.ref('ip_logs').push({ ip: currentFetchedIP, timestamp: Date.now() });
         ipInput.value = `${currentFetchedIP} - TERCATAT`;
         ipInput.style.color = "var(--fb-blue)"; 
-        
-        setTimeout(() => {
-            btnSave.style.display = "none";
-            btnSave.disabled = false;
-            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
-        }, 1000);
-        
+        setTimeout(() => { btnSave.style.display = "none"; btnSave.disabled = false; btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>'; }, 1000);
     } catch(e) {
-        showModal("Gagal", "Gagal menyimpan. Pastikan Anda sudah Login Admin.", "alert");
-        btnSave.disabled = false;
-        btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Catat';
+        showModal("Gagal", "Gagal menyimpan. Pastikan Login Admin.", "alert");
+        btnSave.disabled = false; btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
     }
 };
 
@@ -194,7 +139,6 @@ auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
     document.getElementById('login-form').classList.toggle('hidden', isAdmin);
     document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
-    
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
@@ -207,44 +151,66 @@ document.addEventListener('click', function(e) {
 });
 
 // ==========================================
-// LOGIKA TOMBOL 'NEXT' EMAIL
+// LOGIKA TOMBOL 'NEXT' & 'PREV' EMAIL
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnNext = document.getElementById('btn-next-custom');
+    const btnPrev = document.getElementById('btn-prev-custom');
+    const ipInput = document.getElementById('ip-result');
     
-    btnNext?.addEventListener('click', async () => {
+    async function handleEmailCount(direction, btnElement) {
         let base = localStorage.getItem('xurel_base_email');
         if (!base) return showModal("Peringatan", "Silakan setting Base Email melalui tombol Edit terlebih dahulu.", "alert");
 
-        let index = parseInt(localStorage.getItem('xurel_email_index') || 0);
         let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
         let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
+        
+        // Membaca index terahir dari local storage. 
+        let index = parseInt(localStorage.getItem('xurel_email_index') || (startCount - 1).toString());
 
-        index++;
-        if(index > endCount) index = startCount;
+        if (direction === 1) { // Aksi NEXT
+            if (index >= endCount) {
+                return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
+            }
+            index++;
+        } else if (direction === -1) { // Aksi PREV
+            if (index <= startCount) {
+                return showModal("Batas Awal", `Anda sudah berada di batas awal count email (${startCount})!`, "alert");
+            }
+            index--;
+        }
 
+        // Simpan index terupdate ke local storage
         localStorage.setItem('xurel_email_index', index.toString());
         
+        // Merakit Email
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
+        // Auto Copy ke Clipboard
         try {
             if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
             else throw new Error("Fallback");
         } catch (err) {
             const textArea = document.createElement("textarea");
             textArea.value = newEmail;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
+            textArea.style.position = "fixed"; textArea.style.left = "-9999px";
+            document.body.appendChild(textArea); textArea.focus(); textArea.select();
+            document.execCommand('copy'); document.body.removeChild(textArea);
         }
         
-        const originalHTML = btnNext.innerHTML;
-        btnNext.innerHTML = '<i class="fa-solid fa-check"></i> Disalin';
-        setTimeout(() => { btnNext.innerHTML = originalHTML; }, 1000);
-    });
+        // Tampilkan di Kolom IP
+        if (ipInput) {
+            ipInput.value = newEmail;
+            ipInput.style.color = "var(--fb-blue)";
+        }
+        
+        // Efek visual sukses pada tombol
+        const originalHTML = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1000);
+    }
+
+    btnNext?.addEventListener('click', function() { handleEmailCount(1, this); });
+    btnPrev?.addEventListener('click', function() { handleEmailCount(-1, this); });
 });
