@@ -16,28 +16,25 @@ window.copyNoteContent = copyNoteContent; window.toggleSmsLock = toggleSmsLock; 
 window.buySms = buySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 
 // ==========================================
-// 1. LOGIKA LACI (IKON DI TOOLBAR)
+// LOGIKA LACI (DRAWER) DI TOOLBAR
 // ==========================================
 window.toggleTopDrawer = function() {
     const drawer = document.getElementById('top-drawer');
     const icon = document.getElementById('drawer-icon');
-    const btn = document.getElementById('drawer-toggle-btn');
     
     const isOpen = drawer.classList.toggle('active');
     
     if (isOpen) {
         icon.style.transform = "rotate(180deg)";
-        btn.style.color = "var(--fb-blue)";
-        btn.style.background = "#e7f3ff";
+        icon.style.color = "var(--fb-blue)";
     } else {
         icon.style.transform = "rotate(0deg)";
-        btn.style.color = "var(--fb-muted)";
-        btn.style.background = "transparent";
+        icon.style.color = "var(--fb-muted)";
     }
 };
 
 // ==========================================
-// 2. KONFIGURASI COUNTER EMAIL
+// KONFIGURASI COUNTER EMAIL (AMAN REFRESH)
 // ==========================================
 window.openEmailConfig = function() {
     document.getElementById('cfg-email').value = localStorage.getItem('xurel_base_email') || "";
@@ -54,7 +51,7 @@ window.saveEmailConfig = function() {
     let startVal = parseInt(document.getElementById('cfg-start').value) || 1;
     let endVal = parseInt(document.getElementById('cfg-end').value) || 100;
     
-    // Jangan ulangi dari awal jika hitungan masih di dalam batas wajar saat ini
+    // Jangan ulangi hitungan dari awal jika masih di dalam batas wajar saat ini
     let currentIndexStr = localStorage.getItem('xurel_email_index');
     if (!currentIndexStr) {
         localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
@@ -68,18 +65,16 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// 3. LOGIKA NEXT & PREV EMAIL (AMAN DARI BENTROK)
+// LOGIKA NEXT & PREV EMAIL (KOLOM MULTIFUNGSI)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Karena kita sudah mengganti ID di index.html menjadi btn-next-email,
-    // kode lama di randomName.js tidak akan mengeksekusi dobel lagi.
     const btnNext = document.getElementById('btn-next-email');
     const btnPrev = document.getElementById('btn-prev-email');
     const ipInput = document.getElementById('ip-result');
 
     async function handleEmailCount(direction, btnElement) {
         let base = localStorage.getItem('xurel_base_email');
-        if (!base) return showModal("Peringatan", "Silakan setting Base Email melalui tombol Edit terlebih dahulu.", "alert");
+        if (!base) return showModal("Peringatan", "Silakan setting Base Email (Edit) terlebih dahulu.", "alert");
 
         let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
         let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
@@ -99,13 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
             index--;
         }
 
-        // Simpan permanen ke LocalStorage
+        // Menyimpan progres ke local storage
         localStorage.setItem('xurel_email_index', index.toString());
         
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
-        // Auto Copy (Silently)
+        // Auto Copy ke Clipboard
         try {
             if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
             else throw new Error("Fallback");
@@ -123,18 +118,17 @@ document.addEventListener('DOMContentLoaded', () => {
             ipInput.style.color = "var(--fb-blue)";
         }
         
-        // Efek visual klik
         const originalHTML = btnElement.innerHTML;
         btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
         setTimeout(() => { btnElement.innerHTML = originalHTML; }, 1000);
     }
 
-    if(btnNext) btnNext.addEventListener('click', function() { handleEmailCount(1, this); });
-    if(btnPrev) btnPrev.addEventListener('click', function() { handleEmailCount(-1, this); });
+    if (btnNext) btnNext.addEventListener('click', function() { handleEmailCount(1, this); });
+    if (btnPrev) btnPrev.addEventListener('click', function() { handleEmailCount(-1, this); });
 });
 
 // ==========================================
-// 4. LOGIKA CEK & SIMPAN IP
+// LOGIKA CEK & SIMPAN IP
 // ==========================================
 let currentFetchedIP = "";
 
@@ -209,7 +203,7 @@ window.saveMyIP = async function() {
 };
 
 // ==========================================
-// 5. KONTROL LOGIN
+// KONTROL LOGIN
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;

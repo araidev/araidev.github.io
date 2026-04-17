@@ -15,7 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 
     <style>
-        body { padding-bottom: 80px; padding-top: 75px; } /* Diperbaiki: Padding top agar aman dari navbar */
+        body { padding-bottom: 80px; }
         .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .action-row { display: flex; gap: 10px; width: 100%; }
@@ -26,14 +26,14 @@
 </head>
 <body>
 
-    <nav class="top-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px;">
+    <nav class="top-nav">
         <div style="width: 40px;"></div>
         
         <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: transparent; border: none; width: 40px; height: 40px; border-radius: 50%; color: var(--fb-muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
             <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s;"></i>
         </button>
 
-        <div class="nav-right" style="position: relative; width: 40px; display: flex; justify-content: flex-end;">
+        <div class="nav-right">
             <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
             <div id="main-menu-popup" class="global-login">
                 <div id="login-form">
@@ -53,12 +53,12 @@
     <div class="single-page-container">
         
         <div id="top-drawer" class="top-drawer-content">
-            <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 5px;">
                 
                 <div class="section-card" style="padding: 10px; display: flex; gap: 8px; align-items: center;">
                     <button id="btn-prev-email" style="background: var(--fb-muted); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;"><i class="fa-solid fa-chevron-left"></i></button>
                     
-                    <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px; letter-spacing: 0.5px;">
+                    <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px;">
                     
                     <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">IP</button>
                     <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i></button>
@@ -84,6 +84,7 @@
 
             </div>
         </div>
+
         <div class="section-card sms-wrapper" style="padding: 0;">
             <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
                 <div style="display: flex; gap: 10px; align-items: center;">
