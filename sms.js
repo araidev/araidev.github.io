@@ -25,6 +25,10 @@ let isPolling = false;
 let activeOrders = [];
 let orderStates = {};
 
+// Setup Suara Notifikasi
+const otpSound = new Audio('https://cloud.aam-zip.workers.dev/bra.mp3');
+const recycledSound = new Audio('https://cloud.aam-zip.workers.dev/akh.mp3');
+
 // CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
@@ -320,7 +324,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
     
     let displayId = "#" + String(oId).slice(-2);
-    const recycledDot = isRecycled ? `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>` : '';
+    const phoneColorStyle = isRecycled ? 'color: red;' : '';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" data-created="${Date.now()}" style="border: 2px solid ${borderColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
@@ -336,7 +340,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
         </div>
         <div style="font-size:11px; color:var(--fb-muted); margin-bottom:5px; text-transform:uppercase; font-weight:900;">Nomor HP:</div>
         <div class="phone-box" onclick="copyPhoneNumber('${phone}', 'copy-icon-${oId}')" style="font-weight: 900;">
-            <span class="phone-text-span">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>${recycledDot}
+            <span class="phone-text-span" style="${phoneColorStyle}">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>
         </div>
         <div style="text-align: center; margin: 10px 0 15px 0; padding: 15px 0; background: #fafafa; border-radius: 8px;">
             <div style="font-size:11px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
@@ -399,6 +403,12 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 
         const extraBadge = getOperatorBadge(activeProviderKey, operator, rank);
         const priceDisplay = formatPrice(price) + extraBadge;
+
+        if (o.is_recycled) {
+            recycledSound.play().catch(e => console.log("Audio error:", e));
+            if (!orderStates[o.id]) orderStates[o.id] = {};
+            orderStates[o.id].hasRecycledPlayed = true; 
+        }
         
         let cancelState = (["smsbower", "otpcepat"].includes(activeProviderKey)) ? '' : 'disabled';
         let replaceState = 'disabled'; 
@@ -535,8 +545,8 @@ function renderSmsOrders(orders) {
         const resendState = o.otp_code ? '' : 'disabled';
         const isDone = !!o.otp_code;
         
-        // UI BARU: OTP BIRU BERSAPSI, FONT 900
-        let otpDisplay = o.otp_code ? `<span style="color:var(--fb-blue); letter-spacing:4px; font-size:26px; font-weight:900; font-family:monospace;">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        // UI BARU: OTP HIJAU ZAMRUD SUPER TEBAL
+        let otpDisplay = o.otp_code ? `<span style="color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; font-family:'Arial Black', Impact, sans-serif; text-shadow: 1px 1px 0px rgba(0, 137, 123, 0.2);">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         
         const cancelState = (passed2Mins || ["smsbower", "otpcepat"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
         const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
@@ -546,16 +556,24 @@ function renderSmsOrders(orders) {
 
         if (existingCard) {
             const phoneBoxSpan = existingCard.querySelector('.phone-text-span');
-            if (phoneBoxSpan && phoneBoxSpan.innerText !== phone && phone !== 'Mencari Nomor...') {
-                phoneBoxSpan.innerText = phone;
+            if (phoneBoxSpan) {
+                if (phoneBoxSpan.innerText !== phone && phone !== 'Mencari Nomor...') {
+                    phoneBoxSpan.innerText = phone;
+                }
+                if (o.is_recycled) {
+                    phoneBoxSpan.style.color = 'red';
+                    
+                    if (!orderStates[o.id]) orderStates[o.id] = {};
+                    if (!orderStates[o.id].hasRecycledPlayed) {
+                        recycledSound.play().catch(e => console.log("Audio error:", e));
+                        orderStates[o.id].hasRecycledPlayed = true;
+                    }
+                }
             }
             
             const phoneBox = existingCard.querySelector('.phone-box');
             if (phoneBox) {
                 phoneBox.setAttribute('onclick', `copyPhoneNumber('${phone}', 'copy-icon-${o.id}')`);
-                if (o.is_recycled && !existingCard.querySelector('.recycled-dot')) {
-                    phoneBox.insertAdjacentHTML('beforeend', `<span class="recycled-dot" style="color: red; margin-left: 5px; font-size: 10px;" title="Nomor Daur Ulang">🔴</span>`);
-                }
             }
 
             const otpContainer = existingCard.querySelector('.otp-container');
@@ -572,6 +590,12 @@ function renderSmsOrders(orders) {
             });
 
             if (o.otp_code) {
+                if (!orderStates[o.id]) orderStates[o.id] = {};
+                if (!orderStates[o.id].hasOtpPlayed) {
+                    otpSound.play().catch(e => console.log("Audio error:", e));
+                    orderStates[o.id].hasOtpPlayed = true;
+                }
+
                 const btnDone = existingCard.querySelector('.btn-done');
                 if(btnDone && btnDone.disabled) { btnDone.disabled = false; btnDone.style.color = "var(--fb-green)"; btnDone.style.borderColor = "var(--fb-green)"; btnDone.style.background = "#e6f4ea"; }
                 const btnResend = existingCard.querySelector('.btn-resend');
