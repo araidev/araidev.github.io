@@ -25,7 +25,7 @@ let isPolling = false;
 let activeOrders = [];
 let orderStates = {};
 
-// Setup Suara Notifikasi (Web Audio API - Ultra Ringan Tanpa Link MP3)
+// Setup Suara Notifikasi (Web Audio API - Ultra Ringan)
 let audioCtx;
 function playSimpleSound(type) {
     try {
@@ -39,13 +39,13 @@ function playSimpleSound(type) {
 
         if (type === 'otp') {
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(1200, audioCtx.currentTime); // Nada tinggi (Ting!)
+            osc.frequency.setValueAtTime(1200, audioCtx.currentTime); 
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
             osc.start();
             osc.stop(audioCtx.currentTime + 0.15); 
         } else if (type === 'recycled') {
             osc.type = 'square';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime); // Nada rendah (Tet!)
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime); 
             gain.gain.setValueAtTime(0.05, audioCtx.currentTime); 
             osc.start();
             osc.stop(audioCtx.currentTime + 0.2); 
@@ -56,7 +56,6 @@ function playSimpleSound(type) {
 // CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
-// FIX: Pemicu untuk Single Page (Menggantikan appSwitched)
 function tryInitSms() {
     if (!smsInitialized) initSms();
 }
@@ -110,6 +109,8 @@ async function initSms() {
 
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
+    
+    // Polling tetap 5 detik dan 1 detik, tapi isinya sudah dioptimasi
     pollingInterval = setInterval(pollSms, 5000);
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
@@ -207,13 +208,15 @@ export function renderSvcoPriceList() {
 
     let { prices } = cachedSvcoData;
     let htmlList = prices.map(p => {
+        // AMBIL STOK DINAMIS SVCO (Harga Custom)
+        let st = p.count !== undefined ? p.count : "~";
         return `<div class="price-item" onclick="renderSvcoOperatorList('${p.price}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                 <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Shopee - 🇮🇩</div>
             </div>
             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(p.price)}</div>
-                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${p.available} stok</div>
+                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${st} stok</div>
             </div>
         </div>`;
     });
@@ -228,13 +231,15 @@ export function renderSvcoOperatorList(selectedPrice) {
     let { pid, countryId, operators } = cachedSvcoData;
     
     let htmlList = operators.map(op => {
+        // AMBIL STOK DINAMIS SVCO (Per Operator)
+        let st = op.count !== undefined ? op.count : "~";
         return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, 'Shopee', '${op.code}', '${countryId}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                 <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left:5px;">${op.name.toUpperCase()}</div>
             </div>
             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(selectedPrice)}</div>
-                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">~ stok</div>
+                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${st} stok</div>
             </div>
         </div>`;
     });
@@ -262,8 +267,11 @@ async function loadSmsPrices() {
             let pid = item ? item.id : "ka";
             let name = "Shopee";
             let basePrice = item ? item.price : 0;
+            
+            // TANGKAP STOK DINAMIS HEROSMS (Jika ada)
+            let opStockMap = item && item.operatorStock ? item.operatorStock : {};
 
-            let sendPrice = activeProviderKey === "otpcepat" ? 1100 : basePrice;
+            let sendPrice = basePrice;
             let displayPrice = formatPrice(sendPrice);
 
             const ops = [
@@ -276,13 +284,19 @@ async function loadSmsPrices() {
             ];
 
             box.innerHTML = ops.map(op => {
+                // TAMPILKAN STOK DINAMIS
+                let currentStock = "~";
+                if (activeProviderKey === "herosms" && opStockMap[op.id] !== undefined) {
+                    currentStock = opStockMap[op.id];
+                }
+                
                 return `<div class="price-item" onclick="executeBuySms('${pid}', ${sendPrice}, '${name}', '${op.id}', '')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                                 <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.label}</div>
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${displayPrice}</div>
-                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">~ stok</div>
+                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${currentStock} stok</div>
                             </div>
                         </div>`;
             }).join('');
@@ -313,12 +327,16 @@ async function loadSmsPrices() {
             }
         } 
         else {
+            // UNTUK SMSCODE & SMSBOWER
             box.innerHTML = json.data.map(i => {
                 let shortName = i.name.replace(/Indonesia/ig, '').replace(/\s+/g, ' ').trim();
                 let rankBadge = getOperatorBadge(activeProviderKey, i.operator, i.rank);
                 let idLabel = (activeProviderKey === "smsbower" && i.operator !== "any") ? ` <span style="color:#aaa;">(ID: ${i.operator})</span>` : "";
                 let extra = activeProviderKey === "smsbower" ? i.operator : (i.available || "~");
                 let rankParam = i.rank || "S";
+                
+                // BACA STOK DINAMIS
+                let currentStock = i.available !== undefined ? i.available : "~";
 
                 return `<div class="price-item" onclick="executeBuySms('${i.id}', ${i.price}, '${shortName}', '${extra}', '${rankParam}')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
@@ -327,7 +345,7 @@ async function loadSmsPrices() {
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
                                 <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(i.price)}</div>
-                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${i.available || '~'} stok</div>
+                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${currentStock} stok</div>
                             </div>
                         </div>`;
             }).join('');
@@ -386,7 +404,7 @@ export async function buySms(pid, price, name, extra = "~", rank = "S") {
 window.buySms = buySms;
 
 export async function executeBuySms(pid, price, name, operator, rank = "") {
-    // Unlock AudioContext secara diam-diam saat interaksi klik ini terjadi
+    // Pancing Web Audio API saat di-klik agar browser tidak memblokir suaranya
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -455,7 +473,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 }
 window.executeBuySms = executeBuySms;
 
-// LOGIKA POLLING MURNI DARI KODE SEMPURNA ANDA (TANPA CLOUD SYNC)
+// OPTIMASI POLLING: Super Ringan (Bebas Lag)
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
@@ -464,9 +482,10 @@ async function pollSms() {
         let localIds = [];
         let keysToDelete = []; 
         
-        for(let i=0; i<localStorage.length; i++) {
-            let k = localStorage.key(i);
-            if(k && k.startsWith(`phone_${activeProviderKey}_`)) {
+        // Optimasi: Membaca Object.keys jauh lebih efisien dari loop localStorage.length
+        const keys = Object.keys(localStorage);
+        for(let k of keys) {
+            if(k.startsWith(`phone_${activeProviderKey}_`)) {
                 let id = k.split('_')[2];
                 let expireTime = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || 0;
                 
@@ -650,20 +669,31 @@ function renderSmsOrders(orders) {
     updateSmsTimers();
 }
 
+// OPTIMASI DOM: Hanya ubah tulisan jika waktunya benar-benar berubah
 function updateSmsTimers() {
     const now = Date.now();
     document.querySelectorAll('.sms-timer').forEach(el => {
         const id = el.dataset.id;
-        const end = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || parseInt(localStorage.getItem('timer_' + id));
+        
+        let end = el.dataset.expireTime;
+        if (!end) {
+            end = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || parseInt(localStorage.getItem('timer_' + id));
+            if (end) el.dataset.expireTime = end; 
+        }
 
         if(end) {
             const diff = Math.max(0, Math.floor((end - now)/1000));
-            el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
-            el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
+            const newText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
+            const newColor = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
+            
+            // Jaga Performa: Hindari Render Ulang (Layout Thrashing)
+            if (el.innerText !== newText) el.innerText = newText;
+            if (el.style.color !== newColor) el.style.color = newColor;
             
             if (diff <= 1080 || ["smsbower", "otpcepat"].includes(activeProviderKey)) { 
                 const existingCard = document.getElementById(`order-${activeProviderKey}-${id}`); 
-                if(existingCard && !existingCard.innerHTML.includes('color:var(--fb-blue); letter-spacing:4px;')) { 
+                
+                if(existingCard && !existingCard.dataset.btnUnlocked) { 
                     const btnCancel = existingCard.querySelector('.btn-cancel'); 
                     if(btnCancel && btnCancel.disabled) btnCancel.disabled = false; 
                     
@@ -671,6 +701,7 @@ function updateSmsTimers() {
                         const btnReplace = existingCard.querySelector('.btn-replace'); 
                         if(btnReplace && btnReplace.disabled) btnReplace.disabled = false; 
                     }
+                    existingCard.dataset.btnUnlocked = "true";
                 } 
             }
         }
@@ -725,7 +756,6 @@ export async function actSms(action, id) {
         const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
         const phoneStr = localStorage.getItem(`phone_${activeProviderKey}_${id}`);
 
-        // FIX: PUSH KE FIREBASE HISTORY SAJA (Aman, tidak memicu polling error)
         if(action === 'finish') {
             try {
                 const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
@@ -790,7 +820,7 @@ export async function actSms(action, id) {
                     if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
 
                     const timerEl = oldCard.querySelector('.sms-timer');
-                    if (timerEl) { timerEl.dataset.id = od.id; timerEl.innerText = '--:--'; }
+                    if (timerEl) { timerEl.dataset.id = od.id; timerEl.dataset.expireTime = ""; timerEl.innerText = '--:--'; }
 
                     const btnDone = oldCard.querySelector('.btn-done');
                     if (btnDone) { btnDone.disabled = true; btnDone.style.background = ''; btnDone.style.borderColor = ''; btnDone.style.color = ''; btnDone.setAttribute('onclick', `actSms('finish', '${od.id}')`); }
@@ -818,6 +848,8 @@ export async function actSms(action, id) {
                     
                     const phoneBox = oldCard.querySelector('.phone-box');
                     if (phoneBox) phoneBox.setAttribute('onclick', `copyPhoneNumber('${newPhone}', 'copy-icon-${od.id}')`);
+                    
+                    delete oldCard.dataset.btnUnlocked;
                 }
             } else { 
                 showModal("Gagal Pesan Baru", n.error?.message || n.message || n.error || "Gagal mengganti stok.", "alert"); 
