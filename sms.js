@@ -25,9 +25,33 @@ let isPolling = false;
 let activeOrders = [];
 let orderStates = {};
 
-// Setup Suara Notifikasi
-const otpSound = new Audio('https://cloud.aam-zip.workers.dev/bra.mp3');
-const recycledSound = new Audio('https://cloud.aam-zip.workers.dev/akh.mp3');
+// Setup Suara Notifikasi (Web Audio API - Ultra Ringan Tanpa Link MP3)
+let audioCtx;
+function playSimpleSound(type) {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'otp') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, audioCtx.currentTime); // Nada tinggi (Ting!)
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15); 
+        } else if (type === 'recycled') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime); // Nada rendah (Tet!)
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime); 
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2); 
+        }
+    } catch (e) { console.log("Audio tidak didukung", e); }
+}
 
 // CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
@@ -239,8 +263,7 @@ async function loadSmsPrices() {
             let name = "Shopee";
             let basePrice = item ? item.price : 0;
 
-             // UBAH MENJADI SEPERTI INI:
-            let sendPrice = basePrice;
+            let sendPrice = activeProviderKey === "otpcepat" ? 1100 : basePrice;
             let displayPrice = formatPrice(sendPrice);
 
             const ops = [
@@ -363,6 +386,12 @@ export async function buySms(pid, price, name, extra = "~", rank = "S") {
 window.buySms = buySms;
 
 export async function executeBuySms(pid, price, name, operator, rank = "") {
+    // Unlock AudioContext secara diam-diam saat interaksi klik ini terjadi
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+
     const pText = formatPrice(price);
     let opText = "";
     if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco") && operator !== "any") opText = ` (Prov: ${operator.toUpperCase()})`;
@@ -406,7 +435,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         const priceDisplay = formatPrice(price) + extraBadge;
 
         if (o.is_recycled) {
-            recycledSound.play().catch(e => console.log("Audio error:", e));
+            playSimpleSound('recycled');
             if (!orderStates[o.id]) orderStates[o.id] = {};
             orderStates[o.id].hasRecycledPlayed = true; 
         }
@@ -566,7 +595,7 @@ function renderSmsOrders(orders) {
                     
                     if (!orderStates[o.id]) orderStates[o.id] = {};
                     if (!orderStates[o.id].hasRecycledPlayed) {
-                        recycledSound.play().catch(e => console.log("Audio error:", e));
+                        playSimpleSound('recycled');
                         orderStates[o.id].hasRecycledPlayed = true;
                     }
                 }
@@ -593,7 +622,7 @@ function renderSmsOrders(orders) {
             if (o.otp_code) {
                 if (!orderStates[o.id]) orderStates[o.id] = {};
                 if (!orderStates[o.id].hasOtpPlayed) {
-                    otpSound.play().catch(e => console.log("Audio error:", e));
+                    playSimpleSound('otp');
                     orderStates[o.id].hasOtpPlayed = true;
                 }
 
