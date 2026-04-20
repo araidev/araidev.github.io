@@ -239,7 +239,8 @@ async function loadSmsPrices() {
             let name = "Shopee";
             let basePrice = item ? item.price : 0;
 
-            let sendPrice = activeProviderKey === "otpcepat" ? 1100 : basePrice;
+             // UBAH MENJADI SEPERTI INI:
+            let sendPrice = basePrice;
             let displayPrice = formatPrice(sendPrice);
 
             const ops = [
