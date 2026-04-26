@@ -67,10 +67,13 @@ export function saveShopee() {
     const s = document.getElementById('shopee-status').value;
     
     if(t && u) {
-        const data = { title: t, url: u, price: p, status: s };
+        // Tambahkan updatedAt agar item yang di-edit/ditambah naik ke atas
+        const data = { title: t, url: u, price: p, status: s, updatedAt: Date.now() };
         if (key) {
             db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
         } else {
+            // Setup nilai default pin saat buat baru
+            data.isPinned = false; 
             db.ref('linkshopee').push(data).then(() => closeModal('modal-shopee-form'));
         }
     } else {
@@ -82,6 +85,14 @@ export async function deleteShopee(key) {
     if(await showModal("Hapus Link", "Yakin ingin menghapus link ini?", "danger")) {
         db.ref('linkshopee/'+key).remove(); 
     }
+}
+
+// FUNGSI BARU: Untuk mengubah status Pin
+export function togglePinShopee(key, currentPinStatus) {
+    db.ref('linkshopee/' + key).update({
+        isPinned: !currentPinStatus,
+        updatedAt: Date.now() // Update waktu agar posisinya ter-refresh di atas (untuk grup pin/unpin-nya)
+    });
 }
 
 function renderShopee() {
@@ -130,21 +141,41 @@ function renderShopee() {
         .filter(k => k !== 'ID_RANDOM_LOCKED')
         .map(k => ({ key: k, ...shopeeDataCache[k] }));
         
-    orderedShopee.sort((a, b) => b.key.localeCompare(a.key));
+    // PERBAIKAN LOGIKA SORTING (Pengurutan)
+    orderedShopee.sort((a, b) => {
+        // 1. Prioritaskan status Pin (yang di-pin ada di atas)
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+
+        // 2. Jika status pin sama, urutkan berdasarkan waktu edit/tambah terbaru
+        let timeA = a.updatedAt || 0;
+        let timeB = b.updatedAt || 0;
+        if (timeA !== timeB) return timeB - timeA; // Descending: Terbaru ke Terlama
+
+        // 3. Fallback: Urutkan berdasarkan Firebase ID (untuk data lama yang belum punya updatedAt)
+        return b.key.localeCompare(a.key);
+    });
 
     orderedShopee.forEach((data) => {
         const wrapper = document.createElement('div');
-        // Desain Kartu Reguler (Putih bersih)
-        wrapper.style.cssText = 'display:flex; align-items:center; background:#fff; border:1px solid #e4e6eb; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s;';
+        // Tambahkan highlight border atau background sedikit jika di-pin (opsional)
+        let borderStyle = data.isPinned ? 'border:1px solid #1877f2;' : 'border:1px solid #e4e6eb;';
+        wrapper.style.cssText = `display:flex; align-items:center; background:#fff; ${borderStyle} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s;`;
         
         let st = data.status ? `<span style="background:#fce8e6; color:#e41e3f; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${data.status}</span>` : ''; 
         let pr = data.price ? `<span style="background:#e7f3ff; color:#1877f2; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">${data.price}</span>` : '';
         let tagsHTML = (st || pr) ? `<div style="display:flex; gap:6px; margin-top:5px;">${st}${pr}</div>` : '';
 
+        // Tampilan ikon kecil pada judul jika item di pin
+        let pinIconTitle = data.isPinned ? `<i class="fa-solid fa-thumbtack" style="color:#1877f2; margin-right:6px; font-size:12px; transform: rotate(45deg);"></i>` : '';
+
         let adminBtns = isAdmin ? `
             <div style="display:flex; gap:6px; margin-left:10px;">
-                <button onclick="openShopeeModal('${data.key}')" style="background:#f0f2f5; border:none; color:#65676b; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button>
-                <button onclick="deleteShopee('${data.key}')" style="background:#fce8e6; border:none; color:#e41e3f; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-trash" style="font-size:12px;"></i></button>
+                <button onclick="togglePinShopee('${data.key}', ${!!data.isPinned})" style="background:${data.isPinned ? '#e7f3ff' : '#f0f2f5'}; border:none; color:${data.isPinned ? '#1877f2' : '#65676b'}; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="${data.isPinned ? 'Lepas Pin' : 'Pin ke Atas'}">
+                    <i class="fa-solid fa-thumbtack" style="font-size:12px; ${data.isPinned ? 'transform: rotate(45deg);' : ''}"></i>
+                </button>
+                <button onclick="openShopeeModal('${data.key}')" style="background:#f0f2f5; border:none; color:#65676b; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Edit"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button>
+                <button onclick="deleteShopee('${data.key}')" style="background:#fce8e6; border:none; color:#e41e3f; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Hapus"><i class="fa-solid fa-trash" style="font-size:12px;"></i></button>
             </div>` : '';
 
         wrapper.innerHTML = `
@@ -152,7 +183,9 @@ function renderShopee() {
                 <i class="fa-regular fa-copy"></i>
             </button>
             <div onclick="window.open('${data.url}', '_blank')" style="flex:1; cursor:pointer; overflow:hidden;">
-                <div style="font-weight:800; color:#1c1e21; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${data.title}</div>
+                <div style="font-weight:800; color:#1c1e21; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${pinIconTitle}${data.title}
+                </div>
                 ${tagsHTML}
             </div>
             ${adminBtns}
