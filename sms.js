@@ -10,7 +10,7 @@ const PROVIDERS = {
     "smsbower": { name: "Bower", url: "https://bower.aam-zip.workers.dev" },
     "otpcepat": { name: "Cepat", url: "https://cepat.aam-zip.workers.dev" },
     "svco": { name: "Svco", url: "https://svco.aam-zip.workers.dev" },
-    "nixpoin": { name: "Nixpoin", url: "https://nixpoin.aam-zip.workers.dev" }
+    "nixpoin": { name: "Nixpoin", url: "https://worker-nixpoin-anda.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
@@ -26,7 +26,7 @@ let isPolling = false;
 let activeOrders = [];
 let orderStates = {};
 
-// Setup Suara Notifikasi (Web Audio API - Ultra Ringan)
+// Setup Suara Notifikasi
 let audioCtx;
 function playSimpleSound(type) {
     try {
@@ -54,7 +54,6 @@ function playSimpleSound(type) {
     } catch (e) { console.log("Audio tidak didukung", e); }
 }
 
-// CACHE KHUSUS UNTUK SVCO
 let cachedSvcoData = null; 
 
 function tryInitSms() {
@@ -74,6 +73,7 @@ function formatPrice(price) {
 }
 
 function getOperatorBadge(provider, opCode, rank) {
+    // Tambahkan nixpoin agar inisial provider muncul di kartu
     if ((provider === "herosms" || provider === "otpcepat" || provider === "svco" || provider === "nixpoin") && opCode && opCode !== "any") {
         const opMap = { "telkomsel": "TL", "indosat": "ST", "axis": "XS", "three": "TR", "xl": "XL", "smartfren": "SM" };
         let initial = opMap[opCode.toLowerCase()] || opCode.substring(0, 2).toUpperCase();
@@ -111,7 +111,6 @@ async function initSms() {
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
     
-    // Polling tetap 5 detik dan 1 detik, tapi isinya sudah dioptimasi
     pollingInterval = setInterval(pollSms, 5000);
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
@@ -130,6 +129,7 @@ window.changeSmsProvider = changeSmsProvider;
 
 async function loadServersList() {
     const select = document.getElementById('sms-server');
+    if(!select) return;
     select.innerHTML = '<option>Memuat...</option>';
     try {
         const res = await apiCall('/api/servers');
@@ -171,7 +171,8 @@ function applySmsLockUI() {
 }
 
 export function refreshSms() {
-    document.getElementById('sms-prices').innerHTML = '<div style="padding:30px; text-align:center; color:#888;">Mengambil Data...</div>';
+    const box = document.getElementById('sms-prices');
+    if(box) box.innerHTML = '<div style="padding:30px; text-align:center; color:#888;">Mengambil Data...</div>';
     updateSmsBal(); loadSmsPrices(); pollSms();
 }
 window.refreshSms = refreshSms;
@@ -191,7 +192,7 @@ async function apiCall(endpoint, method = "GET", body = null) {
         try { return JSON.parse(text); } 
         catch(e) { return { success: res.ok, status: res.ok ? "success" : "failed", error: { message: text || "Format server tidak sesuai" } }; }
     } catch(err) {
-        if (err.name === 'AbortError') return { success: false, error: { message: "Koneksi Timeout (Lebih 10 Detik)" } };
+        if (err.name === 'AbortError') return { success: false, error: { message: "Koneksi Timeout" } };
         return { success: false, error: { message: "Jaringan terputus / Server Sibuk" } };
     }
 }
@@ -199,17 +200,17 @@ async function apiCall(endpoint, method = "GET", body = null) {
 async function updateSmsBal() {
     const json = await apiCall('/get-balance');
     const isSuccess = json.success === true || json.status === "success";
-    if(isSuccess && json.data) document.getElementById('sms-balance').innerText = formatPrice(json.data.balance);
-    else document.getElementById('sms-balance').innerText = "Offline";
+    const elBal = document.getElementById('sms-balance');
+    if(!elBal) return;
+    if(isSuccess && json.data) elBal.innerText = formatPrice(json.data.balance);
+    else elBal.innerText = "Offline";
 }
 
 export function renderSvcoPriceList() {
     const box = document.getElementById('sms-prices');
-    if (!cachedSvcoData) return;
-
+    if (!cachedSvcoData || !box) return;
     let { prices } = cachedSvcoData;
     let htmlList = prices.map(p => {
-        // AMBIL STOK DINAMIS SVCO (Harga Custom)
         let st = p.count !== undefined ? p.count : "~";
         return `<div class="price-item" onclick="renderSvcoOperatorList('${p.price}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
@@ -227,12 +228,9 @@ window.renderSvcoPriceList = renderSvcoPriceList;
 
 export function renderSvcoOperatorList(selectedPrice) {
     const box = document.getElementById('sms-prices');
-    if (!cachedSvcoData) return;
-
+    if (!cachedSvcoData || !box) return;
     let { pid, countryId, operators } = cachedSvcoData;
-    
     let htmlList = operators.map(op => {
-        // AMBIL STOK DINAMIS SVCO (Per Operator)
         let st = op.count !== undefined ? op.count : "~";
         return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, 'Shopee', '${op.code}', '${countryId}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
@@ -244,36 +242,30 @@ export function renderSvcoOperatorList(selectedPrice) {
             </div>
         </div>`;
     });
-
     htmlList.push(`
-        <div onclick="renderSvcoPriceList()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div onclick="renderSvcoPriceList()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da;">
             <i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar Harga
         </div>
     `);
-
     box.innerHTML = htmlList.join('');
 }
 window.renderSvcoOperatorList = renderSvcoOperatorList;
 
-
 async function loadSmsPrices() {
     const json = await apiCall('/get-prices');
     const box = document.getElementById('sms-prices');
+    if(!box) return;
     const isSuccess = json.success === true || json.status === "success";
     
     if (isSuccess && json.data && json.data.length > 0) {
-        
+        // Tambahkan nixpoin di sini agar saat diklik Shopee, muncul menu operator
         if (activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "nixpoin") {
             let item = json.data.find(x => x.name && x.name.toLowerCase().includes("shope")) || json.data[0];
             let pid = item ? item.id : "ka";
             let name = "Shopee";
             let basePrice = item ? item.price : 0;
-            
-            // TANGKAP STOK DINAMIS HEROSMS (Jika ada)
             let opStockMap = item && item.operatorStock ? item.operatorStock : {};
-
-            let sendPrice = basePrice;
-            let displayPrice = formatPrice(sendPrice);
+            let displayPrice = formatPrice(basePrice);
 
             const ops = [
                 { id: "telkomsel", label: "TELKOMSEL" },
@@ -285,13 +277,8 @@ async function loadSmsPrices() {
             ];
 
             box.innerHTML = ops.map(op => {
-                // TAMPILKAN STOK DINAMIS
-                let currentStock = "~";
-                if (activeProviderKey === "herosms" && opStockMap[op.id] !== undefined) {
-                    currentStock = opStockMap[op.id];
-                }
-                
-                return `<div class="price-item" onclick="executeBuySms('${pid}', ${sendPrice}, '${name}', '${op.id}', '')">
+                let currentStock = (activeProviderKey === "herosms" && opStockMap[op.id] !== undefined) ? opStockMap[op.id] : "~";
+                return `<div class="price-item" onclick="executeBuySms('${pid}', ${basePrice}, '${name}', '${op.id}', '')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                                 <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.label}</div>
                             </div>
@@ -304,68 +291,49 @@ async function loadSmsPrices() {
         } 
         else if (activeProviderKey === "svco") {
             let shopeeData = json.data.find(x => x.country === 1 || (x.countryName || "").toLowerCase() === "indonesia") || json.data[0];
-            
             if (shopeeData) {
                 let pid = shopeeData.serviceId || "1"; 
                 let countryId = shopeeData.country || 1; 
-
-                let prices = (shopeeData.customPrice || [])
-                    .filter(p => parseFloat(p.price) <= 0.06885) 
-                    .sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
-                
-                let operators = (shopeeData.operators || []).filter(o => o.code && o.code.toLowerCase() !== 'any' && o.name && o.name.toLowerCase() !== 'any');
-                
+                let prices = (shopeeData.customPrice || []).filter(p => parseFloat(p.price) <= 0.06885).sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
+                let operators = (shopeeData.operators || []).filter(o => o.code && o.code.toLowerCase() !== 'any');
                 cachedSvcoData = { pid, countryId, prices, operators };
-                
-                if (prices.length > 0) {
-                    renderSvcoPriceList();
-                } else {
-                    box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Fitur Pilih Provider Belum Tersedia Pada Harga Saat Ini</div>`;
-                }
-
+                if (prices.length > 0) renderSvcoPriceList();
+                else box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Tidak Tersedia</div>`;
             } else {
-                box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Kosong / Tidak Masuk Filter</div>`;
+                box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Kosong</div>`;
             }
         } 
         else {
-            // UNTUK SMSCODE & SMSBOWER
             box.innerHTML = json.data.map(i => {
-                let shortName = i.name.replace(/Indonesia/ig, '').replace(/\s+/g, ' ').trim();
+                let shortName = i.name.replace(/Indonesia/ig, '').trim();
                 let rankBadge = getOperatorBadge(activeProviderKey, i.operator, i.rank);
-                let idLabel = (activeProviderKey === "smsbower" && i.operator !== "any") ? ` <span style="color:#aaa;">(ID: ${i.operator})</span>` : "";
-                let extra = activeProviderKey === "smsbower" ? i.operator : (i.available || "~");
-                let rankParam = i.rank || "S";
-                
-                // BACA STOK DINAMIS
                 let currentStock = i.available !== undefined ? i.available : "~";
-
-                return `<div class="price-item" onclick="executeBuySms('${i.id}', ${i.price}, '${shortName}', '${extra}', '${rankParam}')">
+                return `<div class="price-item" onclick="executeBuySms('${i.id}', ${i.price}, '${shortName}', '${i.operator || "~"}', '${i.rank || "S"}')">
                             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortName}${idLabel}</div>
+                                <div style="font-weight:900;">${shortName}</div>
                                 ${rankBadge}
                             </div>
                             <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
-                                <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(i.price)}</div>
-                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${currentStock} stok</div>
+                                <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900;">${formatPrice(i.price)}</div>
+                                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted);">${currentStock} stok</div>
                             </div>
                         </div>`;
             }).join('');
         }
     } else { 
-        box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">${json.error?.message || json.message || json.error || 'Stok Kosong'}</div>`;
+        box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">${json.error?.message || 'Stok Kosong'}</div>`;
     }
 }
 
-// UI BARU: ID 2 DIGIT & FONT TEBAL
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
-    
     let borderColor = "#95a5a6"; 
     if (activeProviderKey === "herosms") borderColor = "#8e44ad";
     if (activeProviderKey === "smsbower") borderColor = "#27ae60";
     if (activeProviderKey === "otpcepat") borderColor = "#e74c3c"; 
     if (activeProviderKey === "svco") borderColor = "#007bff"; 
-    
+    if (activeProviderKey === "nixpoin") borderColor = "#2980b9"; 
+
     let displayId = "#" + String(oId).slice(-2);
     const phoneColorStyle = isRecycled ? 'color: red;' : '';
 
@@ -373,8 +341,8 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--fb-blue); font-weight:900; font-family:monospace; font-size:15px;">${displayId}</span>
-                <span class="badge-status" style="font-size:10px; color:#fff; font-family:sans-serif; background:${borderColor}; padding:3px 6px; border-radius:4px; font-weight:900;">ACTIVE</span>
-                <span class="price-box" style="font-size:16px; font-weight:900; color:var(--fb-red); font-family:monospace; display:flex; align-items:center; white-space: nowrap;">${priceDisplay}</span>
+                <span class="badge-status" style="font-size:10px; color:#fff; background:${borderColor}; padding:3px 6px; border-radius:4px; font-weight:900;">ACTIVE</span>
+                <span class="price-box" style="font-size:16px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class="fa-regular fa-eye-slash hide-btn-icon" onclick="hideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;"></i>
@@ -399,13 +367,11 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
 }
 
 export async function buySms(pid, price, name, extra = "~", rank = "S") {
-    let operator = extra === "~" ? "any" : extra;
-    executeBuySms(pid, price, name, operator, rank);
+    executeBuySms(pid, price, name, extra === "~" ? "any" : extra, rank);
 }
 window.buySms = buySms;
 
 export async function executeBuySms(pid, price, name, operator, rank = "") {
-    // Pancing Web Audio API saat di-klik agar browser tidak memblokir suaranya
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -413,112 +379,65 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 
     const pText = formatPrice(price);
     let opText = "";
-    if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco" || activeProviderKey === "nixpoin") && operator !== "any") opText = ` (Prov: ${operator.toUpperCase()})`;
-    else if (activeProviderKey === "smsbower" && operator !== "any") opText = ` (ID: ${operator})`;
-
-    if(!await showModal("Pesan Baru", `Beli nomor untuk ${name}${opText} seharga ${pText}?`, "confirm")) {
-        return;
+    if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco" || activeProviderKey === "nixpoin") && operator !== "any") {
+        opText = ` (Prov: ${operator.toUpperCase()})`;
     }
+
+    if(!await showModal("Konfirmasi", `Beli nomor untuk ${name}${opText} seharga ${pText}?`, "confirm")) return;
 
     let payload;
     if (activeProviderKey === "svco") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(rank) || 1 };
-    } else if (activeProviderKey === "herosms" || activeProviderKey === "smsbower" || activeProviderKey === "otpcepat" || activeProviderKey === "nixpoin") {
-    payload = { product_id: String(pid), price: price, operator: operator };
-    }
+    } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
+        payload = { product_id: String(pid), price: price, operator: operator };
     } else {
         payload = { product_id: parseInt(pid) };
     }
 
     const j = await apiCall('/create-order', 'POST', payload);
-    const isSuccess = j.success === true || j.status === "success";
-
-    if(isSuccess && j.data) {
+    if((j.success || j.status === "success") && j.data) {
         const o = j.data.orders[0];
         const newPhone = o.phone || o.phone_number || o.phoneNumber || 'Mencari Nomor...';
-        
-        let initialExpire = Date.now() + (20 * 60000);
-        if (o.expiredAt) {
-            let exp = parseInt(o.expiredAt);
-            initialExpire = exp < 10000000000 ? exp * 1000 : exp;
-        }
+        let expire = o.expiredAt ? (parseInt(o.expiredAt) < 10000000000 ? o.expiredAt * 1000 : o.expiredAt) : Date.now() + (20 * 60000);
 
         localStorage.setItem(`phone_${activeProviderKey}_${o.id}`, newPhone);
         localStorage.setItem(`price_${activeProviderKey}_${o.id}`, price);
         localStorage.setItem(`pid_${activeProviderKey}_${o.id}`, pid);
-        localStorage.setItem(`timer_${activeProviderKey}_${o.id}`, initialExpire);
-        
+        localStorage.setItem(`timer_${activeProviderKey}_${o.id}`, expire);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${o.id}`, operator);
-        if (rank) localStorage.setItem(`rank_${activeProviderKey}_${o.id}`, rank);
 
         const extraBadge = getOperatorBadge(activeProviderKey, operator, rank);
-        const priceDisplay = formatPrice(price) + extraBadge;
-
-        if (o.is_recycled) {
-            playSimpleSound('recycled');
-            if (!orderStates[o.id]) orderStates[o.id] = {};
-            orderStates[o.id].hasRecycledPlayed = true; 
-        }
-        
-        let cancelState = (["smsbower", "otpcepat"].includes(activeProviderKey)) ? '' : 'disabled';
-        let replaceState = 'disabled'; 
-
         const container = document.getElementById('sms-active-orders');
-        const cardHTML = createCardHTML(o.id, newPhone, priceDisplay, 'disabled', cancelState, replaceState, `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
+        const cardHTML = createCardHTML(o.id, newPhone, formatPrice(price) + extraBadge, 'disabled', 'disabled', 'disabled', `<div class="loader-bars"><span></span><span></span><span></span></div>`, false, o.is_recycled);
         container.insertAdjacentHTML('afterbegin', cardHTML);
-
+        if(o.is_recycled) playSimpleSound('recycled');
         pollSms(); updateSmsBal();
-        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 150);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-        showModal("Gagal", j.error?.message || j.message || j.error || "Gagal memesan stok.", "alert");
+        showModal("Gagal", j.error?.message || "Stok Sedang Kosong.", "alert");
     }
 }
 window.executeBuySms = executeBuySms;
 
-// OPTIMASI POLLING: Super Ringan (Bebas Lag)
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
-
     try {
         let localIds = [];
-        let keysToDelete = []; 
-        
-        // Optimasi: Membaca Object.keys jauh lebih efisien dari loop localStorage.length
         const keys = Object.keys(localStorage);
         for(let k of keys) {
             if(k.startsWith(`phone_${activeProviderKey}_`)) {
                 let id = k.split('_')[2];
-                let expireTime = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || 0;
-                
-                if (expireTime > 0 && Date.now() - expireTime > 1800000) {
-                    keysToDelete.push(id);
-                } else {
-                    localIds.push(id);
-                }
+                let expire = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || 0;
+                if (expire > 0 && Date.now() - expire > 1800000) localStorage.removeItem(k);
+                else localIds.push(id);
             }
         }
-
-        keysToDelete.forEach(id => {
-            localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
-            localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
-            localStorage.removeItem(`price_${activeProviderKey}_${id}`);
-            localStorage.removeItem(`pid_${activeProviderKey}_${id}`);
-            localStorage.removeItem(`op_${activeProviderKey}_${id}`);
-            localStorage.removeItem(`rank_${activeProviderKey}_${id}`);
-        });
-
         const j = await apiCall('/get-active', 'POST', { ids: localIds });
-        const isSuccess = j.success === true || j.status === "success";
-        if(isSuccess && j.data) {
-            activeOrders = j.data; 
-            renderSmsOrders(j.data);
+        if((j.success || j.status === "success") && j.data) {
+            activeOrders = j.data; renderSmsOrders(j.data);
         }
-    } catch (e) {
-        console.error("Poll Error: ", e);
-    } finally {
-        isPolling = false; 
-    }
+    } catch (e) {} finally { isPolling = false; }
 }
 
 export function hideSmsCard(id) {
@@ -542,333 +461,73 @@ window.copyPhoneNumber = copyPhoneNumber;
 
 function renderSmsOrders(orders) {
     const container = document.getElementById('sms-active-orders');
-    const activeIds = orders ? orders.map(o => `order-${activeProviderKey}-${o.id}`) : [];
-
-    Array.from(container.children).forEach(child => {
-        if (!activeIds.includes(child.id)) {
-            const createdTime = parseInt(child.getAttribute('data-created') || 0);
-            if (Date.now() - createdTime > 15000) child.remove();
-        }
-    });
-
-    if(!orders || !orders.length) return;
-
+    if(!container) return;
     orders.forEach(o => {
-        if (orderStates[o.id] && orderStates[o.id].isHidden) return;
-
-        const serverPhone = o.phone || o.phone_number || o.phoneNumber;
-        const phone = serverPhone || localStorage.getItem(`phone_${activeProviderKey}_${o.id}`) || localStorage.getItem('phone_'+o.id) || 'Mencari Nomor...';
-        if(serverPhone) localStorage.setItem(`phone_${activeProviderKey}_${o.id}`, serverPhone);
-
-        const serverPrice = o.price || o.cost || localStorage.getItem(`price_${activeProviderKey}_${o.id}`) || localStorage.getItem('price_'+o.id);
-        if(serverPrice) localStorage.setItem(`price_${activeProviderKey}_${o.id}`, serverPrice);
-
-        let expireTime = 0;
-        if (o.expiredAt) { 
-            expireTime = parseInt(o.expiredAt);
-            if (expireTime < 10000000000) expireTime *= 1000;
-        } else if (o.expires_at) {
-            expireTime = parseInt(o.expires_at);
-            if (expireTime < 10000000000) expireTime *= 1000;
-        } else if (o.created_at) {
-            let created = new Date(o.created_at).getTime();
-            if (isNaN(created)) created = parseInt(o.created_at);
-            expireTime = created + (20 * 60000);
-        }
+        if (orderStates[o.id]?.isHidden) return;
+        const phone = o.phone || o.phone_number || o.phoneNumber || localStorage.getItem(`phone_${activeProviderKey}_${o.id}`) || '...';
+        const price = o.price || localStorage.getItem(`price_${activeProviderKey}_${o.id}`) || 0;
+        const savedOp = localStorage.getItem(`op_${activeProviderKey}_${o.id}`) || "any";
+        const extraBadge = getOperatorBadge(activeProviderKey, savedOp, "");
         
-        if (!expireTime || isNaN(expireTime) || expireTime === 0) { 
-            expireTime = localStorage.getItem(`timer_${activeProviderKey}_${o.id}`) || localStorage.getItem('timer_' + o.id); 
-            if (!expireTime) expireTime = Date.now() + (20 * 60000); 
-        }
-        localStorage.setItem(`timer_${activeProviderKey}_${o.id}`, expireTime); 
-        
-        let passed2Mins = false; 
-        if (expireTime) { 
-            const remaining = Math.floor((parseInt(expireTime) - Date.now()) / 1000); 
-            if (remaining <= 1080) passed2Mins = true; 
-        }
+        let expire = o.expiredAt || localStorage.getItem(`timer_${activeProviderKey}_${o.id}`) || Date.now() + (20 * 60000);
+        const passed2Mins = (parseInt(expire) - Date.now()) <= 1080000;
 
-        const savedOp = localStorage.getItem(`op_${activeProviderKey}_${o.id}`) || "";
-        const savedRank = localStorage.getItem(`rank_${activeProviderKey}_${o.id}`) || "";
-        const extraBadge = getOperatorBadge(activeProviderKey, savedOp, savedRank);
-
-        const priceDisplay = (serverPrice ? formatPrice(serverPrice) : '...') + extraBadge;
+        let otpDisplay = o.otp_code ? `<span style="color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900;">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
-        const isDone = !!o.otp_code;
-        
-        // UI BARU: OTP HIJAU ZAMRUD SUPER TEBAL
-        let otpDisplay = o.otp_code ? `<span style="color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; font-family:'Arial Black', Impact, sans-serif; text-shadow: 1px 1px 0px rgba(0, 137, 123, 0.2);">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-        
-        const cancelState = (passed2Mins || ["smsbower", "otpcepat"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
-        const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
+        const cancelState = (passed2Mins || ["smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
+        const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
 
-        const cardId = `order-${activeProviderKey}-${o.id}`;
-        const existingCard = document.getElementById(cardId);
-
+        const existingCard = document.getElementById(`order-${activeProviderKey}-${o.id}`);
         if (existingCard) {
-            const phoneBoxSpan = existingCard.querySelector('.phone-text-span');
-            if (phoneBoxSpan) {
-                if (phoneBoxSpan.innerText !== phone && phone !== 'Mencari Nomor...') {
-                    phoneBoxSpan.innerText = phone;
-                }
-                if (o.is_recycled) {
-                    phoneBoxSpan.style.color = 'red';
-                    
-                    if (!orderStates[o.id]) orderStates[o.id] = {};
-                    if (!orderStates[o.id].hasRecycledPlayed) {
-                        playSimpleSound('recycled');
-                        orderStates[o.id].hasRecycledPlayed = true;
-                    }
-                }
+            const otpBox = existingCard.querySelector('.otp-container');
+            if (otpBox && otpBox.innerHTML.trim() !== otpDisplay.trim()) {
+                otpBox.innerHTML = otpDisplay;
+                if(o.otp_code) playSimpleSound('otp');
             }
-            
-            const phoneBox = existingCard.querySelector('.phone-box');
-            if (phoneBox) {
-                phoneBox.setAttribute('onclick', `copyPhoneNumber('${phone}', 'copy-icon-${o.id}')`);
-            }
-
-            const otpContainer = existingCard.querySelector('.otp-container');
-            if (otpContainer.innerHTML.trim() !== otpDisplay.trim()) otpContainer.innerHTML = otpDisplay;
-
-            const priceBox = existingCard.querySelector('.price-box');
-            if (priceBox && serverPrice) priceBox.innerHTML = priceDisplay;
-
-            // UI BARU: JAGA AGAR ID TETAP 2 DIGIT SAAT DI UPDATE
-            let displayNewId = String(o.id).slice(-2);
-            const spans = existingCard.querySelectorAll('span');
-            spans.forEach(sp => { 
-                if (sp.innerText.trim().startsWith('#')) sp.innerText = `#${displayNewId}`; 
-            });
-
-            if (o.otp_code) {
-                if (!orderStates[o.id]) orderStates[o.id] = {};
-                if (!orderStates[o.id].hasOtpPlayed) {
-                    playSimpleSound('otp');
-                    orderStates[o.id].hasOtpPlayed = true;
-                }
-
-                const btnDone = existingCard.querySelector('.btn-done');
-                if(btnDone && btnDone.disabled) { btnDone.disabled = false; btnDone.style.color = "var(--fb-green)"; btnDone.style.borderColor = "var(--fb-green)"; btnDone.style.background = "#e6f4ea"; }
-                const btnResend = existingCard.querySelector('.btn-resend');
-                if(btnResend && btnResend.disabled) btnResend.disabled = false;
-                
-                const btnCancel = existingCard.querySelector('.btn-cancel');
-                if(btnCancel) btnCancel.disabled = true;
-                const btnReplace = existingCard.querySelector('.btn-replace');
-                if(btnReplace) btnReplace.disabled = true;
-            } else {
-                const btnCancel = existingCard.querySelector('.btn-cancel');
-                if(btnCancel && btnCancel.disabled && (passed2Mins || ["smsbower", "otpcepat"].includes(activeProviderKey))) btnCancel.disabled = false;
-                
-                const btnReplace = existingCard.querySelector('.btn-replace');
-                if(btnReplace && btnReplace.disabled && (passed2Mins && !["smsbower", "otpcepat", "svco"].includes(activeProviderKey))) btnReplace.disabled = false;
+            const bCancel = existingCard.querySelector('.btn-cancel');
+            if(bCancel && cancelState === '') bCancel.disabled = false;
+            const bReplace = existingCard.querySelector('.btn-replace');
+            if(bReplace && replaceState === '') bReplace.disabled = false;
+            if(o.otp_code) {
+                const bDone = existingCard.querySelector('.btn-done');
+                if(bDone) { bDone.disabled = false; bDone.style.background = "#e6f4ea"; bDone.style.color = "var(--fb-green)"; }
             }
         } else {
-            const cardHTML = createCardHTML(o.id, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone, o.is_recycled);
-            container.insertAdjacentHTML('afterbegin', cardHTML);
+            container.insertAdjacentHTML('afterbegin', createCardHTML(o.id, phone, formatPrice(price) + extraBadge, resendState, cancelState, replaceState, otpDisplay, !!o.otp_code, o.is_recycled));
         }
     });
-    updateSmsTimers();
 }
 
-// OPTIMASI DOM: Hanya ubah tulisan jika waktunya benar-benar berubah
 function updateSmsTimers() {
     const now = Date.now();
     document.querySelectorAll('.sms-timer').forEach(el => {
         const id = el.dataset.id;
-        
-        let end = el.dataset.expireTime;
-        if (!end) {
-            end = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`)) || parseInt(localStorage.getItem('timer_' + id));
-            if (end) el.dataset.expireTime = end; 
-        }
-
+        let end = parseInt(localStorage.getItem(`timer_${activeProviderKey}_${id}`));
         if(end) {
             const diff = Math.max(0, Math.floor((end - now)/1000));
-            const newText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
-            const newColor = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
-            
-            // Jaga Performa: Hindari Render Ulang (Layout Thrashing)
-            if (el.innerText !== newText) el.innerText = newText;
-            if (el.style.color !== newColor) el.style.color = newColor;
-            
-            if (diff <= 1080 || ["smsbower", "otpcepat"].includes(activeProviderKey)) { 
-                const existingCard = document.getElementById(`order-${activeProviderKey}-${id}`); 
-                
-                if(existingCard && !existingCard.dataset.btnUnlocked) { 
-                    const btnCancel = existingCard.querySelector('.btn-cancel'); 
-                    if(btnCancel && btnCancel.disabled) btnCancel.disabled = false; 
-                    
-                    if(!["smsbower", "otpcepat", "svco"].includes(activeProviderKey) && diff <= 1080) {
-                        const btnReplace = existingCard.querySelector('.btn-replace'); 
-                        if(btnReplace && btnReplace.disabled) btnReplace.disabled = false; 
-                    }
-                    existingCard.dataset.btnUnlocked = "true";
-                } 
-            }
+            el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
+            el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)";
         }
     });
 }
 
 export async function actSms(action, id) {
-    if (action === 'replace' && ["smsbower", "otpcepat", "svco"].includes(activeProviderKey)) {
-        showModal("Peringatan", "Fitur Replace tidak didukung oleh provider ini. Silakan Cancel lalu pesan nomor baru secara manual.", "alert");
-        return;
+    if (action === 'replace' && ["smsbower", "otpcepat", "svco", "nixpoin"].includes(activeProviderKey)) {
+        showModal("Peringatan", "Fitur Replace tidak didukung oleh provider ini.", "alert"); return;
     }
+    if(!await showModal("Konfirmasi", "Lanjutkan aksi ini?", "confirm")) return;
 
-    let title = "Konfirmasi", msg = "Lanjutkan?", type = "confirm";
-    if(action === 'cancel') { title = "Batalkan"; msg = "Yakin batalkan pesanan ini? Saldo dikembalikan."; type = "danger"; }
-    if(action === 'replace') { title = "Ganti Nomor"; msg = "Batalkan pesanan ini dan ganti nomor baru?"; }
-    if(action === 'resend') { title = "Kirim Ulang"; msg = "Meminta kode OTP baru?"; }
-    if(action === 'finish') { title = "Selesaikan"; msg = "Konfirmasi pesanan selesai."; }
-
-    if(!await showModal(title, msg, type)) return;
-
-    if (action === 'replace') {
-        const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-        if(oldCard) {
-            const otpContainer = oldCard.querySelector('.otp-container');
-            if(otpContainer) otpContainer.innerHTML = `<span style="color:var(--fb-blue); font-size:12px; font-weight:900;"><i class="fa-solid fa-spinner fa-spin"></i> Menukar...</span>`;
-        }
-    }
-
-    const sendAction = action === 'replace' ? 'cancel' : action;
-    const j = await apiCall('/order-action', 'POST', { id, action: sendAction });
-    
-    const errStr = JSON.stringify(j).toUpperCase();
-    let isSuccess = j.success === true || j.status === "success";
-    
-    if (!isSuccess && (action === 'cancel' || action === 'replace' || action === 'finish')) {
-        if (errStr.includes('NOT_FOUND') || errStr.includes('NO_ACTIVATION') || errStr.includes('NOT FOUND') || errStr.includes('ALREADY')) {
-            isSuccess = true; 
-        }
-    }
-    if (errStr.includes('EARLY_CANCEL_DENIED') || errStr.includes('BELUM 2 MENIT') || errStr.includes('WAKTUNYA')) {
-        isSuccess = false; 
-    }
-
-    if(isSuccess) {
-        if(action === 'resend') {
-            showModal("Info", "Permintaan terkirim.", "alert");
-            pollSms(); return;
-        }
-
-        const pid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
-        const price = localStorage.getItem(`price_${activeProviderKey}_${id}`);
-        const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
-        const phoneStr = localStorage.getItem(`phone_${activeProviderKey}_${id}`);
-
-        if(action === 'finish') {
-            try {
-                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-                let finalOtp = "Selesai";
-                if (oldCard) {
-                    const otpSpan = oldCard.querySelector('.otp-container span');
-                    if (otpSpan) finalOtp = otpSpan.innerText.replace(/\s+/g, '').trim();
-                }
-                db.ref('sms_history').push({ 
-                    provider: activeProviderKey, 
-                    phone: phoneStr || "08XXX", 
-                    otp: finalOtp,
-                    price: price || 0, 
-                    timestamp: Date.now() 
-                });
-            } catch(e) {}
-        }
-
-        localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
-        localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
-        localStorage.removeItem(`price_${activeProviderKey}_${id}`);
-        localStorage.removeItem(`pid_${activeProviderKey}_${id}`);
-        localStorage.removeItem(`op_${activeProviderKey}_${id}`);
-        localStorage.removeItem(`rank_${activeProviderKey}_${id}`);
-
-        if (action === 'cancel' || action === 'finish') {
-            const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-            if (oldCard) oldCard.remove();
-        }
-
-        if (action === 'replace' && pid) {
-            delete orderStates[id]; 
-            const payload = (activeProviderKey === "herosms") ? { product_id: String(pid), price: price, operator: oldOp } : { product_id: parseInt(pid) };
-            const n = await apiCall('/create-order', 'POST', payload);
-            const nSuccess = n.success === true || n.status === "success";
-            
-            if (nSuccess && n.data) {
-                const od = n.data.orders[0];
-                const newPhone = od.phone || od.phone_number || od.phoneNumber || 'Mencari Nomor...';
-                
-                let initialExpire = Date.now() + (20 * 60000);
-                if (od.expiredAt) {
-                    let exp = parseInt(od.expiredAt);
-                    initialExpire = exp < 10000000000 ? exp * 1000 : exp;
-                }
-
-                localStorage.setItem(`phone_${activeProviderKey}_${od.id}`, newPhone);
-                localStorage.setItem(`price_${activeProviderKey}_${od.id}`, price);
-                localStorage.setItem(`pid_${activeProviderKey}_${od.id}`, pid);
-                localStorage.setItem(`timer_${activeProviderKey}_${od.id}`, initialExpire);
-                localStorage.setItem(`op_${activeProviderKey}_${od.id}`, oldOp);
-
-                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-                if (oldCard) {
-                    oldCard.id = `order-${activeProviderKey}-${od.id}`;
-                    oldCard.setAttribute('data-created', Date.now()); 
-                    
-                    const phoneBoxSpan = oldCard.querySelector('.phone-text-span');
-                    if (phoneBoxSpan) phoneBoxSpan.innerText = newPhone;
-
-                    const otpContainer = oldCard.querySelector('.otp-container');
-                    if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-
-                    const timerEl = oldCard.querySelector('.sms-timer');
-                    if (timerEl) { timerEl.dataset.id = od.id; timerEl.dataset.expireTime = ""; timerEl.innerText = '--:--'; }
-
-                    const btnDone = oldCard.querySelector('.btn-done');
-                    if (btnDone) { btnDone.disabled = true; btnDone.style.background = ''; btnDone.style.borderColor = ''; btnDone.style.color = ''; btnDone.setAttribute('onclick', `actSms('finish', '${od.id}')`); }
-                    
-                    const btnResend = oldCard.querySelector('.btn-resend');
-                    if (btnResend) { btnResend.disabled = true; btnResend.setAttribute('onclick', `actSms('resend', '${od.id}')`); }
-                    
-                    const btnCancel = oldCard.querySelector('.btn-cancel');
-                    if (btnCancel) { btnCancel.disabled = true; btnCancel.setAttribute('onclick', `actSms('cancel', '${od.id}')`); }
-                    
-                    const btnReplace = oldCard.querySelector('.btn-replace');
-                    if (btnReplace) { btnReplace.disabled = true; btnReplace.setAttribute('onclick', `actSms('replace', '${od.id}')`); }
-                    
-                    const hideBtn = oldCard.querySelector('.hide-btn-icon');
-                    if (hideBtn) hideBtn.setAttribute('onclick', `hideSmsCard('${od.id}')`);
-
-                    let displayNewId = String(od.id).slice(-2);
-                    const spans = oldCard.querySelectorAll('span');
-                    spans.forEach(sp => { 
-                        if (sp.innerText.trim().startsWith('#')) sp.innerText = `#${displayNewId}`; 
-                    });
-                    
-                    const copyIcon = oldCard.querySelector('.fa-copy, .fa-circle-check');
-                    if (copyIcon) copyIcon.id = `copy-icon-${od.id}`;
-                    
-                    const phoneBox = oldCard.querySelector('.phone-box');
-                    if (phoneBox) phoneBox.setAttribute('onclick', `copyPhoneNumber('${newPhone}', 'copy-icon-${od.id}')`);
-                    
-                    delete oldCard.dataset.btnUnlocked;
-                }
-            } else { 
-                showModal("Gagal Pesan Baru", n.error?.message || n.message || n.error || "Gagal mengganti stok.", "alert"); 
-                const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-                if (oldCard) oldCard.remove();
-            }
+    const j = await apiCall('/order-action', 'POST', { id, action });
+    if(j.success || j.status === "success") {
+        if(action === 'cancel' || action === 'finish') {
+            const card = document.getElementById(`order-${activeProviderKey}-${id}`);
+            if (card) card.remove();
+            localStorage.removeItem(`phone_${activeProviderKey}_${id}`);
+            localStorage.removeItem(`timer_${activeProviderKey}_${id}`);
         }
         pollSms(); updateSmsBal();
-    } else { 
-        showModal("Gagal", j.message || j.error?.message || j.error || "Ditolak oleh server API.", "alert"); 
-        if (action === 'replace') {
-            const oldCard = document.getElementById(`order-${activeProviderKey}-${id}`);
-            if (oldCard) {
-                const otpContainer = oldCard.querySelector('.otp-container');
-                if (otpContainer) otpContainer.innerHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-            }
-        }
+    } else {
+        showModal("Gagal", j.message || "Aksi ditolak server.", "alert");
     }
 }
 window.actSms = actSms;
