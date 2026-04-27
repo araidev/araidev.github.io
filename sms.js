@@ -10,7 +10,7 @@ const PROVIDERS = {
     "smsbower": { name: "Bower", url: "https://bower.aam-zip.workers.dev" },
     "otpcepat": { name: "Cepat", url: "https://cepat.aam-zip.workers.dev" },
     "svco": { name: "Svco", url: "https://svco.aam-zip.workers.dev" },
-    "nixpoin": { name: "Nixpoin", url: "https://worker-nixpoin-anda.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
+    "nixpoin": { name: "Nixpoin", url: "https://nixpoin.aam-zip.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
