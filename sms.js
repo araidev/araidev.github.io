@@ -74,7 +74,7 @@ function formatPrice(price) {
 }
 
 function getOperatorBadge(provider, opCode, rank) {
-    if ((provider === "herosms" || provider === "otpcepat" || provider === "svco") && opCode && opCode !== "any") {
+    if ((provider === "herosms" || provider === "otpcepat" || provider === "svco" || provider === "nixpoin") && opCode && opCode !== "any") {
         const opMap = { "telkomsel": "TL", "indosat": "ST", "axis": "XS", "three": "TR", "xl": "XL", "smartfren": "SM" };
         let initial = opMap[opCode.toLowerCase()] || opCode.substring(0, 2).toUpperCase();
         return `<span style="font-size:11px; font-family:sans-serif; font-weight:900; color:#fff; margin-left:8px; background:var(--fb-blue); padding:2px 6px; border-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.2);">${initial}</span>`;
@@ -263,7 +263,7 @@ async function loadSmsPrices() {
     
     if (isSuccess && json.data && json.data.length > 0) {
         
-        if (activeProviderKey === "herosms" || activeProviderKey === "otpcepat") {
+        if (activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "nixpoin") {
             let item = json.data.find(x => x.name && x.name.toLowerCase().includes("shope")) || json.data[0];
             let pid = item ? item.id : "ka";
             let name = "Shopee";
@@ -413,7 +413,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 
     const pText = formatPrice(price);
     let opText = "";
-    if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco") && operator !== "any") opText = ` (Prov: ${operator.toUpperCase()})`;
+    if ((activeProviderKey === "herosms" || activeProviderKey === "otpcepat" || activeProviderKey === "svco" || activeProviderKey === "nixpoin") && operator !== "any") opText = ` (Prov: ${operator.toUpperCase()})`;
     else if (activeProviderKey === "smsbower" && operator !== "any") opText = ` (ID: ${operator})`;
 
     if(!await showModal("Pesan Baru", `Beli nomor untuk ${name}${opText} seharga ${pText}?`, "confirm")) {
@@ -423,8 +423,9 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     let payload;
     if (activeProviderKey === "svco") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(rank) || 1 };
-    } else if (activeProviderKey === "herosms" || activeProviderKey === "smsbower" || activeProviderKey === "otpcepat") {
-        payload = { product_id: String(pid), price: price, operator: operator };
+    } else if (activeProviderKey === "herosms" || activeProviderKey === "smsbower" || activeProviderKey === "otpcepat" || activeProviderKey === "nixpoin") {
+    payload = { product_id: String(pid), price: price, operator: operator };
+    }
     } else {
         payload = { product_id: parseInt(pid) };
     }
