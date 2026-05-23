@@ -6,11 +6,7 @@ import { db } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "smscode": { name: "Code", url: "https://sms.aam-zip.workers.dev" },
-    "herosms": { name: "Hero", url: "https://hero.aam-zip.workers.dev" },
-    "smsbower": { name: "Bower", url: "https://bower.aam-zip.workers.dev" },
-    "otpcepat": { name: "Cepat", url: "https://cepat.aam-zip.workers.dev" },
-    "svco": { name: "Svco", url: "https://svco.aam-zip.workers.dev" },
-    "nixpoin": { name: "Nixpoin", url: "https://nixpoin.aam-zip.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
+    "herosms": { name: "Hero", url: "https://herott.aam-zip.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
