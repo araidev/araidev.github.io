@@ -6,7 +6,7 @@ import { db } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "smscode": { name: "Code", url: "https://sms.aam-zip.workers.dev" },
-    "nixpoint": { name: "Poin", url: "https://nixpoin.aam-zip.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
+    "herosms": { name: "Poin", url: "https://hero.aam-zip.workers.dev" } // Ganti dengan URL Worker Nixpoin Anda
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
