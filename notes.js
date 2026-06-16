@@ -147,9 +147,9 @@ function syncNotes() {
         const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        // 1. Grid lebih kecil dan jarak antar card lebih rapat (gap 8px)
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(160px, 1fr))';
+        // 1. Menggunakan Flexbox Column agar sempurna dan rapat untuk tampilan HP
+        grid.style.display = 'flex';
+        grid.style.flexDirection = 'column';
         grid.style.gap = '8px'; 
         grid.innerHTML = ''; 
         
@@ -160,7 +160,7 @@ function syncNotes() {
             const card = document.createElement('div'); 
             card.className = 'note-card'; 
             
-            // 2. Kartu lebih pendek, padding lebih kecil, border lebih tegas (#cdd0d4)
+            // 2. Kartu tetap kecil, padding kecil, dan memiliki border tegas
             card.style.cssText = `
                 background: #ffffff;
                 border: 1px solid #cdd0d4; 
@@ -177,12 +177,12 @@ function syncNotes() {
             card.onmouseover = () => {
                 card.style.transform = 'translateY(-2px)';
                 card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
-                card.style.borderColor = '#aeb1b5'; // Efek hover pada border
+                card.style.borderColor = '#aeb1b5'; 
             };
             card.onmouseout = () => {
                 card.style.transform = 'translateY(0)';
                 card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                card.style.borderColor = '#cdd0d4'; // Mengembalikan warna border
+                card.style.borderColor = '#cdd0d4'; 
             };
 
             card.onclick = () => {
@@ -196,7 +196,7 @@ function syncNotes() {
             const titleStr = escapeHTML(d.title) || 'Untitled';
             const previewStr = escapeHTML(d.content);
 
-            // 3. Teks lebih kecil, isi catatan dipotong di 2 baris (-webkit-line-clamp: 2) agar hemat tempat
+            // 3. Teks lebih kecil, isi catatan dipotong di 2 baris
             card.innerHTML = `
                 <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${titleStr}
