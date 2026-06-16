@@ -1,7 +1,7 @@
 import { showModal, closeModal, toggleMainMenu } from './ui.js';
 import { db, masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
-import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList } from './shopee.js';
+import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
 
@@ -14,6 +14,7 @@ window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; 
 window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = deleteNote;
 window.copyNoteContent = copyNoteContent; window.toggleSmsLock = toggleSmsLock; window.changeSmsServer = changeSmsServer;
 window.buySms = buySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
+window.togglePinShopee = togglePinShopee;
 
 // ==========================================
 // LOGIKA LACI (DRAWER) DI TOOLBAR
@@ -218,4 +219,21 @@ document.addEventListener('click', function(e) {
     if(popup && popup.classList.contains('active') && !popup.contains(e.target) && !btn.contains(e.target)) {
         popup.classList.remove('active');
     }
+});
+
+// ==========================================
+// AUTO-KAPITAL JUDUL LINK SHOPEE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Gunakan setInterval ringan untuk berjaga-jaga jika form modal belum dirender saat DOMContentLoaded
+    const checkForm = setInterval(() => {
+        const shopeeTitleInput = document.getElementById('shopee-title');
+        if (shopeeTitleInput) {
+            shopeeTitleInput.addEventListener('input', function() {
+                // Membuat huruf awal setiap kata menjadi kapital
+                this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
+            });
+            clearInterval(checkForm); // Hentikan pencarian elemen setelah ketemu
+        }
+    }, 500);
 });
