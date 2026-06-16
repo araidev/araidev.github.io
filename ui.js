@@ -6,13 +6,14 @@ export function showModal(title, msg, type='confirm') {
         const actions = document.getElementById('u-modal-actions');
         actions.innerHTML = '';
         
-        // Kunci background agar tidak ikut ter-scroll saat modal konfirmasi muncul
+        // Kunci HTML dan BODY untuk HP
+        document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
         
-        // Fungsi bantuan agar tidak menulis ulang kode penutup modal
         const closeThisModal = (result) => {
             ov.classList.remove('active');
-            document.body.style.overflow = ''; // Buka kembali kunci scroll
+            document.documentElement.style.overflow = ''; 
+            document.body.style.overflow = ''; 
             resolve(result);
         };
         
@@ -44,8 +45,7 @@ export function showModal(title, msg, type='confirm') {
 
 export function closeModal(id) { 
     document.getElementById(id).classList.remove('active'); 
-    
-    // Pastikan background bisa di-scroll kembali setelah modal apa pun ditutup
+    document.documentElement.style.overflow = ''; 
     document.body.style.overflow = ''; 
 }
 
@@ -53,6 +53,6 @@ export function toggleMainMenu() {
     const menu = document.getElementById('main-menu-popup');
     const isActive = menu.classList.toggle('active'); 
     
-    // Jika menu aktif, kunci scroll. Jika tertutup, buka kembali.
+    document.documentElement.style.overflow = isActive ? 'hidden' : '';
     document.body.style.overflow = isActive ? 'hidden' : '';
 }
