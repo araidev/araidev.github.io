@@ -52,50 +52,49 @@ function updateStatsUI() {
     const statsContainer = document.getElementById('note-stats-container');
     if (!statsContainer) return;
 
-    // Tampilan Wrapper yang Rapi dan Profesional
     statsContainer.style.cssText = `
         background: #f8f9fa;
         border: 1px solid #e4e6eb;
-        border-radius: 8px;
-        padding: 12px 15px;
+        border-radius: 6px;
+        padding: 10px 12px;
         display: flex;
         align-items: center;
         justify-content: space-around;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        margin-bottom: 15px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        margin-bottom: 12px;
     `;
     
     statsContainer.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#1877f2; font-size:15px;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#1877f2; font-size:14px;">
                 <i class="fa-solid fa-folder"></i> <span>${statsData.total}</span>
             </div>
-            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
         </div>
         
-        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
 
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#2ecc71; font-size:15px;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;">
                 <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
             </div>
-            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
         </div>
 
-        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
 
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:6px; font-weight:900; color:#e74c3c; font-size:15px;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;">
                 <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
             </div>
-            <span style="font-size:10px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
         </div>
 
-        <div style="width: 1px; height: 28px; background: #ccd0d5;"></div>
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
 
         <button id="btn-reset-stat" style="
-            width: 32px; 
-            height: 32px; 
+            width: 28px; 
+            height: 28px; 
             border: none; 
             background: #e4e6eb; 
             border-radius: 50%; 
@@ -105,7 +104,7 @@ function updateStatsUI() {
             cursor: pointer; 
             transition: 0.2s;
         " title="Reset Hari Ini">
-            <i class="fas fa-sync-alt" style="font-size: 13px; color: #65676B;"></i>
+            <i class="fas fa-sync-alt" style="font-size: 11px; color: #65676B;"></i>
         </button>
     `;
 
@@ -148,10 +147,10 @@ function syncNotes() {
         const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        // 1. Mengatur Container menggunakan CSS Grid agar otomatis sejajar dan responsif
+        // 1. Grid lebih kecil dan jarak antar card lebih rapat (gap 8px)
         grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
-        grid.style.gap = '15px';
+        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(160px, 1fr))';
+        grid.style.gap = '8px'; 
         grid.innerHTML = ''; 
         
         let items = [];
@@ -161,28 +160,29 @@ function syncNotes() {
             const card = document.createElement('div'); 
             card.className = 'note-card'; 
             
-            // 2. Memberikan styling presisi pada masing-masing kartu
+            // 2. Kartu lebih pendek, padding lebih kecil, border lebih tegas (#cdd0d4)
             card.style.cssText = `
                 background: #ffffff;
-                border: 1px solid #e4e6eb;
-                border-radius: 10px;
-                padding: 16px;
+                border: 1px solid #cdd0d4; 
+                border-radius: 6px;
+                padding: 10px;
                 display: flex;
                 flex-direction: column;
                 cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
-                height: 150px; /* Tinggi diseragamkan */
+                height: 100px; 
             `;
 
-            // Efek Hover agar interaktif
             card.onmouseover = () => {
-                card.style.transform = 'translateY(-3px)';
-                card.style.boxShadow = '0 6px 12px rgba(0,0,0,0.08)';
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
+                card.style.borderColor = '#aeb1b5'; // Efek hover pada border
             };
             card.onmouseout = () => {
                 card.style.transform = 'translateY(0)';
-                card.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                card.style.borderColor = '#cdd0d4'; // Mengembalikan warna border
             };
 
             card.onclick = () => {
@@ -196,16 +196,16 @@ function syncNotes() {
             const titleStr = escapeHTML(d.title) || 'Untitled';
             const previewStr = escapeHTML(d.content);
 
-            // 3. Menyusun elemen dalam kartu dengan pembatasan teks (Truncation)
+            // 3. Teks lebih kecil, isi catatan dipotong di 2 baris (-webkit-line-clamp: 2) agar hemat tempat
             card.innerHTML = `
-                <div style="font-weight: 600; color: #1c1e21; font-size: 16px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${titleStr}
                 </div>
-                <div style="color: #65676B; font-size: 14px; line-height: 1.5; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                     ${previewStr}
                 </div>
-                <div style="font-size: 11px; color: #8a8d91; text-align: right; border-top: 1px solid #f0f2f5; padding-top: 10px; margin-top: 10px;">
-                    <i class="far fa-clock" style="margin-right: 5px;"></i>${formatDate(d.timestamp)}
+                <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;">
+                    <i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}
                 </div>
             `;
             grid.appendChild(card);
