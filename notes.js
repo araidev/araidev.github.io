@@ -147,10 +147,13 @@ function syncNotes() {
         const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        // 1. Menggunakan Flexbox Column agar menumpuk rapat dari atas ke bawah untuk tampilan HP
         grid.style.display = 'flex';
         grid.style.flexDirection = 'column';
         grid.style.gap = '8px'; 
+        
+        // Mencegah scroll bocor ke background
+        grid.style.overscrollBehavior = 'contain'; 
+        
         grid.innerHTML = ''; 
         
         let items = [];
@@ -160,7 +163,6 @@ function syncNotes() {
             const card = document.createElement('div'); 
             card.className = 'note-card'; 
             
-            // 2. Kartu berukuran kecil, padding kecil, dan border tegas
             card.style.cssText = `
                 background: #ffffff;
                 border: 1px solid #cdd0d4; 
@@ -172,6 +174,7 @@ function syncNotes() {
                 box-shadow: 0 1px 2px rgba(0,0,0,0.04);
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
                 height: 100px; 
+                flex-shrink: 0;
             `;
 
             card.onmouseover = () => {
@@ -192,14 +195,13 @@ function syncNotes() {
                 document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
                 document.getElementById('modal-note-view').classList.add('active');
                 
-                // Kunci scroll background saat modal view dibuka
+                document.documentElement.style.overflow = 'hidden';
                 document.body.style.overflow = 'hidden'; 
             };
 
             const titleStr = escapeHTML(d.title) || 'Untitled';
             const previewStr = escapeHTML(d.content);
 
-            // 3. Font kecil, isi catatan dipotong di 2 baris
             card.innerHTML = `
                 <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${titleStr}
@@ -218,7 +220,8 @@ function syncNotes() {
 
 export function openNoteList() {
     document.getElementById('modal-note-list').classList.add('active');
-    document.body.style.overflow = 'hidden'; // Kunci scroll
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden'; 
 }
 
 export function openNoteModal() {
@@ -226,7 +229,8 @@ export function openNoteModal() {
     document.getElementById('note-title').value = ""; 
     document.getElementById('note-content').value = "";
     document.getElementById('modal-note-form').classList.add('active');
-    document.body.style.overflow = 'hidden'; // Kunci scroll
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden'; 
 }
 
 export async function saveNote() {
@@ -277,7 +281,8 @@ export function editNote() {
     document.getElementById('note-title').value = document.getElementById('view-title').innerText;
     document.getElementById('note-content').value = currentNoteRaw;
     document.getElementById('modal-note-form').classList.add('active');
-    document.body.style.overflow = 'hidden'; // Kunci scroll saat berpindah ke form edit
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
 }
 
 export async function deleteNote() {
