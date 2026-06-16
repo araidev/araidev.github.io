@@ -56,7 +56,11 @@ export function openShopeeModal(key = null) {
         document.getElementById('shopee-price').value = "";
         document.getElementById('shopee-status').value = "";
     }
+    
     document.getElementById('modal-shopee-form').classList.add('active');
+    
+    // Kunci scroll background saat modal shopee form dibuka
+    document.body.style.overflow = 'hidden';
 }
 
 export function saveShopee() {
@@ -235,6 +239,9 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
 
 export function openShopeeList() {
     document.getElementById('modal-shopee-list').classList.add('active');
+    
+    // Kunci scroll background saat modal shopee list dibuka
+    document.body.style.overflow = 'hidden';
 }
 
 // --- OTOMATIS ALL CAPS SAAT MENGETIK ---
