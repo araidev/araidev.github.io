@@ -139,6 +139,12 @@ export async function generateName() {
         // Gabungkan seluruh data
         const hasilLengkap = `${nama}, ${noHp}, ${prov}, ${kota}, ${dataW.kodepos || "60111"}, ${jalan}, Kec. ${kec}`;
         
+        // === 4. TAMPILKAN HASIL KE KOLOM EMAIL ===
+        const inputTarget = document.getElementById('ip-result');
+        if (inputTarget) {
+            inputTarget.value = hasilLengkap;
+        }
+
         // Eksekusi Copy & Ubah UI Tombol
         await copyToClipboard(hasilLengkap);
         
