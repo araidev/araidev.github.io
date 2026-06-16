@@ -61,10 +61,13 @@ export function openShopeeModal(key = null) {
 
 export function saveShopee() {
     const key = document.getElementById('shopee-edit-key').value;
-    const t = document.getElementById('shopee-title').value; 
+    let rawTitle = document.getElementById('shopee-title').value; 
     const u = document.getElementById('shopee-url').value;
     const p = document.getElementById('shopee-price').value; 
     const s = document.getElementById('shopee-status').value;
+    
+    // Format judul secara paksa menjadi Title Case sebelum disimpan ke database
+    const t = rawTitle.replace(/\b\w/g, char => char.toUpperCase());
     
     if(t && u) {
         // Tambahkan updatedAt agar item yang di-edit/ditambah naik ke atas
