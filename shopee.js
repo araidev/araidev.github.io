@@ -61,26 +61,28 @@ export function openShopeeModal(key = null) {
 
 export function saveShopee() {
     const key = document.getElementById('shopee-edit-key').value;
-    let rawTitle = document.getElementById('shopee-title').value; 
-    const u = document.getElementById('shopee-url').value;
+    let rawTitle = document.getElementById('shopee-title').value.trim(); 
+    const u = document.getElementById('shopee-url').value.trim();
     const p = document.getElementById('shopee-price').value; 
     const s = document.getElementById('shopee-status').value;
     
-    // Format judul secara paksa menjadi Title Case sebelum disimpan ke database
-    const t = rawTitle.replace(/\b\w/g, char => char.toUpperCase());
+    // Jika kolom judul tidak diisi / kosong, berikan judul default "---"
+    if (!rawTitle) {
+        rawTitle = "---";
+    }
     
-    if(t && u) {
-        // Tambahkan updatedAt agar item yang di-edit/ditambah naik ke atas
-        const data = { title: t, url: u, price: p, status: s, updatedAt: Date.now() };
-        if (key) {
-            db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
-        } else {
-            // Setup nilai default pin saat buat baru
-            data.isPinned = false; 
-            db.ref('linkshopee').push(data).then(() => closeModal('modal-shopee-form'));
-        }
+    // Format judul secara paksa menjadi ALL CAPS (Huruf Besar Semua)
+    const t = rawTitle.toUpperCase();
+    
+    // Langsung simpan ke database tanpa memblokir kolom yang kosong (judul & link boleh kosong)
+    const data = { title: t, url: u, price: p, status: s, updatedAt: Date.now() };
+    
+    if (key) {
+        db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
     } else {
-        showModal("Peringatan", "Nama & Link wajib diisi!", "alert");
+        // Setup nilai default pin saat buat baru
+        data.isPinned = false; 
+        db.ref('linkshopee').push(data).then(() => closeModal('modal-shopee-form'));
     }
 }
 
@@ -233,4 +235,21 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
 
 export function openShopeeList() {
     document.getElementById('modal-shopee-list').classList.add('active');
+}
+
+// --- OTOMATIS ALL CAPS SAAT MENGETIK ---
+function initAutoCaps() {
+    const shopeeTitleInput = document.getElementById('shopee-title');
+    if (shopeeTitleInput) {
+        shopeeTitleInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+    }
+}
+
+// Memastikan event listener terpasang dengan aman saat DOM siap
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAutoCaps);
+} else {
+    initAutoCaps();
 }
