@@ -59,7 +59,7 @@ export function openShopeeModal(key = null) {
     
     document.getElementById('modal-shopee-form').classList.add('active');
     
-    // Kunci scroll background saat modal shopee form dibuka
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 }
 
@@ -70,21 +70,16 @@ export function saveShopee() {
     const p = document.getElementById('shopee-price').value; 
     const s = document.getElementById('shopee-status').value;
     
-    // Jika kolom judul tidak diisi / kosong, berikan judul default "---"
     if (!rawTitle) {
         rawTitle = "---";
     }
     
-    // Format judul secara paksa menjadi ALL CAPS (Huruf Besar Semua)
     const t = rawTitle.toUpperCase();
-    
-    // Langsung simpan ke database tanpa memblokir kolom yang kosong (judul & link boleh kosong)
     const data = { title: t, url: u, price: p, status: s, updatedAt: Date.now() };
     
     if (key) {
         db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
     } else {
-        // Setup nilai default pin saat buat baru
         data.isPinned = false; 
         db.ref('linkshopee').push(data).then(() => closeModal('modal-shopee-form'));
     }
@@ -96,11 +91,10 @@ export async function deleteShopee(key) {
     }
 }
 
-// FUNGSI BARU: Untuk mengubah status Pin
 export function togglePinShopee(key, currentPinStatus) {
     db.ref('linkshopee/' + key).update({
         isPinned: !currentPinStatus,
-        updatedAt: Date.now() // Update waktu agar posisinya ter-refresh di atas (untuk grup pin/unpin-nya)
+        updatedAt: Date.now() 
     });
 }
 
@@ -108,6 +102,8 @@ function renderShopee() {
     const container = document.getElementById('shopee-container'); 
     if(!container) return;
     
+    // Mencegah scroll merambat ke body (scroll bleed)
+    container.style.overscrollBehavior = 'contain';
     container.innerHTML = "";
     const isAdmin = !!userAdmin;
 
@@ -116,8 +112,7 @@ function renderShopee() {
     
     if (randomCardData || isAdmin) {
         const wrapRandom = document.createElement('div');
-        // Desain Kartu Khusus Acak (Minimalis Elegan dengan Aksen Emas)
-        wrapRandom.style.cssText = 'display:flex; align-items:center; background:#fffbf0; border:1px solid #f1c40f; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s;';
+        wrapRandom.style.cssText = 'display:flex; align-items:center; background:#fffbf0; border:1px solid #f1c40f; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;';
 
         if (randomCardData) {
             let adminBtns = isAdmin ? `
@@ -145,37 +140,31 @@ function renderShopee() {
         container.appendChild(wrapRandom);
     }
 
-    // --- 2. LINK REGULER (Desain Minimalis Putih) ---
+    // --- 2. LINK REGULER ---
     let orderedShopee = Object.keys(shopeeDataCache)
         .filter(k => k !== 'ID_RANDOM_LOCKED')
         .map(k => ({ key: k, ...shopeeDataCache[k] }));
         
-    // PERBAIKAN LOGIKA SORTING (Pengurutan)
     orderedShopee.sort((a, b) => {
-        // 1. Prioritaskan status Pin (yang di-pin ada di atas)
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
 
-        // 2. Jika status pin sama, urutkan berdasarkan waktu edit/tambah terbaru
         let timeA = a.updatedAt || 0;
         let timeB = b.updatedAt || 0;
-        if (timeA !== timeB) return timeB - timeA; // Descending: Terbaru ke Terlama
+        if (timeA !== timeB) return timeB - timeA; 
 
-        // 3. Fallback: Urutkan berdasarkan Firebase ID (untuk data lama yang belum punya updatedAt)
         return b.key.localeCompare(a.key);
     });
 
     orderedShopee.forEach((data) => {
         const wrapper = document.createElement('div');
-        // Tambahkan highlight border atau background sedikit jika di-pin (opsional)
         let borderStyle = data.isPinned ? 'border:1px solid #1877f2;' : 'border:1px solid #e4e6eb;';
-        wrapper.style.cssText = `display:flex; align-items:center; background:#fff; ${borderStyle} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s;`;
+        wrapper.style.cssText = `display:flex; align-items:center; background:#fff; ${borderStyle} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;`;
         
         let st = data.status ? `<span style="background:#fce8e6; color:#e41e3f; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${data.status}</span>` : ''; 
         let pr = data.price ? `<span style="background:#e7f3ff; color:#1877f2; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">${data.price}</span>` : '';
         let tagsHTML = (st || pr) ? `<div style="display:flex; gap:6px; margin-top:5px;">${st}${pr}</div>` : '';
 
-        // Tampilan ikon kecil pada judul jika item di pin
         let pinIconTitle = data.isPinned ? `<i class="fa-solid fa-thumbtack" style="color:#1877f2; margin-right:6px; font-size:12px; transform: rotate(45deg);"></i>` : '';
 
         let adminBtns = isAdmin ? `
@@ -239,12 +228,10 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
 
 export function openShopeeList() {
     document.getElementById('modal-shopee-list').classList.add('active');
-    
-    // Kunci scroll background saat modal shopee list dibuka
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 }
 
-// --- OTOMATIS ALL CAPS SAAT MENGETIK ---
 function initAutoCaps() {
     const shopeeTitleInput = document.getElementById('shopee-title');
     if (shopeeTitleInput) {
@@ -254,7 +241,6 @@ function initAutoCaps() {
     }
 }
 
-// Memastikan event listener terpasang dengan aman saat DOM siap
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAutoCaps);
 } else {
