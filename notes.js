@@ -148,11 +148,43 @@ function syncNotes() {
         const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        grid.innerHTML = ''; let items = [];
+        // 1. Mengatur Container menggunakan CSS Grid agar otomatis sejajar dan responsif
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
+        grid.style.gap = '15px';
+        grid.innerHTML = ''; 
+        
+        let items = [];
         snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
         
         items.reverse().forEach(d => {
-            const card = document.createElement('div'); card.className = 'note-card'; 
+            const card = document.createElement('div'); 
+            card.className = 'note-card'; 
+            
+            // 2. Memberikan styling presisi pada masing-masing kartu
+            card.style.cssText = `
+                background: #ffffff;
+                border: 1px solid #e4e6eb;
+                border-radius: 10px;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                cursor: pointer;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                height: 150px; /* Tinggi diseragamkan */
+            `;
+
+            // Efek Hover agar interaktif
+            card.onmouseover = () => {
+                card.style.transform = 'translateY(-3px)';
+                card.style.boxShadow = '0 6px 12px rgba(0,0,0,0.08)';
+            };
+            card.onmouseout = () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+            };
+
             card.onclick = () => {
                 selectedNoteKey = d.key; currentNoteRaw = d.content;
                 document.getElementById('view-tag').innerText = "PUB | " + formatDate(d.timestamp);
@@ -160,7 +192,22 @@ function syncNotes() {
                 document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
                 document.getElementById('modal-note-view').classList.add('active');
             };
-            card.innerHTML = `<div class="note-title">${escapeHTML(d.title) || 'Untitled'}</div><div class="note-preview">${escapeHTML(d.content)}</div><div class="note-date">${formatDate(d.timestamp)}</div>`;
+
+            const titleStr = escapeHTML(d.title) || 'Untitled';
+            const previewStr = escapeHTML(d.content);
+
+            // 3. Menyusun elemen dalam kartu dengan pembatasan teks (Truncation)
+            card.innerHTML = `
+                <div style="font-weight: 600; color: #1c1e21; font-size: 16px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${titleStr}
+                </div>
+                <div style="color: #65676B; font-size: 14px; line-height: 1.5; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                    ${previewStr}
+                </div>
+                <div style="font-size: 11px; color: #8a8d91; text-align: right; border-top: 1px solid #f0f2f5; padding-top: 10px; margin-top: 10px;">
+                    <i class="far fa-clock" style="margin-right: 5px;"></i>${formatDate(d.timestamp)}
+                </div>
+            `;
             grid.appendChild(card);
         });
     });
