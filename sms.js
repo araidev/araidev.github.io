@@ -7,7 +7,8 @@ import { db } from './firebase.js';
 const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev" },
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev" },
-   "otpcepat": { name: "OTC", url: "https://cepat.aam-zip.workers.dev" }
+   "otpcepat": { name: "OTC", url: "https://cepat.aam-zip.workers.dev" },
+    "svco": { name: "SVC", url: "https://svco.aam-zip.workers.dev" }
  // Ganti dengan URL Worker Nixpoin Anda
 };
 
