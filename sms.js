@@ -321,13 +321,13 @@ export async function renderPricesForOperator(op) {
     
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
-            // Mengambil catalog ID khusus untuk request operator
+            // Untuk order spesifik, KITA HARUS PAKAI CATALOG ID
             let catalogId = item.catalog_product_id; 
-            let numOpId = item.injected_operator_id; // ID Nomor resmi dari Server (hasil filter worker)
+            let numOpId = item.injected_operator_id; // ID Nomor resmi dari Server (dibuat oleh worker)
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Masukkan numOpId pada parameter rank untuk di bawa ke executeBuySms
+            // Kita selipkan numOpId di posisi parameter "rank"
             return `<div class="price-item" onclick="executeBuySms('${catalogId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${numOpId}')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
