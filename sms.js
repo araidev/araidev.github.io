@@ -321,13 +321,13 @@ export async function renderPricesForOperator(op) {
     
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
-            // Untuk order spesifik, KITA HARUS PAKAI CATALOG ID
-            let catalogId = item.catalog_product_id; 
-            let numOpId = item.injected_operator_id; // ID Nomor resmi dari Server (dibuat oleh worker)
+            // Kita bungkus ID Katalog Produk ke dalam variabel `catalogId`
+            let catalogId = item.catalog_product_id || item.id; 
+            let numOpId = item.injected_operator_id; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Kita selipkan numOpId di posisi parameter "rank"
+            // Perhatikan pengiriman variabel: catalogId, item.price, name, operator text, dan operator ID (numOpId)
             return `<div class="price-item" onclick="executeBuySms('${catalogId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${numOpId}')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
@@ -517,7 +517,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
             payload = { 
                 type: "catalog", 
                 catalog_product_id: parseInt(pid), 
-                operator_id: parseInt(rank), // Rank di sini adalah ID Angka Server
+                operator_id: parseInt(rank), // Rank di sini adalah ID Angka Server yang diselipkan tadi
                 max_price: parseInt(price)
             };
         } else {
