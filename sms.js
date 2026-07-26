@@ -405,7 +405,9 @@ async function loadSmsPrices() {
             if (shopeeData) {
                 let pid = shopeeData.serviceId || "1"; 
                 let countryId = shopeeData.country || 1; 
-                let prices = (shopeeData.customPrice || []).filter(p => parseFloat(p.price) <= 0.06885).sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
+                
+                // PERBAIKAN: Mengubah filter harga maksimal jadi 0.99
+                let prices = (shopeeData.customPrice || []).filter(p => parseFloat(p.price) <= 0.99).sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
                 
                 let operators = (shopeeData.operators || []).filter(o => o.code && o.code.toLowerCase() !== 'any');
                 operators.unshift({ name: "ANY (ACAK)", code: "any" });
@@ -614,10 +616,8 @@ function renderSmsOrders(orders) {
             const hasOtp = otpBox && !otpBox.innerHTML.includes('loader-bars');
             
             if (!hasOtp) {
-                // Jika belum ada OTP, langsung hapus karena server sudah cancel/hilang
                 card.remove(); 
             } else {
-                // Jika sudah ada OTP, kunci tombol lain agar tidak diklik
                 const bDone = card.querySelector('.btn-done');
                 if(bDone) { 
                     bDone.disabled = false; 
@@ -630,8 +630,6 @@ function renderSmsOrders(orders) {
                 if(bReplace) bReplace.disabled = true;
                 const bResend = card.querySelector('.btn-resend');
                 if(bResend) bResend.disabled = true;
-                
-                // Note: Timer dibiarkan tidak disentuh, akan menghitung normal
             }
         }
     });
@@ -643,7 +641,21 @@ function renderSmsOrders(orders) {
         const savedOp = o.operator || "any";
         const extraBadge = getOperatorBadge(activeProviderKey, savedOp, "");
         
-        const orderTime = o.created_at || Date.now();
+        const existingCard = document.getElementById(`order-${activeProviderKey}-${o.id}`);
+
+        // PERBAIKAN WAKTU: Pastikan kita tidak menimpa expire yang sudah berjalan jika server gagal memberi tanggal!
+        let orderTime;
+        if (o.created_at) {
+            orderTime = o.created_at; // Waktu real dari server Cloudflare Worker (sinkron antar perangkat)
+        } else if (existingCard) {
+            // Jika api timeout memberikan tanggal tapi kartu sudah jalan di UI, pakai memori UI (Jangan reset!)
+            const oldExpire = parseInt(existingCard.querySelector('.sms-timer').dataset.expire);
+            orderTime = oldExpire - 600000;
+        } else {
+            // Fallback terakhir (misal nomor baru beli tapi server gagal kirim waktu)
+            orderTime = Date.now();
+        }
+
         const expire = orderTime + 600000; // Timer jalan 10 menit
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
@@ -652,9 +664,9 @@ function renderSmsOrders(orders) {
         const cancelState = (passed2Mins || ["smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
         const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
 
-        const existingCard = document.getElementById(`order-${activeProviderKey}-${o.id}`);
         if (existingCard) {
             const timerSpan = existingCard.querySelector('.sms-timer');
+            // SEKARANG AMAN: dataset.expire hanya akan sinkron dengan orderTime server (tidak akan mengulang sendiri ke Date.now())
             if (timerSpan) timerSpan.dataset.expire = expire;
 
             const phoneTextSpan = existingCard.querySelector('.phone-text-span');
