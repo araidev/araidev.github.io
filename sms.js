@@ -199,52 +199,58 @@ async function updateSmsBal() {
 }
 
 // ==========================================
-// SVCO RENDERER
+// SVCO RENDERER (ALUR BARU: PROVIDER -> HARGA)
 // ==========================================
-export function renderSvcoPriceList() {
+export function renderSvcoOperatorListFirst() {
     const box = document.getElementById('sms-prices');
     if (!cachedSvcoData || !box) return;
-    let { prices } = cachedSvcoData;
+
+    let { operators } = cachedSvcoData;
+    let htmlList = operators.map(op => {
+        let displayName = op.name.toUpperCase();
+        return `<div class="price-item" onclick="renderSvcoPricesForOperator('${op.code}', '${displayName}')">
+                    <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
+                        <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${displayName}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
+                        <div style="min-width: 30px; text-align: right; font-size:12px; color:var(--fb-blue); white-space: nowrap;"><i class="fa-solid fa-chevron-right"></i></div>
+                    </div>
+                </div>`;
+    });
+
+    box.innerHTML = htmlList.join('');
+}
+window.renderSvcoOperatorListFirst = renderSvcoOperatorListFirst;
+
+export function renderSvcoPricesForOperator(opCode, opName) {
+    const box = document.getElementById('sms-prices');
+    if (!cachedSvcoData || !box) return;
+
+    let { pid, countryId, prices } = cachedSvcoData;
     let htmlList = prices.map(p => {
         let st = p.count !== undefined ? p.count : "~";
-        return `<div class="price-item" onclick="renderSvcoOperatorList('${p.price}')">
-            <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🇮🇩</div>
-            </div>
-            <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
-                <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(p.price)}</div>
-                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${st} stok</div>
-            </div>
-        </div>`;
-    });
-    box.innerHTML = htmlList.join('');
-}
-window.renderSvcoPriceList = renderSvcoPriceList;
+        let displayPrice = formatPrice(p.price);
 
-export function renderSvcoOperatorList(selectedPrice) {
-    const box = document.getElementById('sms-prices');
-    if (!cachedSvcoData || !box) return;
-    let { pid, countryId, operators } = cachedSvcoData;
-    let htmlList = operators.map(op => {
-        let st = op.count !== undefined ? op.count : "~";
-        return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, '${op.name.toUpperCase()}', '${op.code}', '${countryId}')">
-            <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
-                <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left:5px;">${op.name.toUpperCase()}</div>
-            </div>
-            <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
-                <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${formatPrice(selectedPrice)}</div>
-                <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${st} stok</div>
-            </div>
-        </div>`;
+        return `<div class="price-item" onclick="executeBuySms('${pid}', ${p.price}, '${opName}', '${opCode}', '${countryId}')">
+                    <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
+                        <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${opName}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
+                        <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${displayPrice}</div>
+                        <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${st} stok</div>
+                    </div>
+                </div>`;
     });
+
     htmlList.push(`
-        <div onclick="renderSvcoPriceList()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da;">
-            <i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar Harga
+        <div onclick="renderSvcoOperatorListFirst()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da;">
+            <i class="fa-solid fa-arrow-left"></i> Kembali Pilih Operator
         </div>
     `);
+    
     box.innerHTML = htmlList.join('');
 }
-window.renderSvcoOperatorList = renderSvcoOperatorList;
+window.renderSvcoPricesForOperator = renderSvcoPricesForOperator;
 
 // ==========================================
 // SMSCODE RENDERER (PROVIDER -> HARGA)
@@ -253,7 +259,6 @@ export function renderOperatorListFirst() {
     const box = document.getElementById('sms-prices');
     if(!box) return;
 
-    // Desain bersih tanpa kata berlebihan
     const ops = [
         { id: "any", label: "ANY (ACAK)" },
         { id: "telkomsel", label: "TELKOMSEL" },
@@ -283,11 +288,11 @@ export async function renderPricesForOperator(op) {
 
     if (op === "any") {
         let htmlList = cachedProductsData.map(item => {
-            let pid = item.id; 
+            let exactId = item.id; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            return `<div class="price-item" onclick="executeBuySms('${pid}', ${item.price}, 'Acak', 'any', '')">
+            return `<div class="price-item" onclick="executeBuySms('${exactId}', ${item.price}, 'Acak', 'any', '')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">ANY (ACAK)</div>
                         </div>
@@ -317,13 +322,10 @@ export async function renderPricesForOperator(op) {
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
             let exactId = item.id; 
-            // Ambil ID Katalog Resmi (Bila ada)
-            let catalogId = item.catalog_product_id || ""; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Kita bungkus catalogId ke posisi parameter "rank" untuk dibawa ke sistem eksekusi
-            return `<div class="price-item" onclick="executeBuySms('${exactId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${catalogId}')">
+            return `<div class="price-item" onclick="executeBuySms('${exactId}', ${item.price}, '${op.toUpperCase()}', '${op}', '')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
                         </div>
@@ -403,9 +405,14 @@ async function loadSmsPrices() {
                 let pid = shopeeData.serviceId || "1"; 
                 let countryId = shopeeData.country || 1; 
                 let prices = (shopeeData.customPrice || []).filter(p => parseFloat(p.price) <= 0.06885).sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
+                
+                // Tambahkan 'ANY' secara manual di awal array agar user bisa milih Acak
                 let operators = (shopeeData.operators || []).filter(o => o.code && o.code.toLowerCase() !== 'any');
+                operators.unshift({ name: "ANY (ACAK)", code: "any" });
+
                 cachedSvcoData = { pid, countryId, prices, operators };
-                if (prices.length > 0) renderSvcoPriceList();
+                
+                if (prices.length > 0) renderSvcoOperatorListFirst();
                 else box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Tidak Tersedia</div>`;
             } else {
                 box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Kosong</div>`;
@@ -502,9 +509,7 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // PERUBAHAN BESAR: Kami selalu mengirim ID Produk Pasti & ID Katalog ke Worker
-        // Biarkan Worker yang meracik validasinya agar lolos dari blokade server
-        payload = { product_id: pid, catalog_product_id: rank, price: price, operator: operator };
+        payload = { product_id: pid, price: price, operator: operator };
     } else {
         payload = { product_id: parseInt(pid) };
     }
