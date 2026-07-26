@@ -24,6 +24,10 @@ let isPolling = false;
 let activeOrders = [];
 let orderStates = {};
 
+// Cache untuk menyimpan data harga (Agar tidak perlu fetch berkali-kali saat bolak-balik menu)
+let cachedSvcoData = null; 
+let cachedProductsData = []; 
+
 // Setup Suara Notifikasi
 let audioCtx;
 function playSimpleSound(type) {
@@ -51,8 +55,6 @@ function playSimpleSound(type) {
         }
     } catch (e) { console.log("Audio tidak didukung", e); }
 }
-
-let cachedSvcoData = null; 
 
 function tryInitSms() {
     if (!smsInitialized) initSms();
@@ -113,7 +115,7 @@ export async function changeSmsProvider() {
     activeProviderKey = document.getElementById('sms-provider').value;
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
-    activeOrders = []; orderStates = {}; cachedSvcoData = null;
+    activeOrders = []; orderStates = {}; cachedSvcoData = null; cachedProductsData = [];
     document.getElementById('sms-active-orders').innerHTML = ''; 
     await loadServersList();
     refreshSms();
@@ -177,10 +179,8 @@ async function apiCall(endpoint, method = "GET", body = null) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); 
         options.signal = controller.signal;
-
         const res = await fetch(`${BASE_URL}${endpoint}`, options);
         clearTimeout(timeoutId); 
-
         const text = await res.text(); 
         try { return JSON.parse(text); } 
         catch(e) { return { success: res.ok, status: res.ok ? "success" : "failed", error: { message: text || "Format server tidak sesuai" } }; }
@@ -199,6 +199,9 @@ async function updateSmsBal() {
     else elBal.innerText = "Offline";
 }
 
+// ==========================================
+// SVCO RENDERER
+// ==========================================
 export function renderSvcoPriceList() {
     const box = document.getElementById('sms-prices');
     if (!cachedSvcoData || !box) return;
@@ -244,6 +247,91 @@ export function renderSvcoOperatorList(selectedPrice) {
 }
 window.renderSvcoOperatorList = renderSvcoOperatorList;
 
+// ==========================================
+// SMSCODE RENDERER (PROVIDER -> HARGA)
+// ==========================================
+export function renderOperatorListFirst() {
+    const box = document.getElementById('sms-prices');
+    if(!box) return;
+
+    const ops = [
+        { id: "any", label: "ANY (ACAK ATAU TERMURAH)" },
+        { id: "telkomsel", label: "TELKOMSEL" },
+        { id: "indosat", label: "INDOSAT" },
+        { id: "axis", label: "AXIS" },
+        { id: "three", label: "THREE" },
+        { id: "xl", label: "XL" },
+        { id: "smartfren", label: "SMARTFREN" }
+    ];
+
+    box.innerHTML = ops.map(op => {
+        return `<div class="price-item" onclick="renderPricesForOperator('${op.id}')">
+                    <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
+                        <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.label}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
+                        <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-blue); white-space: nowrap;">Pilih Harga <i class="fa-solid fa-chevron-right"></i></div>
+                    </div>
+                </div>`;
+    }).join('');
+}
+window.renderOperatorListFirst = renderOperatorListFirst;
+
+export function renderPricesForOperator(op) {
+    const box = document.getElementById('sms-prices');
+    if(!box) return;
+
+    let availableProducts = [];
+    if (op === "any") {
+        // Jika Any, tampilkan semua harga (termasuk yang tidak mendukung filter operator)
+        availableProducts = cachedProductsData; 
+    } else {
+        // Jika pilih provider, hanya tampilkan harga yang memiliki catalog_product_id (Mendukung filter)
+        availableProducts = cachedProductsData.filter(p => p.catalog_product_id);
+    }
+
+    if (availableProducts.length === 0) {
+        box.innerHTML = `
+            <div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">
+                Maaf, saat ini tidak ada harga yang mendukung operator ${op.toUpperCase()}.
+            </div>
+            <div onclick="renderOperatorListFirst()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da;">
+                <i class="fa-solid fa-arrow-left"></i> Kembali Pilih Operator
+            </div>`;
+        return;
+    }
+
+    let htmlList = availableProducts.map(item => {
+        // Jika "any", cukup gunakan product_id biasa. Jika spesifik, WAJIB gunakan catalog_product_id
+        let pid = (op === "any") ? item.id : item.catalog_product_id;
+        let basePrice = item.price;
+        let currentStock = item.available !== undefined ? item.available : "~";
+        let displayPrice = formatPrice(basePrice);
+        
+        return `<div class="price-item" onclick="executeBuySms('${pid}', ${basePrice}, 'Shopee', '${op}', '')">
+                    <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
+                        <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">Shopee - ${op.toUpperCase()}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-shrink: 0; gap: 8px;">
+                        <div style="min-width: 85px; text-align: right; color:var(--fb-red); font-family:monospace; font-size:14px; font-weight: 900; white-space: nowrap;">${displayPrice}</div>
+                        <div style="min-width: 70px; text-align: right; font-size:12px; color:var(--fb-muted); white-space: nowrap;">${currentStock} stok</div>
+                    </div>
+                </div>`;
+    });
+
+    htmlList.push(`
+        <div onclick="renderOperatorListFirst()" style="margin-top: 15px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 900; color: #495057; border: 1px solid #ced4da;">
+            <i class="fa-solid fa-arrow-left"></i> Kembali Pilih Operator
+        </div>
+    `);
+
+    box.innerHTML = htmlList.join('');
+}
+window.renderPricesForOperator = renderPricesForOperator;
+
+// ==========================================
+// MASTER LOAD PRICES
+// ==========================================
 async function loadSmsPrices() {
     const json = await apiCall('/get-prices');
     const box = document.getElementById('sms-prices');
@@ -251,10 +339,18 @@ async function loadSmsPrices() {
     const isSuccess = json.success === true || json.status === "success";
     
     if (isSuccess && json.data && json.data.length > 0) {
-        if (["herosms", "otpcepat", "nixpoin", "smscode"].includes(activeProviderKey)) {
-            let item = json.data.find(x => x.name && x.name.toLowerCase().includes("shope")) || json.data[0];
+        
+        if (activeProviderKey === "smscode") {
+            // KHUSUS SMSCODE: PISAHKAN LOGIKA AGAR PILIH PROVIDER DULU BARU HARGA
+            let shopeeProducts = json.data.filter(x => x.name && x.name.toLowerCase().includes("shope"));
+            if(shopeeProducts.length === 0) shopeeProducts = json.data; // Fallback jika teks bukan shopee
             
-            // Ambil catalog_product_id untuk smscode
+            cachedProductsData = shopeeProducts;
+            renderOperatorListFirst(); // Panggil List Provider
+        }
+        else if (["herosms", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
+            // PROVIDER LAIN: TAMPIL HARGA -> LALU PROVIDER
+            let item = json.data.find(x => x.name && x.name.toLowerCase().includes("shope")) || json.data[0];
             let pid = item ? (item.catalog_product_id || item.id) : "ka";
             let name = "Shopee";
             let basePrice = item ? item.price : 0;
@@ -320,6 +416,9 @@ async function loadSmsPrices() {
     }
 }
 
+// ==========================================
+// SISTEM PEMBELIAN & KARTU (CARD) UI
+// ==========================================
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     let borderColor = "#95a5a6"; 
@@ -341,7 +440,6 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class="fa-regular fa-eye-slash hide-btn-icon" onclick="hideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;"></i>
-                <!-- DATA-EXPIRE: Sumber Hitungan Mundur Seragam Multi-Device -->
                 <span class="sms-timer" data-id="${oId}" data-expire="${expireTime}" style="font-family:monospace; font-weight:900; color:var(--fb-blue);">--:--</span>
             </div>
         </div>
@@ -387,14 +485,13 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // ---- CATATAN UNTUK ANDA ---- 
-        // Pastikan angka ID dibawah ini sesuai dengan API catalog/operators milik SMSCode! 
-        // Axis 433 sudah pasti benar berdasarkan doc, lainnya perlu Anda cross-check ulang.
         if (operator !== "any") {
+            // (TUGAS): Pastikan ID Provider dibawah ini cocok dengan data API /catalog/operators
             let operatorMap = { "telkomsel": 3, "indosat": 1, "xl": 4, "axis": 433, "three": 2, "smartfren": 5 }; 
             let op_id = operatorMap[operator.toLowerCase()] || operator; 
             payload = { catalog_product_id: parseInt(pid), price: price, operator_id: op_id };
         } else {
+            // Jika pilih ANY, kirim sebagai product biasa
             payload = { product_id: parseInt(pid), price: price };
         }
     } else {
@@ -406,11 +503,9 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
         const o = j.data.orders[0];
         const newPhone = o.phone || o.phone_number || o.phoneNumber || 'Mencari Nomor...';
         
-        // Atur waktu (Sinkron dengan Firebase/Worker) - 10 Menit Mundur
         const orderTime = o.created_at || Date.now(); 
         const expire = orderTime + 600000; 
 
-        // PID dan Price tetap disimpan untuk keperluan Reload Data/Replace
         localStorage.setItem(`pid_${activeProviderKey}_${o.id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${o.id}`, price);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${o.id}`, operator);
@@ -430,7 +525,9 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
 }
 window.executeBuySms = executeBuySms;
 
-// POLLING AKTIF (DARI SERVER) - Tidak Pakai Array Storage Lagi
+// ==========================================
+// MANAJEMEN KARTU AKTIF (POLLING)
+// ==========================================
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
@@ -462,11 +559,31 @@ export function copyPhoneNumber(txt, iconId) {
 }
 window.copyPhoneNumber = copyPhoneNumber;
 
+// FUNGSI BARU: COPY OTP KODE
+export function copyOtpCode(otp, element) {
+    if (!otp) return;
+    navigator.clipboard.writeText(otp);
+    
+    // Mencegah penambahan ikon ganda jika user mengklik berkali-kali
+    if (element.querySelector('.otp-copied-icon')) return;
+    
+    // Simpan tampilan angka OTP aslinya
+    const originalHTML = element.innerHTML;
+    
+    // Sisipkan ikon ceklis dalam lingkaran hijau di sebelah kanan
+    element.innerHTML = originalHTML + '<i class="fa-solid fa-circle-check otp-copied-icon" style="color: var(--fb-green); font-size: 24px; margin-left: 12px; letter-spacing: normal;"></i>';
+    
+    // Hapus ikon ceklis setelah 1.5 detik dengan mengembalikan HTML aslinya
+    setTimeout(() => {
+        element.innerHTML = originalHTML;
+    }, 1500);
+}
+window.copyOtpCode = copyOtpCode;
+
 function renderSmsOrders(orders) {
     const container = document.getElementById('sms-active-orders');
     if(!container) return;
     
-    // CLEANUP - Jika order tidak ada di server, hapus kartu di UI
     const activeIds = orders.map(o => String(o.id));
     const currentCards = container.querySelectorAll('.order-card');
     currentCards.forEach(card => {
@@ -483,14 +600,12 @@ function renderSmsOrders(orders) {
         const savedOp = o.operator || "any";
         const extraBadge = getOperatorBadge(activeProviderKey, savedOp, "");
         
-        // Menggunakan Waktu Firebase sebagai Sumber Utama
         const orderTime = o.created_at || Date.now();
-        const expire = orderTime + 600000; // Selalu set Target ke +10 Menit dari awal pesanan dibuat
-        
-        // Tombol Cancel/Replace Aktif kalau pesanan sudah > 2 Menit (120000 ms)
+        const expire = orderTime + 600000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        let otpDisplay = o.otp_code ? `<span style="color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900;">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        // PERUBAHAN OTP DISPLAY: Menambahkan onclick dan gaya flex
+        let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
         const cancelState = (passed2Mins || ["smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
         const replaceState = (passed2Mins && !["smsbower", "otpcepat", "svco", "nixpoin"].includes(activeProviderKey)) && !o.otp_code ? '' : 'disabled';
@@ -531,12 +646,11 @@ function updateSmsTimers() {
         if(end && !isNaN(end)) {
             const diff = Math.max(0, Math.floor((end - now)/1000));
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
-            el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; // Merah jika di bawah 10 menit
+            el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
         }
     });
 }
 
-// LOGIKA CUSTOM REPLACE & ERROR MESSAGE PARSING
 export async function actSms(action, id) {
     if (action === 'replace' && ["smsbower", "otpcepat", "svco", "nixpoin"].includes(activeProviderKey)) {
         showModal("Peringatan", "Fitur Replace tidak didukung oleh provider ini.", "alert"); 
@@ -546,7 +660,6 @@ export async function actSms(action, id) {
     if (!await showModal("Konfirmasi", "Lanjutkan aksi ini?", "confirm")) return;
 
     if (action === 'replace') {
-        // Coba Batal dulu...
         const jCancel = await apiCall('/order-action', 'POST', { id, action: 'cancel' });
         
         if (jCancel.success || jCancel.status === "success") {
@@ -557,7 +670,6 @@ export async function actSms(action, id) {
             const oldPrice = localStorage.getItem(`price_${activeProviderKey}_${id}`);
             const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
             
-            // ... Jika batal berhasil, langsung order ulang diam-diam
             if (oldPid && oldPrice) {
                 await executeBuySms(oldPid, oldPrice, "Ganti Nomor", oldOp, "");
             } else {
