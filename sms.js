@@ -321,13 +321,11 @@ export async function renderPricesForOperator(op) {
     
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
-            // Kita bungkus ID Katalog Produk ke dalam variabel `catalogId`
             let catalogId = item.catalog_product_id || item.id; 
             let numOpId = item.injected_operator_id; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Perhatikan pengiriman variabel: catalogId, item.price, name, operator text, dan operator ID (numOpId)
             return `<div class="price-item" onclick="executeBuySms('${catalogId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${numOpId}')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
@@ -511,17 +509,14 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // PEMBAGIAN LOGIKA MUTLAK UNTUK SMSCODE
         if (operator !== "any") {
-            // Jika pilih operator spesifik (Routed Order)
             payload = { 
                 type: "catalog", 
                 catalog_product_id: parseInt(pid), 
-                operator_id: parseInt(rank), // Rank di sini adalah ID Angka Server yang diselipkan tadi
+                operator_id: parseInt(rank),
                 max_price: parseInt(price)
             };
         } else {
-            // Jika pilih ACAK (Direct Order)
             payload = { type: "product", product_id: parseInt(pid) };
         }
     } else {
@@ -610,10 +605,34 @@ function renderSmsOrders(orders) {
     
     const activeIds = orders.map(o => String(o.id));
     const currentCards = container.querySelectorAll('.order-card');
+    
+    // LOGIKA PENGHAPUSAN KARTU (TIDAK LANGSUNG DIHAPUS JIKA SUDAH ADA OTP)
     currentCards.forEach(card => {
         const cardId = card.id.replace(`order-${activeProviderKey}-`, '');
         if (!activeIds.includes(cardId)) {
-            card.remove(); 
+            const otpBox = card.querySelector('.otp-container');
+            const hasOtp = otpBox && !otpBox.innerHTML.includes('loader-bars');
+            
+            if (!hasOtp) {
+                // Jika belum ada OTP, langsung hapus karena server sudah cancel/hilang
+                card.remove(); 
+            } else {
+                // Jika sudah ada OTP, kunci tombol lain agar tidak diklik
+                const bDone = card.querySelector('.btn-done');
+                if(bDone) { 
+                    bDone.disabled = false; 
+                    bDone.style.background = "#e6f4ea"; 
+                    bDone.style.color = "var(--fb-green)"; 
+                }
+                const bCancel = card.querySelector('.btn-cancel');
+                if(bCancel) bCancel.disabled = true;
+                const bReplace = card.querySelector('.btn-replace');
+                if(bReplace) bReplace.disabled = true;
+                const bResend = card.querySelector('.btn-resend');
+                if(bResend) bResend.disabled = true;
+                
+                // Note: Timer dibiarkan tidak disentuh, akan menghitung normal
+            }
         }
     });
 
@@ -625,7 +644,7 @@ function renderSmsOrders(orders) {
         const extraBadge = getOperatorBadge(activeProviderKey, savedOp, "");
         
         const orderTime = o.created_at || Date.now();
-        const expire = orderTime + 600000; 
+        const expire = orderTime + 600000; // Timer jalan 10 menit
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
