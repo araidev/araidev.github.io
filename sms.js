@@ -321,11 +321,14 @@ export async function renderPricesForOperator(op) {
     
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
-            let exactId = item.id; 
+            // Mengambil catalog ID khusus untuk request operator
+            let catalogId = item.catalog_product_id; 
+            let numOpId = item.injected_operator_id; // ID Nomor resmi dari Server (hasil filter worker)
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            return `<div class="price-item" onclick="executeBuySms('${exactId}', ${item.price}, '${op.toUpperCase()}', '${op}', '')">
+            // Masukkan numOpId pada parameter rank untuk di bawa ke executeBuySms
+            return `<div class="price-item" onclick="executeBuySms('${catalogId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${numOpId}')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
                         </div>
@@ -406,7 +409,6 @@ async function loadSmsPrices() {
                 let countryId = shopeeData.country || 1; 
                 let prices = (shopeeData.customPrice || []).filter(p => parseFloat(p.price) <= 0.06885).sort((a, b) => parseFloat(b.price) - parseFloat(a.price)); 
                 
-                // Tambahkan 'ANY' secara manual di awal array agar user bisa milih Acak
                 let operators = (shopeeData.operators || []).filter(o => o.code && o.code.toLowerCase() !== 'any');
                 operators.unshift({ name: "ANY (ACAK)", code: "any" });
 
@@ -509,7 +511,19 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        payload = { product_id: pid, price: price, operator: operator };
+        // PEMBAGIAN LOGIKA MUTLAK UNTUK SMSCODE
+        if (operator !== "any") {
+            // Jika pilih operator spesifik (Routed Order)
+            payload = { 
+                type: "catalog", 
+                catalog_product_id: parseInt(pid), 
+                operator_id: parseInt(rank), // Rank di sini adalah ID Angka Server
+                max_price: parseInt(price)
+            };
+        } else {
+            // Jika pilih ACAK (Direct Order)
+            payload = { type: "product", product_id: parseInt(pid) };
+        }
     } else {
         payload = { product_id: parseInt(pid) };
     }
