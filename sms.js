@@ -227,7 +227,7 @@ export function renderSvcoOperatorList(selectedPrice) {
     let { pid, countryId, operators } = cachedSvcoData;
     let htmlList = operators.map(op => {
         let st = op.count !== undefined ? op.count : "~";
-        return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, 'Shopee', '${op.code}', '${countryId}')">
+        return `<div class="price-item" onclick="executeBuySms('${pid}', ${selectedPrice}, '${op.name.toUpperCase()}', '${op.code}', '${countryId}')">
             <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                 <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left:5px;">${op.name.toUpperCase()}</div>
             </div>
@@ -253,7 +253,7 @@ export function renderOperatorListFirst() {
     const box = document.getElementById('sms-prices');
     if(!box) return;
 
-    // Menghilangkan 'ATAU TERMURAH'
+    // Desain bersih tanpa kata berlebihan
     const ops = [
         { id: "any", label: "ANY (ACAK)" },
         { id: "telkomsel", label: "TELKOMSEL" },
@@ -264,7 +264,6 @@ export function renderOperatorListFirst() {
         { id: "smartfren", label: "SMARTFREN" }
     ];
 
-    // Menghilangkan tulisan 'Pilih Harga' menjadi lebih simpel (hanya ikon panah)
     box.innerHTML = ops.map(op => {
         return `<div class="price-item" onclick="renderPricesForOperator('${op.id}')">
                     <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
@@ -282,14 +281,12 @@ export async function renderPricesForOperator(op) {
     const box = document.getElementById('sms-prices');
     if(!box) return;
 
-    // Jika pilih ANY, langsung render dari cache karena semua produk mendukung ANY
     if (op === "any") {
         let htmlList = cachedProductsData.map(item => {
             let pid = item.id; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Menghapus kata 'Shopee' pada tampilan list dan saat tombol beli ditekan
             return `<div class="price-item" onclick="executeBuySms('${pid}', ${item.price}, 'Acak', 'any', '')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">ANY (ACAK)</div>
@@ -310,7 +307,6 @@ export async function renderPricesForOperator(op) {
         return;
     }
 
-    // Jika pilih operator spesifik, FETCH dari server untuk memastikan ketersediaan harga
     box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-blue); font-weight:900;">
                         <div class="loader-bars" style="margin:0 auto 10px auto;"><span></span><span></span><span></span></div>
                         Mencari stok ${op.toUpperCase()}...
@@ -320,13 +316,14 @@ export async function renderPricesForOperator(op) {
     
     if (res.success && res.data && res.data.length > 0) {
         let htmlList = res.data.map(item => {
-            let pid = item.catalog_product_id; 
-            let opId = item.resolved_operator_id; 
+            let exactId = item.id; 
+            // Ambil ID Katalog Resmi (Bila ada)
+            let catalogId = item.catalog_product_id || ""; 
             let displayPrice = formatPrice(item.price);
             let currentStock = item.available !== undefined ? item.available : "~";
             
-            // Menghapus kata 'Shopee' pada tampilan list dan saat tombol beli ditekan
-            return `<div class="price-item" onclick="executeBuySms('${pid}', ${item.price}, '${op.toUpperCase()}', '${op}', '${opId}')">
+            // Kita bungkus catalogId ke posisi parameter "rank" untuk dibawa ke sistem eksekusi
+            return `<div class="price-item" onclick="executeBuySms('${exactId}', ${item.price}, '${op.toUpperCase()}', '${op}', '${catalogId}')">
                         <div style="flex: 1; min-width: 0; padding-right: 10px; display:flex; align-items:center;">
                             <div style="font-weight:900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:var(--fb-text);">${op.toUpperCase()}</div>
                         </div>
@@ -505,12 +502,9 @@ export async function executeBuySms(pid, price, name, operator, rank = "") {
     } else if (["herosms", "smsbower", "otpcepat", "nixpoin"].includes(activeProviderKey)) {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        if (operator !== "any") {
-            // Rank sekarang menampung resolved_operator_id dari server saat operator dipilih
-            payload = { catalog_product_id: parseInt(pid), price: price, operator_id: rank };
-        } else {
-            payload = { product_id: parseInt(pid), price: price };
-        }
+        // PERUBAHAN BESAR: Kami selalu mengirim ID Produk Pasti & ID Katalog ke Worker
+        // Biarkan Worker yang meracik validasinya agar lolos dari blokade server
+        payload = { product_id: pid, catalog_product_id: rank, price: price, operator: operator };
     } else {
         payload = { product_id: parseInt(pid) };
     }
