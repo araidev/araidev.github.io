@@ -4,8 +4,8 @@ import { db, auth } from './firebase.js';
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
-const MIN_PRICE_IDR = 1000; 
-const MAX_PRICE_IDR = 3000; 
+const MIN_PRICE_IDR = 600; 
+const MAX_PRICE_IDR = 1500; 
 
 const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" },
@@ -17,7 +17,7 @@ let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
 let BASE_URL = PROVIDERS[activeProviderKey].url;
 
 let currentServerName = ""; 
-let currentUsdRate = 16000; // Default fallback
+let currentUsdRate = 16000; 
 
 let smsInitialized = false; 
 let isSmsLocked = false;
@@ -26,22 +26,39 @@ let timerInterval = null;
 let isPolling = false;
 
 let activeOrders = [];
-let localHiddenOrders = JSON.parse(localStorage.getItem('sms_hidden_orders') || "[]");
+let localHiddenOrders = []; 
+let hiddenOrdersKey = ""; // Akan menyesuaikan dengan Layer HP yang dipilih
 let favoriteOperators = JSON.parse(localStorage.getItem('sms_fav_ops') || "[]");
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
+let cachedPriceGroups = {}; // Menyimpan data harga untuk menu bertingkat
 
-// Sinkronisasi Hidden Orders dengan Firebase Realtime Database
-auth.onAuthStateChanged(user => {
-    if (user) {
-        db.ref(`users/${user.uid}/sms_hidden`).on('value', snap => {
+// ==========================================
+// SINKRONISASI FIREBASE PER LAYER (HP1, HP2, dst)
+// ==========================================
+function syncHiddenOrders() {
+    if (!currentServerName) return;
+    
+    // Kunci unik untuk membedakan pesanan yang disembunyikan pada masing-masing layer
+    hiddenOrdersKey = `sms_hidden_${activeProviderKey}_${currentServerName}`;
+    localHiddenOrders = JSON.parse(localStorage.getItem(hiddenOrdersKey) || "[]");
+    
+    if (auth && auth.currentUser) {
+        if (window.hiddenOrdersRef) window.hiddenOrdersRef.off(); // Matikan listener lama
+        
+        window.hiddenOrdersRef = db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`);
+        window.hiddenOrdersRef.on('value', snap => {
             if (snap.exists()) {
                 const fbHidden = snap.val() || [];
                 localHiddenOrders = [...new Set([...localHiddenOrders, ...fbHidden])];
-                localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
+                localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
                 if (activeOrders.length > 0) renderSmsOrders(activeOrders);
             }
         });
     }
+}
+
+auth.onAuthStateChanged(user => {
+    if (user) syncHiddenOrders();
 });
 
 // ==========================================
@@ -172,6 +189,8 @@ async function initSms() {
 
     isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
     await loadServersList();
+    syncHiddenOrders(); // Sinkronisasi saat inisialisasi awal
+    
     applySmsLockUI();
     refreshSms();
 
@@ -187,11 +206,12 @@ export async function changeSmsProvider() {
     activeProviderKey = document.getElementById('sms-provider').value;
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
-    activeOrders = []; localHiddenOrders = [];
-    localStorage.setItem('sms_hidden_orders', "[]");
+    activeOrders = []; 
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
+    
     await loadServersList();
+    syncHiddenOrders(); // Sinkronisasi ulang untuk provider baru
     refreshSms();
 }
 window.changeSmsProvider = changeSmsProvider;
@@ -219,6 +239,8 @@ export function changeSmsServer() {
     activeOrders = [];
     document.getElementById('wrapper-active-orders').innerHTML = '';
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
+    
+    syncHiddenOrders(); // Sinkronisasi ulang saat server/HP diganti
     refreshSms();
 }
 window.changeSmsServer = changeSmsServer;
@@ -283,7 +305,14 @@ export function toggleFavorite(opKey) {
         favoriteOperators.push(opKey);
     }
     localStorage.setItem('sms_fav_ops', JSON.stringify(favoriteOperators));
-    loadSmsPrices();
+    
+    // Auto render ulang provider jika sedang berada di menu provider
+    const priceContext = document.getElementById('current-price-context');
+    if (priceContext) {
+        openProviderMenu(priceContext.value);
+    } else {
+        loadSmsPrices();
+    }
 }
 window.toggleFavorite = toggleFavorite;
 
@@ -326,60 +355,92 @@ async function loadSmsPrices() {
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
     }
 
-    // Kelompokkan Data Berdasarkan Harga
-    let groupedByPrice = {};
+    // Kelompokkan dan simpan secara global untuk menu
+    cachedPriceGroups = {};
     normalizedPrices.forEach(p => {
-        if (!groupedByPrice[p.price]) {
-            groupedByPrice[p.price] = [];
-        }
-        // Hindari Duplikasi Operator pada harga yang sama
-        if (!groupedByPrice[p.price].some(existing => existing.opName === p.opName)) {
-            groupedByPrice[p.price].push(p);
+        if (!cachedPriceGroups[p.price]) cachedPriceGroups[p.price] = [];
+        if (!cachedPriceGroups[p.price].some(existing => existing.opName === p.opName)) {
+            cachedPriceGroups[p.price].push(p);
         }
     });
 
-    // Urutkan List Harga (Terkecil ke Terbesar)
-    let sortedPrices = Object.keys(groupedByPrice).sort((a,b) => parseFloat(a) - parseFloat(b));
+    renderPriceGroups();
+}
 
-    // Render HTML Group Harga
+// Menampilkan Daftar Harga (Layer 1 UI)
+export function renderPriceGroups() {
+    const box = document.getElementById('sms-prices');
+    if (!box) return;
+    
+    let sortedPrices = Object.keys(cachedPriceGroups).sort((a,b) => parseFloat(a) - parseFloat(b));
+    
     box.innerHTML = sortedPrices.map(price => {
-        let ops = groupedByPrice[price];
-        
-        // Pengurutan Provider: "ACAK" pertama, kemudian Abjad
-        ops.sort((a, b) => {
-            const aIsAny = a.opCode === 'any' || a.opName.toUpperCase().includes('ACAK');
-            const bIsAny = b.opCode === 'any' || b.opName.toUpperCase().includes('ACAK');
-            
-            if (aIsAny && !bIsAny) return -1;
-            if (!aIsAny && bIsAny) return 1;
-            
-            return a.opName.localeCompare(b.opName);
-        });
-
-        // Loop Isi Operator
-        let opsHTML = ops.map(item => {
-            let isFav = favoriteOperators.includes(item.opName.toUpperCase());
-            let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
-            
-            return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px; padding: 10px; background: #fff; border: 1px solid #eee; border-radius: 6px;">
-                        <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 14px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
-                            ${item.opName.toUpperCase()}
-                        </div>
-                        <i class="fa-solid fa-star" onclick="toggleFavorite('${item.opName.toUpperCase()}')" style="${starStyle} font-size:16px; cursor:pointer;" title="Jadikan Favorit"></i>
-                    </div>`;
-        }).join('');
-
-        // Container Dropdown (Details) Untuk Setiap Harga
-        return `<details style="margin-bottom: 10px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
-                    <summary style="font-weight: 900; color: var(--fb-red); font-family: monospace; font-size: 15px; cursor: pointer; outline: none;">
+        return `<div onclick="openProviderMenu('${price}')" style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s;">
+                    <div style="font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:16px;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                    </summary>
-                    <div style="margin-top: 10px;">
-                        ${opsHTML}
                     </div>
-                </details>`;
+                    <div style="color: var(--fb-muted); font-size: 12px; font-weight: 900; display:flex; align-items:center; gap: 8px;">
+                        ${cachedPriceGroups[price].length} Provider <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                </div>`;
     }).join('');
 }
+window.renderPriceGroups = renderPriceGroups;
+
+// Menampilkan Daftar Provider untuk Harga Tertentu (Layer 2 UI)
+export function openProviderMenu(price) {
+    const box = document.getElementById('sms-prices');
+    if (!box || !cachedPriceGroups[price]) return;
+    
+    let ops = cachedPriceGroups[price];
+    
+    // Urutan prioritas sesuai instruksi
+    const orderWeight = { 
+        "ANY": 1, "ACAK": 1, 
+        "INDOSAT": 2, 
+        "TELKOMSEL": 3, 
+        "THREE": 4, "TRI": 4, 
+        "AXIS": 5, 
+        "SMARTFREN": 6 
+    };
+    
+    ops.sort((a, b) => {
+        let nameA = a.opName.toUpperCase();
+        let nameB = b.opName.toUpperCase();
+        
+        let rankA = 99; let rankB = 99;
+        
+        for (let key in orderWeight) { if (nameA.includes(key)) { rankA = orderWeight[key]; break; } }
+        for (let key in orderWeight) { if (nameB.includes(key)) { rankB = orderWeight[key]; break; } }
+        
+        if (rankA !== rankB) return rankA - rankB;
+        return nameA.localeCompare(nameB);
+    });
+
+    let html = `
+        <input type="hidden" id="current-price-context" value="${price}">
+        <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 10px 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; font-weight: 900; color: var(--fb-text); margin-bottom: 15px; display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI
+        </div>
+        <div style="margin-bottom: 15px; font-weight: 900; color: var(--fb-text); font-size: 14px; border-bottom: 2px dashed #ddd; padding-bottom: 10px;">
+            <span style="color:var(--fb-red); font-family:monospace;">${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}</span> - PILIH PROVIDER
+        </div>`;
+                
+    html += ops.map(item => {
+        let isFav = favoriteOperators.includes(item.opName.toUpperCase());
+        let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
+        
+        return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 14px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
+                        ${item.opName.toUpperCase()}
+                    </div>
+                    <i class="fa-solid fa-star" onclick="toggleFavorite('${item.opName.toUpperCase()}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
+                </div>`;
+    }).join('');
+    
+    box.innerHTML = html;
+}
+window.openProviderMenu = openProviderMenu;
 
 // ==========================================
 // 6. SISTEM PEMBELIAN & RENDER KARTU
@@ -388,11 +449,11 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
-    // Nomor daur ulang hanya berwarna merah tanpa efek miring/dicoret
+    // Warna merah murni untuk daur ulang
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
 
-    // Icon Mata dikembalikan seperti awal (Tertutup saat aktif, Terbuka saat disembunyikan)
+    // Icon Mata yang menyesuaikan posisi area
     const toggleEyeIcon = isHidden ? 'fa-eye' : 'fa-eye-slash';
     const toggleTitle = isHidden ? 'Keluarkan Pesanan' : 'Sembunyikan Pesanan';
 
@@ -400,7 +461,8 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="font-size:16px; font-weight:900; color:var(--fb-text); text-transform:uppercase;">${operatorName.toUpperCase()}</span>
-                <span class="price-box" style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #ddd;">${priceDisplay}</span>
+                <!-- BORDER KOTAK PADA HARGA TELAH DIHILANGKAN -->
+                <span style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class="fa-solid ${toggleEyeIcon} hide-btn-icon" onclick="localHideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:15px; padding: 5px;" title="${toggleTitle}"></i>
@@ -447,7 +509,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const j = await apiCall('/create-order', 'POST', payload);
     if(j.success && j.data) {
         
-        // AUTO HIDE: Pindahkan semua pesanan aktif sebelumnya ke area hide saat nomor baru dibeli
+        // AUTO HIDE LAYER SPESIFIK: Pindahkan pesanan aktif ke area hide saat membeli nomor baru
         if (activeOrders.length > 0) {
             let updated = false;
             activeOrders.forEach(o => {
@@ -457,10 +519,10 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
                     updated = true;
                 }
             });
-            if (updated) {
-                localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
+            if (updated && hiddenOrdersKey) {
+                localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
                 if (auth && auth.currentUser) {
-                    db.ref(`users/${auth.currentUser.uid}/sms_hidden`).set(localHiddenOrders);
+                    db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
                 }
             }
         }
@@ -505,11 +567,12 @@ export function localHideSmsCard(id) {
         localHiddenOrders.splice(index, 1);
     }
     
-    localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
-    
-    // Simpan ke Firebase DB secara realtime agar HP lain otomatis tersinkronisasi
-    if (auth && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/sms_hidden`).set(localHiddenOrders);
+    if (hiddenOrdersKey) {
+        localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
+        // Simpan ke Firebase DB pada Layer spesifik
+        if (auth && auth.currentUser) {
+            db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
+        }
     }
     
     renderSmsOrders(activeOrders); 
@@ -548,7 +611,6 @@ function renderSmsOrders(orders) {
     orders.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
         
-        // Mengubah awalan 62 menjadi 0
         if (phone.startsWith('62')) {
             phone = '0' + phone.substring(2);
         }
@@ -562,7 +624,6 @@ function renderSmsOrders(orders) {
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // CEK & BUNYIKAN SUARA OTP 1 KALI SAJA
         if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
             playSimpleSound('otp');
             notifiedOtps.push(String(o.id));
