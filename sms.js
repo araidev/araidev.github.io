@@ -4,8 +4,8 @@ import { db, auth } from './firebase.js';
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
-const MIN_PRICE_IDR = 700; 
-const MAX_PRICE_IDR = 1400; 
+const MIN_PRICE_IDR = 600; 
+const MAX_PRICE_IDR = 1350; 
 
 const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" },
@@ -39,36 +39,43 @@ let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]")
 let cachedPriceGroups = {}; 
 
 // ==========================================
-// 1B. SINKRONISASI FIREBASE PER LAYER (HP1, HP2, dst)
+// 1B. SINKRONISASI LOKAL & FIREBASE PER LAYER
 // ==========================================
-function syncFirebaseData() {
-    if (!currentServerName || !auth || !auth.currentUser) return;
-    
-    // Setel Kunci Unik berdasarkan Provider dan Server (Layer)
+// Fungsi ini meload data langsung dari HP agar tidak ada delay/pesanan hilang sesaat
+function loadLocalLayerData() {
+    if (!currentServerName) return;
     hiddenOrdersKey = `sms_hidden_${activeProviderKey}_${currentServerName}`;
     ownedOrdersKey = `sms_owned_${activeProviderKey}_${currentServerName}`;
     
     localHiddenOrders = JSON.parse(localStorage.getItem(hiddenOrdersKey) || "[]");
     localOwnedOrders = JSON.parse(localStorage.getItem(ownedOrdersKey) || "[]");
+}
 
+function syncFirebaseData() {
+    if (!currentServerName || !auth || !auth.currentUser) return;
+    
     // Sinkronisasi Data Sembunyi (Hidden)
     if (window.hiddenOrdersRef) window.hiddenOrdersRef.off();
     window.hiddenOrdersRef = db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`);
     window.hiddenOrdersRef.on('value', snap => {
-        const fbHidden = snap.val() || [];
-        localHiddenOrders = [...new Set([...localHiddenOrders, ...fbHidden])];
-        localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
-        if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+        if (snap.exists()) {
+            const fbHidden = snap.val() || [];
+            localHiddenOrders = [...new Set([...localHiddenOrders, ...fbHidden])];
+            localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
+            if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+        }
     });
 
     // Sinkronisasi Kepemilikan Pesanan (Ownership)
     if (window.ownedOrdersRef) window.ownedOrdersRef.off();
     window.ownedOrdersRef = db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`);
     window.ownedOrdersRef.on('value', snap => {
-        const fbOwned = snap.val() || [];
-        localOwnedOrders = [...new Set([...localOwnedOrders, ...fbOwned])];
-        localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-        if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+        if (snap.exists()) {
+            const fbOwned = snap.val() || [];
+            localOwnedOrders = [...new Set([...localOwnedOrders, ...fbOwned])];
+            localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
+            if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+        }
     });
 }
 
@@ -204,6 +211,9 @@ async function initSms() {
 
     isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
     await loadServersList();
+    
+    // Muat data lokal seketika (menghindari jeda hilangnya pesanan) baru sinkronisasi Firebase
+    loadLocalLayerData();
     syncFirebaseData(); 
     
     applySmsLockUI();
@@ -222,11 +232,12 @@ export async function changeSmsProvider() {
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
     
-    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
+    activeOrders = []; 
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
     await loadServersList();
+    loadLocalLayerData(); // Load instan dari lokal layer terpilih
     syncFirebaseData(); 
     refreshSms();
 }
@@ -253,10 +264,11 @@ export function changeSmsServer() {
     currentServerName = document.getElementById('sms-server').value;
     localStorage.setItem(`xurel_hp_${activeProviderKey}`, currentServerName);
     
-    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
+    activeOrders = []; 
     document.getElementById('wrapper-active-orders').innerHTML = '';
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
+    loadLocalLayerData(); // Load instan dari lokal layer terpilih
     syncFirebaseData(); 
     refreshSms();
 }
@@ -413,7 +425,6 @@ export function openProviderMenu(price) {
     
     let ops = cachedPriceGroups[price];
     
-    // Custom Sorting Sesuai Instruksi
     const orderWeight = { 
         "ANY": 1, "ACAK": 1, 
         "INDOSAT": 2, 
@@ -436,12 +447,8 @@ export function openProviderMenu(price) {
         return nameA.localeCompare(nameB);
     });
 
-    let html = `
-        <input type="hidden" id="current-price-context" value="${price}">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px dashed #ddd; padding-bottom: 10px;">
-            <div style="font-weight: 900; color: var(--fb-text); font-size: 14px;">PILIH PROVIDER</div>
-            <div style="color:var(--fb-red); font-family:monospace; font-weight:900; font-size: 15px;">${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}</div>
-        </div>`;
+    // Menghapus Judul Header "PILIH PROVIDER dan Harga"
+    let html = `<input type="hidden" id="current-price-context" value="${price}">`;
                 
     html += ops.map(item => {
         return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
@@ -452,7 +459,7 @@ export function openProviderMenu(price) {
                 </div>`;
     }).join('');
     
-    // Tombol KEMBALI dipindah ke paling bawah
+    // Tombol KEMBALI di bagian paling bawah
     html += `
         <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
             <i class="fa-solid fa-arrow-left" style="margin-right:8px;"></i> KEMBALI
@@ -470,7 +477,6 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
-    // Warna merah murni tanpa efek italic/dicoret untuk daur ulang
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
 
@@ -482,7 +488,6 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
             <div style="display:flex; align-items:center; gap:8px;">
                 <span class="hide-btn-text" onclick="localHideSmsCard('${oId}')" style="cursor:pointer; font-size:11px; font-weight:900; color:${toggleColor}; background:#e9ecef; padding:4px 8px; border-radius:4px; letter-spacing:0.5px;">${toggleTitle}</span>
                 <span style="font-size:16px; font-weight:900; color:var(--fb-text); text-transform:uppercase;">${operatorName.toUpperCase()}</span>
-                <!-- BORDER KOTAK PADA HARGA TELAH DIHAPUS -->
                 <span style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
@@ -531,17 +536,17 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         
         const newOrderId = String(j.data.orders[0].id);
 
-        // KLAIM KEPEMILIKAN LAYER: Tambahkan pesanan baru ke layer aktif saat ini
+        // KLAIM KEPEMILIKAN LAYER LOKAL:
         if (!localOwnedOrders.includes(newOrderId)) {
             localOwnedOrders.push(newOrderId);
-            if (ownedOrdersKey && auth && auth.currentUser) {
+            if (ownedOrdersKey) {
                 localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-                db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
+                if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
             }
         }
         
-        // AUTO HIDE LAYER SPESIFIK: Sembunyikan pesanan milik layer ini yg sudah aktif sblumnya
-        if (localOwnedOrders.length > 1) { // Lebih dari 1 artinya ada pesanan aktif sebelumnya
+        // AUTO HIDE PESANAN SEBELUMNYA DI LAYER INI
+        if (localOwnedOrders.length > 1) { 
             let updatedHide = false;
             localOwnedOrders.forEach(ownedId => {
                 if (ownedId !== newOrderId && !localHiddenOrders.includes(ownedId)) {
@@ -549,9 +554,9 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
                     updatedHide = true;
                 }
             });
-            if (updatedHide && hiddenOrdersKey && auth && auth.currentUser) {
+            if (updatedHide && hiddenOrdersKey) {
                 localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
-                db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
+                if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
             }
         }
 
@@ -580,16 +585,16 @@ async function pollSms() {
         if(j.success && j.data) {
             activeOrders = j.data; 
             
-            // CLEANUP OTOMATIS: Hapus memori layer jika pesanan sudah tidak ada dari server pusat (Expired)
+            // CLEANUP OTOMATIS: Hapus memori layer jika pesanan expired/dibatalkan server
             if (localOwnedOrders.length > 0) {
                 const globalActiveIds = activeOrders.map(o => String(o.id));
                 const validOwned = localOwnedOrders.filter(id => globalActiveIds.includes(id));
                 
                 if (validOwned.length !== localOwnedOrders.length) {
                     localOwnedOrders = validOwned;
-                    if (ownedOrdersKey && auth && auth.currentUser) {
+                    if (ownedOrdersKey) {
                         localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-                        db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
+                        if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
                     }
                 }
             }
@@ -649,13 +654,12 @@ function renderSmsOrders(orders) {
     let activeHTML = '';
     let hiddenHTML = '';
 
-    // FILTER ORDER: HANYA RENDER JIKA ID PESANAN ADA DI DALAM 'localOwnedOrders' LAYER INI
+    // FILTER ORDER: HANYA TAMPILKAN PESANAN MILIK LAYER INI
     const layerOrders = orders.filter(o => localOwnedOrders.includes(String(o.id)));
 
     layerOrders.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
         
-        // Ubah Awalan 62 Menjadi 0
         if (phone.startsWith('62')) {
             phone = '0' + phone.substring(2);
         }
@@ -703,7 +707,6 @@ function updateSmsTimers() {
     });
 }
 
-// Fungsi Bantuan Membersihkan ID Pesanan dari Layer setelah Cancel/Done
 function removeOrderFromLayer(id) {
     const strId = String(id);
     localOwnedOrders = localOwnedOrders.filter(oId => oId !== strId);
@@ -727,7 +730,7 @@ export async function actSms(action, id) {
     if (action === 'replace') {
         const jCancel = await apiCall('/order-action', 'POST', { id, action: 'cancel' });
         if (jCancel.success) {
-            removeOrderFromLayer(id); // Bersihkan kepemilikan
+            removeOrderFromLayer(id); 
             const oldPid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
             const oldPrice = localStorage.getItem(`price_${activeProviderKey}_${id}`);
             const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
