@@ -25,87 +25,50 @@ let pollingInterval = null;
 let timerInterval = null;
 let isPolling = false;
 
-// Kunci Keamanan Firebase Anti-Tabrakan (Race Condition)
-let isFirebaseReady = false; 
+// Variabel Penampung Data Firebase Global
+let globalOrders = {}; 
 
-// Variabel Penampung Pesanan (Layering System)
-let activeOrders = []; 
-let localOwnedOrders = []; 
-let localHiddenOrders = []; 
-
-let ownedOrdersKey = ""; 
-let hiddenOrdersKey = ""; 
-
-// Memori Favorit & Suara (Kini Berbasis Cloud)
+// Memori Favorit & Suara 
 let favoritePrices = [];
-let notifiedOtps = []; 
+let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
 
 // ==========================================
-// 1B. SINKRONISASI MURNI FIREBASE (CLOUD-NATIVE)
+// 1B. SINKRONISASI MURNI FIREBASE (LISTENER)
 // ==========================================
-function attachFirebaseListeners() {
-    if (!auth || !auth.currentUser || !currentServerName) return;
+// Fungsi ini meload data pesanan publik HANYA dari Firebase (hasil ketikan Worker)
+function attachGlobalOrderListener() {
+    if (!currentServerName) return;
     
-    const uid = auth.currentUser.uid;
-    hiddenOrdersKey = `sms_hidden_${activeProviderKey}_${currentServerName}`;
-    ownedOrdersKey = `sms_owned_${activeProviderKey}_${currentServerName}`;
+    const path = `muis/${activeProviderKey}/${currentServerName}`;
+    
+    if (window.ordersRef) window.ordersRef.off();
+    window.ordersRef = db.ref(path);
+    window.ordersRef.on('value', snap => {
+        globalOrders = snap.val() || {};
+        renderSmsOrders(); // Render otomatis tiap kali Worker/Firebase update
+    });
+}
+
+// Fungsi ini meload Favorit rahasia jika User Login
+function attachPrivateListeners(uid) {
     const favKey = `sms_fav_prices_${activeProviderKey}`;
-    const otpKey = `sms_notified_otps`;
-
-    isFirebaseReady = false;
-    let loadStatus = { owned: false, hidden: false, fav: false, otp: false };
-
-    // Fungsi pengecekan agar Cleanup & Render jalan HANYA setelah semua data Cloud termuat
-    const checkReady = (key) => {
-        loadStatus[key] = true;
-        if (loadStatus.owned && loadStatus.hidden && loadStatus.fav && loadStatus.otp && !isFirebaseReady) {
-            isFirebaseReady = true;
-            if (activeOrders.length > 0) renderSmsOrders(activeOrders);
-            if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
-        }
-    };
-
-    // Bersihkan listener lama (jika pengguna pindah layer/provider)
-    if (window.ownedRef) window.ownedRef.off();
-    if (window.hiddenRef) window.hiddenRef.off();
     if (window.favRef) window.favRef.off();
-    if (window.otpRef) window.otpRef.off();
-
-    // 1. Tarik Data Kepemilikan Layer
-    window.ownedRef = db.ref(`users/${uid}/${ownedOrdersKey}`);
-    window.ownedRef.on('value', snap => {
-        localOwnedOrders = snap.val() || [];
-        checkReady('owned');
-        if (isFirebaseReady) renderSmsOrders(activeOrders);
-    });
-
-    // 2. Tarik Data Sembunyi
-    window.hiddenRef = db.ref(`users/${uid}/${hiddenOrdersKey}`);
-    window.hiddenRef.on('value', snap => {
-        localHiddenOrders = snap.val() || [];
-        checkReady('hidden');
-        if (isFirebaseReady) renderSmsOrders(activeOrders);
-    });
-
-    // 3. Tarik Data Favorit Harga
     window.favRef = db.ref(`users/${uid}/${favKey}`);
     window.favRef.on('value', snap => {
         favoritePrices = snap.val() || [];
-        checkReady('fav');
-        if (isFirebaseReady && Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
-    });
-
-    // 4. Tarik Data Notifikasi Suara OTP
-    window.otpRef = db.ref(`users/${uid}/${otpKey}`);
-    window.otpRef.on('value', snap => {
-        notifiedOtps = snap.val() || [];
-        checkReady('otp');
+        if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
     });
 }
 
 auth.onAuthStateChanged(user => {
-    if (user) attachFirebaseListeners();
+    if (user) {
+        attachPrivateListeners(user.uid);
+    } else {
+        // Jika tidak login, ambil favorit dari memori HP lokal
+        favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
+        if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
+    }
 });
 
 // ==========================================
@@ -237,14 +200,14 @@ async function initSms() {
     isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
     await loadServersList();
     
-    attachFirebaseListeners(); 
-    
+    attachGlobalOrderListener(); 
     applySmsLockUI();
     refreshSms();
 
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
     
+    // Polling bertugas sekadar "membangunkan" worker agar ngecek ke pusat
     pollingInterval = setInterval(pollSms, 4000);
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
@@ -255,12 +218,12 @@ export async function changeSmsProvider() {
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
     
-    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
+    globalOrders = {};
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
     await loadServersList();
-    attachFirebaseListeners(); 
+    attachGlobalOrderListener(); 
     refreshSms();
 }
 window.changeSmsProvider = changeSmsProvider;
@@ -286,11 +249,11 @@ export function changeSmsServer() {
     currentServerName = document.getElementById('sms-server').value;
     localStorage.setItem(`xurel_hp_${activeProviderKey}`, currentServerName);
     
-    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
+    globalOrders = {};
     document.getElementById('wrapper-active-orders').innerHTML = '';
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
-    attachFirebaseListeners(); 
+    attachGlobalOrderListener(); 
     refreshSms();
 }
 window.changeSmsServer = changeSmsServer;
@@ -315,7 +278,10 @@ function applySmsLockUI() {
 export function refreshSms() {
     const box = document.getElementById('sms-prices');
     if(box) box.innerHTML = '<div style="padding:30px; text-align:center; color:#888;">Mengambil Data...</div>';
-    updateSmsBal(); loadSmsPrices(); pollSms();
+    
+    updateSmsBal(); 
+    loadSmsPrices(); 
+    pollSms(); // Bangunkan worker
 }
 window.refreshSms = refreshSms;
 
@@ -355,9 +321,10 @@ export function toggleFavoritePrice(priceStr) {
         favoritePrices.push(priceStr);
     }
     
-    // Simpan ke Firebase Murni
     if (auth && auth.currentUser) {
         db.ref(`users/${auth.currentUser.uid}/sms_fav_prices_${activeProviderKey}`).set(favoritePrices);
+    } else {
+        localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
     }
     renderPriceGroups();
 }
@@ -418,7 +385,6 @@ export function renderPriceGroups() {
     const box = document.getElementById('sms-prices');
     if (!box) return;
     
-    // Sortir: Favorit terlebih dahulu, kemudian berdasar harga termurah
     let sortedPrices = Object.keys(cachedPriceGroups).sort((a,b) => {
         let isFavA = favoritePrices.includes(a);
         let isFavB = favoritePrices.includes(b);
@@ -483,7 +449,6 @@ export function openProviderMenu(price) {
                 </div>`;
     }).join('');
     
-    // Tombol KEMBALI 
     html += `
         <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
             <i class="fa-solid fa-arrow-left" style="margin-right:8px;"></i> KEMBALI
@@ -558,29 +523,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const j = await apiCall('/create-order', 'POST', payload);
     if(j.success && j.data) {
         
-        const newOrderId = String(j.data.orders[0].id);
-
-        // KLAIM KEPEMILIKAN LAYER MURNI KE CLOUD
-        if (!localOwnedOrders.includes(newOrderId)) {
-            localOwnedOrders.push(newOrderId);
-            if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-        }
-        
-        // AUTO HIDE PESANAN SEBELUMNYA DI LAYER INI
-        if (localOwnedOrders.length > 1) { 
-            let updatedHide = false;
-            localOwnedOrders.forEach(ownedId => {
-                if (ownedId !== newOrderId && !localHiddenOrders.includes(ownedId)) {
-                    localHiddenOrders.push(ownedId);
-                    updatedHide = true;
-                }
-            });
-            if (updatedHide && auth && auth.currentUser) {
-                db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
-            }
-        }
-
-        // Cache ringan sementara untuk keperluan UI Replace, tetap di localStorage tidak masalah
+        // Simpan info replace ke memori lokal sementera
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, operator);
@@ -602,42 +545,18 @@ async function pollSms() {
     if (isPolling) return;
     isPolling = true;
     try {
-        const j = await apiCall('/get-active', 'GET');
-        if(j.success && j.data) {
-            activeOrders = j.data; 
-            
-            // CLEANUP OTOMATIS: HANYA BOLEH DIJALANKAN JIKA CLOUD SUDAH SELESAI MEMUAT DATA LAYER (Anti-Race Condition)
-            if (isFirebaseReady && localOwnedOrders.length > 0) {
-                const globalActiveIds = activeOrders.map(o => String(o.id));
-                const validOwned = localOwnedOrders.filter(id => globalActiveIds.includes(id));
-                
-                if (validOwned.length !== localOwnedOrders.length) {
-                    localOwnedOrders = validOwned;
-                    if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-                }
-            }
-            
-            if (isFirebaseReady) renderSmsOrders(activeOrders);
-        }
+        // Panggilan ini hanya bertugas membangunkan Worker agar Worker menulis data ke Firebase
+        // Kita tidak perlu menggunakan datanya, karena layar akan update otomatis lewat listener Firebase
+        await apiCall('/get-active', 'GET');
     } catch (e) {} finally { isPolling = false; }
 }
 
 export function localHideSmsCard(id) {
     const strId = String(id);
-    const index = localHiddenOrders.indexOf(strId);
+    const currentHiddenStatus = globalOrders[strId] ? globalOrders[strId].hidden : false;
     
-    if (index === -1) {
-        localHiddenOrders.push(strId);
-    } else {
-        localHiddenOrders.splice(index, 1);
-    }
-    
-    // Simpan Murni Ke Cloud
-    if (auth && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
-    }
-    
-    renderSmsOrders(activeOrders); 
+    // Toggle Status Hide Langsung ke Firebase (Worker dan semua HP akan melihatnya)
+    db.ref(`muis/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!currentHiddenStatus);
 }
 window.localHideSmsCard = localHideSmsCard;
 
@@ -662,7 +581,7 @@ export function copyOtpCode(otp, element) {
 }
 window.copyOtpCode = copyOtpCode;
 
-function renderSmsOrders(orders) {
+function renderSmsOrders() {
     const wrapActive = document.getElementById('wrapper-active-orders');
     const wrapHidden = document.getElementById('inner-hidden-orders');
     if(!wrapActive || !wrapHidden) return;
@@ -670,10 +589,15 @@ function renderSmsOrders(orders) {
     let activeHTML = '';
     let hiddenHTML = '';
 
-    // FILTER ORDER: HANYA TAMPILKAN PESANAN MILIK LAYER INI BERDASARKAN CLOUD
-    const layerOrders = orders.filter(o => localOwnedOrders.includes(String(o.id)));
+    // Convert Object globalOrders dari Firebase menjadi Array agar bisa di-loop
+    let ordersList = Object.keys(globalOrders).map(id => {
+        return { id: id, ...globalOrders[id] };
+    });
 
-    layerOrders.forEach(o => {
+    // Urutkan pesanan dari yang paling baru
+    ordersList.sort((a,b) => b.created_at - a.created_at);
+
+    ordersList.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
         
         if (phone.startsWith('62')) {
@@ -682,20 +606,17 @@ function renderSmsOrders(orders) {
         
         const price = o.price || 0;
         const opName = o.operator || "ANY";
-        const isHidden = localHiddenOrders.includes(String(o.id));
+        const isHidden = !!o.hidden; 
         
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 900000; 
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // Notifikasi OTP Murni Berbasis Cloud Akun
         if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
             playSimpleSound('otp');
             notifiedOtps.push(String(o.id));
-            if (auth && auth.currentUser) {
-                db.ref(`users/${auth.currentUser.uid}/sms_notified_otps`).set(notifiedOtps);
-            }
+            localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
@@ -726,25 +647,12 @@ function updateSmsTimers() {
     });
 }
 
-// Fungsi Menghapus Kepemilikan dari Cloud Setelah Done/Cancel
-function removeOrderFromLayer(id) {
-    const strId = String(id);
-    localOwnedOrders = localOwnedOrders.filter(oId => oId !== strId);
-    localHiddenOrders = localHiddenOrders.filter(oId => oId !== strId);
-    
-    if (auth && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-        db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
-    }
-}
-
 export async function actSms(action, id) {
     if (!await showModal("Konfirmasi", "Lanjutkan aksi ini?", "confirm")) return;
 
     if (action === 'replace') {
         const jCancel = await apiCall('/order-action', 'POST', { id, action: 'cancel' });
         if (jCancel.success) {
-            removeOrderFromLayer(id); 
             const oldPid = localStorage.getItem(`pid_${activeProviderKey}_${id}`);
             const oldPrice = localStorage.getItem(`price_${activeProviderKey}_${id}`);
             const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
@@ -759,7 +667,6 @@ export async function actSms(action, id) {
 
     const j = await apiCall('/order-action', 'POST', { id, action });
     if (j.success) {
-        if (action === 'cancel' || action === 'finish') removeOrderFromLayer(id);
         pollSms(); updateSmsBal();
     } else {
         showModal("Gagal", j.error?.message || "Aksi ditolak server.", "alert");
