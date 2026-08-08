@@ -1,5 +1,5 @@
 import { showModal } from './ui.js';
-import { db } from './firebase.js'; 
+import { db, auth } from './firebase.js'; 
 
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
@@ -28,7 +28,21 @@ let isPolling = false;
 let activeOrders = [];
 let localHiddenOrders = JSON.parse(localStorage.getItem('sms_hidden_orders') || "[]");
 let favoriteOperators = JSON.parse(localStorage.getItem('sms_fav_ops') || "[]");
-let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); // Memori untuk Suara OTP
+let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
+
+// Sinkronisasi Hidden Orders dengan Firebase Realtime Database
+auth.onAuthStateChanged(user => {
+    if (user) {
+        db.ref(`users/${user.uid}/sms_hidden`).on('value', snap => {
+            if (snap.exists()) {
+                const fbHidden = snap.val() || [];
+                localHiddenOrders = [...new Set([...localHiddenOrders, ...fbHidden])];
+                localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
+                if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+            }
+        });
+    }
+});
 
 // ==========================================
 // 2. SETUP AUDIO (OTP & RECYCLED)
@@ -129,29 +143,29 @@ async function initSms() {
     if (container && !document.getElementById('wrapper-active-orders')) {
         container.innerHTML = `
             <style>
-                /* Menghilangkan panah default browser pada tag summary */
                 #wrapper-hidden-orders summary::-webkit-details-marker { display: none; }
                 #wrapper-hidden-orders summary { list-style: none; }
             </style>
             <div id="wrapper-active-orders"></div>
-            <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da; text-align: center;">
-                <summary style="cursor: pointer; color: var(--fb-muted); outline: none; display: inline-block;">
-                    <i id="hidden-eye-icon" class="fa-solid fa-eye-slash" style="font-size: 22px;"></i>
+            <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
+                <summary style="cursor: pointer; outline: none; display: flex; align-items: center; justify-content: flex-start;">
+                    <span id="hidden-toggle-text" style="background:#e9ecef; padding:6px 12px; border-radius:6px; font-size: 11px; font-weight:900; color:var(--fb-muted); letter-spacing:0.5px; border: 1px solid #ddd;">SHOW</span>
                 </summary>
-                <div id="inner-hidden-orders" style="margin-top: 15px; text-align: left;"></div>
+                <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
             </details>
         `;
 
-        // Event Listener untuk mengubah ikon mata secara otomatis saat area disembunyikan/dibuka
         const detailsWrapper = document.getElementById('wrapper-hidden-orders');
-        const eyeIcon = document.getElementById('hidden-eye-icon');
+        const toggleText = document.getElementById('hidden-toggle-text');
         detailsWrapper.addEventListener('toggle', function() {
             if (this.open) {
-                eyeIcon.className = "fa-solid fa-eye";
-                eyeIcon.style.color = "var(--fb-blue)";
+                toggleText.innerText = "HIDE";
+                toggleText.style.color = "var(--fb-blue)";
+                toggleText.style.borderColor = "var(--fb-blue)";
             } else {
-                eyeIcon.className = "fa-solid fa-eye-slash";
-                eyeIcon.style.color = "var(--fb-muted)";
+                toggleText.innerText = "SHOW";
+                toggleText.style.color = "var(--fb-muted)";
+                toggleText.style.borderColor = "#ddd";
             }
         });
     }
@@ -285,7 +299,6 @@ async function loadSmsPrices() {
 
     let normalizedPrices = [];
     
-    // Normalisasi & Filter Berdasarkan MIN dan MAX Price
     if (activeProviderKey === "smscode") {
         json.data
             .filter(i => i.price >= MIN_PRICE_IDR && i.price <= MAX_PRICE_IDR)
@@ -313,39 +326,58 @@ async function loadSmsPrices() {
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
     }
 
-    // Ambil harga yang unik per Operator & Harga (agar harga lain tetap muncul)
-    let bestPrices = {};
+    // Kelompokkan Data Berdasarkan Harga
+    let groupedByPrice = {};
     normalizedPrices.forEach(p => {
-        let key = p.opName.toUpperCase() + "_" + p.price;
-        if (!bestPrices[key]) bestPrices[key] = p;
+        if (!groupedByPrice[p.price]) {
+            groupedByPrice[p.price] = [];
+        }
+        // Hindari Duplikasi Operator pada harga yang sama
+        if (!groupedByPrice[p.price].some(existing => existing.opName === p.opName)) {
+            groupedByPrice[p.price].push(p);
+        }
     });
 
-    let finalArray = Object.values(bestPrices);
+    // Urutkan List Harga (Terkecil ke Terbesar)
+    let sortedPrices = Object.keys(groupedByPrice).sort((a,b) => parseFloat(a) - parseFloat(b));
 
-    // Sorting: Favorit di atas, lalu urutkan harga termurah
-    finalArray.sort((a, b) => {
-        let aFav = favoriteOperators.includes(a.opName.toUpperCase());
-        let bFav = favoriteOperators.includes(b.opName.toUpperCase());
-        if (aFav && !bFav) return -1;
-        if (!aFav && bFav) return 1;
-        return a.price - b.price;
-    });
-
-    box.innerHTML = finalArray.map(item => {
-        let isFav = favoriteOperators.includes(item.opName.toUpperCase());
-        let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
+    // Render HTML Group Harga
+    box.innerHTML = sortedPrices.map(price => {
+        let ops = groupedByPrice[price];
         
-        return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex: 1; display:flex; align-items:center; cursor: pointer;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
-                        <div style="font-weight:900; color:var(--fb-text); font-size: 14px;">${item.opName.toUpperCase()}</div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="text-align: right; color:var(--fb-red); font-family:monospace; font-size:15px; font-weight: 900;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
-                            ${formatDisplayPrice(item.price, PROVIDERS[activeProviderKey].currency)}
+        // Pengurutan Provider: "ACAK" pertama, kemudian Abjad
+        ops.sort((a, b) => {
+            const aIsAny = a.opCode === 'any' || a.opName.toUpperCase().includes('ACAK');
+            const bIsAny = b.opCode === 'any' || b.opName.toUpperCase().includes('ACAK');
+            
+            if (aIsAny && !bIsAny) return -1;
+            if (!aIsAny && bIsAny) return 1;
+            
+            return a.opName.localeCompare(b.opName);
+        });
+
+        // Loop Isi Operator
+        let opsHTML = ops.map(item => {
+            let isFav = favoriteOperators.includes(item.opName.toUpperCase());
+            let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
+            
+            return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px; padding: 10px; background: #fff; border: 1px solid #eee; border-radius: 6px;">
+                        <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 14px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
+                            ${item.opName.toUpperCase()}
                         </div>
-                        <i class="fa-solid fa-star" onclick="toggleFavorite('${item.opName.toUpperCase()}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
+                        <i class="fa-solid fa-star" onclick="toggleFavorite('${item.opName.toUpperCase()}')" style="${starStyle} font-size:16px; cursor:pointer;" title="Jadikan Favorit"></i>
+                    </div>`;
+        }).join('');
+
+        // Container Dropdown (Details) Untuk Setiap Harga
+        return `<details style="margin-bottom: 10px; background: #fdfdfd; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
+                    <summary style="font-weight: 900; color: var(--fb-red); font-family: monospace; font-size: 15px; cursor: pointer; outline: none;">
+                        ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
+                    </summary>
+                    <div style="margin-top: 10px;">
+                        ${opsHTML}
                     </div>
-                </div>`;
+                </details>`;
     }).join('');
 }
 
@@ -354,12 +386,13 @@ async function loadSmsPrices() {
 // ==========================================
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
-    
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
-    const phoneColorStyle = isRecycled ? 'color: var(--fb-red); font-style: italic;' : '';
+    // Nomor daur ulang hanya berwarna merah tanpa efek miring/dicoret
+    const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
 
+    // Icon Mata dikembalikan seperti awal (Tertutup saat aktif, Terbuka saat disembunyikan)
     const toggleEyeIcon = isHidden ? 'fa-eye' : 'fa-eye-slash';
     const toggleTitle = isHidden ? 'Keluarkan Pesanan' : 'Sembunyikan Pesanan';
 
@@ -370,7 +403,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
                 <span class="price-box" style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #ddd;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-                <i class="fa-solid ${toggleEyeIcon} hide-btn-icon" onclick="localHideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;" title="${toggleTitle}"></i>
+                <i class="fa-solid ${toggleEyeIcon} hide-btn-icon" onclick="localHideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:15px; padding: 5px;" title="${toggleTitle}"></i>
                 <span class="sms-timer" data-id="${oId}" data-expire="${expireTime}" style="font-family:monospace; font-weight:900; color:var(--fb-blue);">--:--</span>
             </div>
         </div>
@@ -413,6 +446,25 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
 
     const j = await apiCall('/create-order', 'POST', payload);
     if(j.success && j.data) {
+        
+        // AUTO HIDE: Pindahkan semua pesanan aktif sebelumnya ke area hide saat nomor baru dibeli
+        if (activeOrders.length > 0) {
+            let updated = false;
+            activeOrders.forEach(o => {
+                const strId = String(o.id);
+                if (!localHiddenOrders.includes(strId)) {
+                    localHiddenOrders.push(strId);
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
+                if (auth && auth.currentUser) {
+                    db.ref(`users/${auth.currentUser.uid}/sms_hidden`).set(localHiddenOrders);
+                }
+            }
+        }
+
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, operator);
@@ -445,21 +497,20 @@ async function pollSms() {
 export function localHideSmsCard(id) {
     const strId = String(id);
     const index = localHiddenOrders.indexOf(strId);
-    let actionType = 'hide';
     
-    // Logika Toggle: Memasukkan/mengeluarkan pesanan dari area tersembunyi
+    // Toggle Area Pindah Hide/Unhide
     if (index === -1) {
         localHiddenOrders.push(strId);
-        actionType = 'hide';
     } else {
         localHiddenOrders.splice(index, 1);
-        actionType = 'unhide'; // Status untuk server 
     }
     
     localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
     
-    // Pencatatan ke API / Firebase agar status sync jika dibuka di HP lain
-    apiCall('/order-action', 'POST', { id: id, action: actionType });
+    // Simpan ke Firebase DB secara realtime agar HP lain otomatis tersinkronisasi
+    if (auth && auth.currentUser) {
+        db.ref(`users/${auth.currentUser.uid}/sms_hidden`).set(localHiddenOrders);
+    }
     
     renderSmsOrders(activeOrders); 
 }
@@ -495,7 +546,13 @@ function renderSmsOrders(orders) {
     let hiddenHTML = '';
 
     orders.forEach(o => {
-        const phone = o.phone || o.phone_number || '...';
+        let phone = o.phone || o.phone_number || '...';
+        
+        // Mengubah awalan 62 menjadi 0
+        if (phone.startsWith('62')) {
+            phone = '0' + phone.substring(2);
+        }
+        
         const price = o.price || 0;
         const opName = o.operator || "ANY";
         const isHidden = localHiddenOrders.includes(String(o.id));
@@ -503,7 +560,6 @@ function renderSmsOrders(orders) {
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 900000; 
         
-        // Memastikan durasi 2 menit berlaku dengan benar di kedua area
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
         // CEK & BUNYIKAN SUARA OTP 1 KALI SAJA
@@ -515,8 +571,6 @@ function renderSmsOrders(orders) {
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
-        
-        // Logika kemunculan tombol auto cancel sesudah 2 menit terlewati
         const cancelState = (passed2Mins || activeProviderKey === "svco") && !o.otp_code ? '' : 'disabled';
         const replaceState = passed2Mins && !o.otp_code && activeProviderKey !== "svco" ? '' : 'disabled';
 
