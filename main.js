@@ -3,7 +3,7 @@ import { db, masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
-import { toggleSmsLock, changeSmsServer, buySms, copyPhoneNumber, actSms } from './sms.js';
+import { toggleSmsLock, changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
 // Daftarkan ke Window
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
@@ -13,7 +13,7 @@ window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyS
 window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; window.openNoteModal = openNoteModal;
 window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = deleteNote;
 window.copyNoteContent = copyNoteContent; window.toggleSmsLock = toggleSmsLock; window.changeSmsServer = changeSmsServer;
-window.buySms = buySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
+window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
 
 // ==========================================
