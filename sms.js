@@ -101,8 +101,7 @@ async function updateUsdRate() {
 
 function formatDisplayPrice(price, currency) {
     if (currency === "USD") {
-        let idr = Math.round(price * currentUsdRate);
-        return `$${price} <span style="font-size:11px; color:#888;">(Rp ${idr.toLocaleString('id-ID')})</span>`;
+        return `$${price}`; // Nominal Rupiah dalam kurung dihapus sesuai permintaan
     }
     return `Rp ${parseInt(price || 0).toLocaleString('id-ID')}`; 
 }
@@ -134,7 +133,7 @@ async function initSms() {
             <div id="wrapper-active-orders"></div>
             <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
                 <summary style="font-weight: 900; cursor: pointer; color: var(--fb-muted); outline: none;">
-                    <i class="fa-solid fa-eye-slash" style="margin-right: 5px;"></i> Pesanan Disembunyikan
+                    <i class="fa-solid fa-eye-slash"></i> / <i class="fa-solid fa-eye"></i> Hide / Unhide
                 </summary>
                 <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
             </details>
@@ -337,13 +336,18 @@ async function loadSmsPrices() {
 // ==========================================
 // 6. SISTEM PEMBELIAN & RENDER KARTU
 // ==========================================
-function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN") {
+function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
-    const phoneColorStyle = isRecycled ? 'color: var(--fb-red); font-style: italic; text-decoration: line-through;' : '';
+    // Hapus text-decoration: line-through (angka tidak dicoret), hanya warna merah dan miring
+    const phoneColorStyle = isRecycled ? 'color: var(--fb-red); font-style: italic;' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
+
+    // Menentukan Icon Mata berdasarkan status isHidden (Toggle UI)
+    const toggleEyeIcon = isHidden ? 'fa-eye' : 'fa-eye-slash';
+    const toggleTitle = isHidden ? 'Unhide Pesanan' : 'Hide Pesanan';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" style="border: 2px solid ${bColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
@@ -352,7 +356,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
                 <span class="price-box" style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #ddd;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-                <i class="fa-solid fa-eye-slash hide-btn-icon" onclick="localHideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;" title="Sembunyikan"></i>
+                <i class="fa-solid ${toggleEyeIcon} hide-btn-icon" onclick="localHideSmsCard('${oId}')" style="color: var(--fb-muted); cursor:pointer; font-size:14px; padding: 5px;" title="${toggleTitle}"></i>
                 <span class="sms-timer" data-id="${oId}" data-expire="${expireTime}" style="font-family:monospace; font-weight:900; color:var(--fb-blue);">--:--</span>
             </div>
         </div>
@@ -381,7 +385,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
 
     // Munculkan konfirmasi dengan format harga yang sesuai mata uang
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-    // Menggunakan regex untuk menghilangkan tag HTML (span USD) pada pop-up konfirmasi
+    // Menggunakan regex untuk menghilangkan tag HTML pada pop-up konfirmasi
     const plainPText = pText.replace(/<[^>]*>?/gm, ''); 
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${plainPText}?`, "confirm")) return;
 
@@ -427,13 +431,21 @@ async function pollSms() {
 }
 
 export function localHideSmsCard(id) {
-    if (!localHiddenOrders.includes(id)) {
-        localHiddenOrders.push(id);
-        localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
-        
-        // Simpan juga ke Worker agar tersinkronisasi di Firebase (Fitur baru kita)
-        apiCall('/order-action', 'POST', { id: id, action: 'hide' });
+    const strId = String(id);
+    const index = localHiddenOrders.indexOf(strId);
+    
+    // Logika Toggle: Jika belum ada di list (aktif), masukkan ke hidden. Jika sudah ada (hidden), keluarkan (kembali ke aktif).
+    if (index === -1) {
+        localHiddenOrders.push(strId);
+    } else {
+        localHiddenOrders.splice(index, 1);
     }
+    
+    localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
+    
+    // Perintah API HIDE dihapus. Kita HANYA memindahkan posisi visual (UI Frontend), 
+    // agar data pesanan tetap masuk lewat polling dan tidak hilang secara permanen di server.
+    
     renderSmsOrders(activeOrders); 
 }
 window.localHideSmsCard = localHideSmsCard;
@@ -490,7 +502,7 @@ function renderSmsOrders(orders) {
         const replaceState = passed2Mins && !o.otp_code && activeProviderKey !== "svco" ? '' : 'disabled';
 
         const displayPrice = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, !!o.otp_code, o.is_recycled, expire, opName);
+        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, !!o.otp_code, o.is_recycled, expire, opName, isHidden);
 
         if (isHidden) hiddenHTML += htmlStr;
         else activeHTML += htmlStr;
