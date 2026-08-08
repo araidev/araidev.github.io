@@ -4,8 +4,8 @@ import { db, auth } from './firebase.js';
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
-const MIN_PRICE_IDR = 600; 
-const MAX_PRICE_IDR = 1350; 
+const MIN_PRICE_IDR = 1000; 
+const MAX_PRICE_IDR = 3000; 
 
 const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" },
@@ -25,62 +25,87 @@ let pollingInterval = null;
 let timerInterval = null;
 let isPolling = false;
 
+// Kunci Keamanan Firebase Anti-Tabrakan (Race Condition)
+let isFirebaseReady = false; 
+
 // Variabel Penampung Pesanan (Layering System)
-let activeOrders = []; // Seluruh data aktif dari server pusat
-let localOwnedOrders = []; // ID Pesanan yang HANYA milik layer/HP saat ini
-let localHiddenOrders = []; // ID Pesanan yang disembunyikan di layer saat ini
+let activeOrders = []; 
+let localOwnedOrders = []; 
+let localHiddenOrders = []; 
 
 let ownedOrdersKey = ""; 
 let hiddenOrdersKey = ""; 
 
-// Memori Favorit & Suara
-let favoritePrices = JSON.parse(localStorage.getItem('sms_fav_prices') || "[]");
-let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
+// Memori Favorit & Suara (Kini Berbasis Cloud)
+let favoritePrices = [];
+let notifiedOtps = []; 
 let cachedPriceGroups = {}; 
 
 // ==========================================
-// 1B. SINKRONISASI LOKAL & FIREBASE PER LAYER
+// 1B. SINKRONISASI MURNI FIREBASE (CLOUD-NATIVE)
 // ==========================================
-// Fungsi ini meload data langsung dari HP agar tidak ada delay/pesanan hilang sesaat
-function loadLocalLayerData() {
-    if (!currentServerName) return;
+function attachFirebaseListeners() {
+    if (!auth || !auth.currentUser || !currentServerName) return;
+    
+    const uid = auth.currentUser.uid;
     hiddenOrdersKey = `sms_hidden_${activeProviderKey}_${currentServerName}`;
     ownedOrdersKey = `sms_owned_${activeProviderKey}_${currentServerName}`;
-    
-    localHiddenOrders = JSON.parse(localStorage.getItem(hiddenOrdersKey) || "[]");
-    localOwnedOrders = JSON.parse(localStorage.getItem(ownedOrdersKey) || "[]");
-}
+    const favKey = `sms_fav_prices_${activeProviderKey}`;
+    const otpKey = `sms_notified_otps`;
 
-function syncFirebaseData() {
-    if (!currentServerName || !auth || !auth.currentUser) return;
-    
-    // Sinkronisasi Data Sembunyi (Hidden)
-    if (window.hiddenOrdersRef) window.hiddenOrdersRef.off();
-    window.hiddenOrdersRef = db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`);
-    window.hiddenOrdersRef.on('value', snap => {
-        if (snap.exists()) {
-            const fbHidden = snap.val() || [];
-            localHiddenOrders = [...new Set([...localHiddenOrders, ...fbHidden])];
-            localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
+    isFirebaseReady = false;
+    let loadStatus = { owned: false, hidden: false, fav: false, otp: false };
+
+    // Fungsi pengecekan agar Cleanup & Render jalan HANYA setelah semua data Cloud termuat
+    const checkReady = (key) => {
+        loadStatus[key] = true;
+        if (loadStatus.owned && loadStatus.hidden && loadStatus.fav && loadStatus.otp && !isFirebaseReady) {
+            isFirebaseReady = true;
             if (activeOrders.length > 0) renderSmsOrders(activeOrders);
+            if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
         }
+    };
+
+    // Bersihkan listener lama (jika pengguna pindah layer/provider)
+    if (window.ownedRef) window.ownedRef.off();
+    if (window.hiddenRef) window.hiddenRef.off();
+    if (window.favRef) window.favRef.off();
+    if (window.otpRef) window.otpRef.off();
+
+    // 1. Tarik Data Kepemilikan Layer
+    window.ownedRef = db.ref(`users/${uid}/${ownedOrdersKey}`);
+    window.ownedRef.on('value', snap => {
+        localOwnedOrders = snap.val() || [];
+        checkReady('owned');
+        if (isFirebaseReady) renderSmsOrders(activeOrders);
     });
 
-    // Sinkronisasi Kepemilikan Pesanan (Ownership)
-    if (window.ownedOrdersRef) window.ownedOrdersRef.off();
-    window.ownedOrdersRef = db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`);
-    window.ownedOrdersRef.on('value', snap => {
-        if (snap.exists()) {
-            const fbOwned = snap.val() || [];
-            localOwnedOrders = [...new Set([...localOwnedOrders, ...fbOwned])];
-            localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-            if (activeOrders.length > 0) renderSmsOrders(activeOrders);
-        }
+    // 2. Tarik Data Sembunyi
+    window.hiddenRef = db.ref(`users/${uid}/${hiddenOrdersKey}`);
+    window.hiddenRef.on('value', snap => {
+        localHiddenOrders = snap.val() || [];
+        checkReady('hidden');
+        if (isFirebaseReady) renderSmsOrders(activeOrders);
+    });
+
+    // 3. Tarik Data Favorit Harga
+    window.favRef = db.ref(`users/${uid}/${favKey}`);
+    window.favRef.on('value', snap => {
+        favoritePrices = snap.val() || [];
+        checkReady('fav');
+        if (isFirebaseReady && Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
+    });
+
+    // 4. Tarik Data Notifikasi Suara OTP
+    window.otpRef = db.ref(`users/${uid}/${otpKey}`);
+    window.otpRef.on('value', snap => {
+        notifiedOtps = snap.val() || [];
+        checkReady('otp');
     });
 }
 
 auth.onAuthStateChanged(user => {
-    if (user) syncFirebaseData();
+    if (user) attachFirebaseListeners();
 });
 
 // ==========================================
@@ -212,9 +237,7 @@ async function initSms() {
     isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
     await loadServersList();
     
-    // Muat data lokal seketika (menghindari jeda hilangnya pesanan) baru sinkronisasi Firebase
-    loadLocalLayerData();
-    syncFirebaseData(); 
+    attachFirebaseListeners(); 
     
     applySmsLockUI();
     refreshSms();
@@ -232,13 +255,12 @@ export async function changeSmsProvider() {
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
     
-    activeOrders = []; 
+    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
     await loadServersList();
-    loadLocalLayerData(); // Load instan dari lokal layer terpilih
-    syncFirebaseData(); 
+    attachFirebaseListeners(); 
     refreshSms();
 }
 window.changeSmsProvider = changeSmsProvider;
@@ -264,12 +286,11 @@ export function changeSmsServer() {
     currentServerName = document.getElementById('sms-server').value;
     localStorage.setItem(`xurel_hp_${activeProviderKey}`, currentServerName);
     
-    activeOrders = []; 
+    activeOrders = []; localOwnedOrders = []; localHiddenOrders = [];
     document.getElementById('wrapper-active-orders').innerHTML = '';
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
-    loadLocalLayerData(); // Load instan dari lokal layer terpilih
-    syncFirebaseData(); 
+    attachFirebaseListeners(); 
     refreshSms();
 }
 window.changeSmsServer = changeSmsServer;
@@ -333,7 +354,11 @@ export function toggleFavoritePrice(priceStr) {
     } else {
         favoritePrices.push(priceStr);
     }
-    localStorage.setItem('sms_fav_prices', JSON.stringify(favoritePrices));
+    
+    // Simpan ke Firebase Murni
+    if (auth && auth.currentUser) {
+        db.ref(`users/${auth.currentUser.uid}/sms_fav_prices_${activeProviderKey}`).set(favoritePrices);
+    }
     renderPriceGroups();
 }
 window.toggleFavoritePrice = toggleFavoritePrice;
@@ -447,7 +472,6 @@ export function openProviderMenu(price) {
         return nameA.localeCompare(nameB);
     });
 
-    // Menghapus Judul Header "PILIH PROVIDER dan Harga"
     let html = `<input type="hidden" id="current-price-context" value="${price}">`;
                 
     html += ops.map(item => {
@@ -459,7 +483,7 @@ export function openProviderMenu(price) {
                 </div>`;
     }).join('');
     
-    // Tombol KEMBALI di bagian paling bawah
+    // Tombol KEMBALI 
     html += `
         <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
             <i class="fa-solid fa-arrow-left" style="margin-right:8px;"></i> KEMBALI
@@ -536,13 +560,10 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         
         const newOrderId = String(j.data.orders[0].id);
 
-        // KLAIM KEPEMILIKAN LAYER LOKAL:
+        // KLAIM KEPEMILIKAN LAYER MURNI KE CLOUD
         if (!localOwnedOrders.includes(newOrderId)) {
             localOwnedOrders.push(newOrderId);
-            if (ownedOrdersKey) {
-                localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-                if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-            }
+            if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
         }
         
         // AUTO HIDE PESANAN SEBELUMNYA DI LAYER INI
@@ -554,12 +575,12 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
                     updatedHide = true;
                 }
             });
-            if (updatedHide && hiddenOrdersKey) {
-                localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
-                if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
+            if (updatedHide && auth && auth.currentUser) {
+                db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
             }
         }
 
+        // Cache ringan sementara untuk keperluan UI Replace, tetap di localStorage tidak masalah
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, operator);
@@ -585,21 +606,18 @@ async function pollSms() {
         if(j.success && j.data) {
             activeOrders = j.data; 
             
-            // CLEANUP OTOMATIS: Hapus memori layer jika pesanan expired/dibatalkan server
-            if (localOwnedOrders.length > 0) {
+            // CLEANUP OTOMATIS: HANYA BOLEH DIJALANKAN JIKA CLOUD SUDAH SELESAI MEMUAT DATA LAYER (Anti-Race Condition)
+            if (isFirebaseReady && localOwnedOrders.length > 0) {
                 const globalActiveIds = activeOrders.map(o => String(o.id));
                 const validOwned = localOwnedOrders.filter(id => globalActiveIds.includes(id));
                 
                 if (validOwned.length !== localOwnedOrders.length) {
                     localOwnedOrders = validOwned;
-                    if (ownedOrdersKey) {
-                        localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-                        if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-                    }
+                    if (auth && auth.currentUser) db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
                 }
             }
             
-            renderSmsOrders(activeOrders);
+            if (isFirebaseReady) renderSmsOrders(activeOrders);
         }
     } catch (e) {} finally { isPolling = false; }
 }
@@ -614,11 +632,9 @@ export function localHideSmsCard(id) {
         localHiddenOrders.splice(index, 1);
     }
     
-    if (hiddenOrdersKey) {
-        localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
-        if (auth && auth.currentUser) {
-            db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
-        }
+    // Simpan Murni Ke Cloud
+    if (auth && auth.currentUser) {
+        db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
     }
     
     renderSmsOrders(activeOrders); 
@@ -654,7 +670,7 @@ function renderSmsOrders(orders) {
     let activeHTML = '';
     let hiddenHTML = '';
 
-    // FILTER ORDER: HANYA TAMPILKAN PESANAN MILIK LAYER INI
+    // FILTER ORDER: HANYA TAMPILKAN PESANAN MILIK LAYER INI BERDASARKAN CLOUD
     const layerOrders = orders.filter(o => localOwnedOrders.includes(String(o.id)));
 
     layerOrders.forEach(o => {
@@ -673,10 +689,13 @@ function renderSmsOrders(orders) {
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
+        // Notifikasi OTP Murni Berbasis Cloud Akun
         if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
             playSimpleSound('otp');
             notifiedOtps.push(String(o.id));
-            localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
+            if (auth && auth.currentUser) {
+                db.ref(`users/${auth.currentUser.uid}/sms_notified_otps`).set(notifiedOtps);
+            }
         }
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
@@ -707,20 +726,15 @@ function updateSmsTimers() {
     });
 }
 
+// Fungsi Menghapus Kepemilikan dari Cloud Setelah Done/Cancel
 function removeOrderFromLayer(id) {
     const strId = String(id);
     localOwnedOrders = localOwnedOrders.filter(oId => oId !== strId);
     localHiddenOrders = localHiddenOrders.filter(oId => oId !== strId);
     
     if (auth && auth.currentUser) {
-        if (ownedOrdersKey) {
-            localStorage.setItem(ownedOrdersKey, JSON.stringify(localOwnedOrders));
-            db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
-        }
-        if (hiddenOrdersKey) {
-            localStorage.setItem(hiddenOrdersKey, JSON.stringify(localHiddenOrders));
-            db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
-        }
+        db.ref(`users/${auth.currentUser.uid}/${ownedOrdersKey}`).set(localOwnedOrders);
+        db.ref(`users/${auth.currentUser.uid}/${hiddenOrdersKey}`).set(localHiddenOrders);
     }
 }
 
