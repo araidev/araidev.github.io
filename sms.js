@@ -4,8 +4,8 @@ import { db } from './firebase.js';
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
-const MIN_PRICE_IDR = 300; 
-const MAX_PRICE_IDR = 1700; 
+const MIN_PRICE_IDR = 1000; 
+const MAX_PRICE_IDR = 3000; 
 
 const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" },
