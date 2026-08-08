@@ -45,17 +45,15 @@ function playSimpleSound(type) {
         gain.connect(audioCtx.destination);
 
         if (type === 'otp') {
-            // Suara "Ting!" yang elegan saat OTP Masuk
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Nada A5
-            osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); // Naik ke A6
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
             gain.gain.setValueAtTime(0, audioCtx.currentTime); 
             gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.5); 
         } else if (type === 'recycled') {
-            // Suara alarm cepat untuk nomor daur ulang
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(400, audioCtx.currentTime); 
             osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
@@ -95,13 +93,13 @@ async function updateUsdRate() {
         localStorage.setItem('usd_to_idr_rate', currentUsdRate);
         localStorage.setItem('usd_to_idr_date', today);
     } catch (e) {
-        currentUsdRate = 16000; // Fallback
+        currentUsdRate = 16000; 
     }
 }
 
 function formatDisplayPrice(price, currency) {
     if (currency === "USD") {
-        return `$${price}`; // Nominal Rupiah dalam kurung dihapus sesuai permintaan
+        return `$${price}`; 
     }
     return `Rp ${parseInt(price || 0).toLocaleString('id-ID')}`; 
 }
@@ -130,14 +128,32 @@ async function initSms() {
     const container = document.getElementById('sms-active-orders');
     if (container && !document.getElementById('wrapper-active-orders')) {
         container.innerHTML = `
+            <style>
+                /* Menghilangkan panah default browser pada tag summary */
+                #wrapper-hidden-orders summary::-webkit-details-marker { display: none; }
+                #wrapper-hidden-orders summary { list-style: none; }
+            </style>
             <div id="wrapper-active-orders"></div>
-            <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
-                <summary style="font-weight: 900; cursor: pointer; color: var(--fb-muted); outline: none;">
-                    <i class="fa-solid fa-eye-slash"></i> / <i class="fa-solid fa-eye"></i> Hide / Unhide
+            <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da; text-align: center;">
+                <summary style="cursor: pointer; color: var(--fb-muted); outline: none; display: inline-block;">
+                    <i id="hidden-eye-icon" class="fa-solid fa-eye-slash" style="font-size: 22px;"></i>
                 </summary>
-                <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
+                <div id="inner-hidden-orders" style="margin-top: 15px; text-align: left;"></div>
             </details>
         `;
+
+        // Event Listener untuk mengubah ikon mata secara otomatis saat area disembunyikan/dibuka
+        const detailsWrapper = document.getElementById('wrapper-hidden-orders');
+        const eyeIcon = document.getElementById('hidden-eye-icon');
+        detailsWrapper.addEventListener('toggle', function() {
+            if (this.open) {
+                eyeIcon.className = "fa-solid fa-eye";
+                eyeIcon.style.color = "var(--fb-blue)";
+            } else {
+                eyeIcon.className = "fa-solid fa-eye-slash";
+                eyeIcon.style.color = "var(--fb-muted)";
+            }
+        });
     }
 
     isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
@@ -297,11 +313,11 @@ async function loadSmsPrices() {
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
     }
 
-    // Ambil harga TERMURAH per Operator
+    // Ambil harga yang unik per Operator & Harga (agar harga lain tetap muncul)
     let bestPrices = {};
     normalizedPrices.forEach(p => {
-        let key = p.opName.toUpperCase();
-        if (!bestPrices[key] || p.price < bestPrices[key].price) bestPrices[key] = p;
+        let key = p.opName.toUpperCase() + "_" + p.price;
+        if (!bestPrices[key]) bestPrices[key] = p;
     });
 
     let finalArray = Object.values(bestPrices);
@@ -341,13 +357,11 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
-    // Hapus text-decoration: line-through (angka tidak dicoret), hanya warna merah dan miring
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red); font-style: italic;' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
 
-    // Menentukan Icon Mata berdasarkan status isHidden (Toggle UI)
     const toggleEyeIcon = isHidden ? 'fa-eye' : 'fa-eye-slash';
-    const toggleTitle = isHidden ? 'Unhide Pesanan' : 'Hide Pesanan';
+    const toggleTitle = isHidden ? 'Keluarkan Pesanan' : 'Sembunyikan Pesanan';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" style="border: 2px solid ${bColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
@@ -383,9 +397,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         if (audioCtx.state === 'suspended') audioCtx.resume();
     } catch (e) {}
 
-    // Munculkan konfirmasi dengan format harga yang sesuai mata uang
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-    // Menggunakan regex untuk menghilangkan tag HTML pada pop-up konfirmasi
     const plainPText = pText.replace(/<[^>]*>?/gm, ''); 
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${plainPText}?`, "confirm")) return;
 
@@ -433,18 +445,21 @@ async function pollSms() {
 export function localHideSmsCard(id) {
     const strId = String(id);
     const index = localHiddenOrders.indexOf(strId);
+    let actionType = 'hide';
     
-    // Logika Toggle: Jika belum ada di list (aktif), masukkan ke hidden. Jika sudah ada (hidden), keluarkan (kembali ke aktif).
+    // Logika Toggle: Memasukkan/mengeluarkan pesanan dari area tersembunyi
     if (index === -1) {
         localHiddenOrders.push(strId);
+        actionType = 'hide';
     } else {
         localHiddenOrders.splice(index, 1);
+        actionType = 'unhide'; // Status untuk server 
     }
     
     localStorage.setItem('sms_hidden_orders', JSON.stringify(localHiddenOrders));
     
-    // Perintah API HIDE dihapus. Kita HANYA memindahkan posisi visual (UI Frontend), 
-    // agar data pesanan tetap masuk lewat polling dan tidak hilang secara permanen di server.
+    // Pencatatan ke API / Firebase agar status sync jika dibuka di HP lain
+    apiCall('/order-action', 'POST', { id: id, action: actionType });
     
     renderSmsOrders(activeOrders); 
 }
@@ -487,6 +502,8 @@ function renderSmsOrders(orders) {
         
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 900000; 
+        
+        // Memastikan durasi 2 menit berlaku dengan benar di kedua area
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
         // CEK & BUNYIKAN SUARA OTP 1 KALI SAJA
@@ -498,6 +515,8 @@ function renderSmsOrders(orders) {
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
+        
+        // Logika kemunculan tombol auto cancel sesudah 2 menit terlewati
         const cancelState = (passed2Mins || activeProviderKey === "svco") && !o.otp_code ? '' : 'disabled';
         const replaceState = passed2Mins && !o.otp_code && activeProviderKey !== "svco" ? '' : 'disabled';
 
