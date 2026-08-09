@@ -20,7 +20,7 @@ let currentServerName = "";
 let currentUsdRate = 16000; 
 
 let smsInitialized = false; 
-let isSmsLocked = false;
+// Variabel Lock sudah dihapus total
 let pollingInterval = null;
 let timerInterval = null;
 let isPolling = false;
@@ -36,7 +36,6 @@ let cachedPriceGroups = {};
 // ==========================================
 // 1B. SINKRONISASI MURNI FIREBASE (LISTENER)
 // ==========================================
-// Fungsi ini meload data pesanan publik HANYA dari Firebase (hasil ketikan Worker)
 function attachGlobalOrderListener() {
     if (!currentServerName) return;
     
@@ -50,7 +49,6 @@ function attachGlobalOrderListener() {
     });
 }
 
-// Fungsi ini meload Favorit rahasia jika User Login
 function attachPrivateListeners(uid) {
     const favKey = `sms_fav_prices_${activeProviderKey}`;
     if (window.favRef) window.favRef.off();
@@ -65,7 +63,6 @@ auth.onAuthStateChanged(user => {
     if (user) {
         attachPrivateListeners(user.uid);
     } else {
-        // Jika tidak login, ambil favorit dari memori HP lokal
         favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
         if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
     }
@@ -197,23 +194,19 @@ async function initSms() {
         });
     }
 
-    isSmsLocked = localStorage.getItem('xurel_locked') === 'true';
     await loadServersList();
     
     attachGlobalOrderListener(); 
-    applySmsLockUI();
     refreshSms();
 
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
     
-    // Polling bertugas sekadar "membangunkan" worker agar ngecek ke pusat
     pollingInterval = setInterval(pollSms, 4000);
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
 
 export async function changeSmsProvider() {
-    if(isSmsLocked) return;
     activeProviderKey = document.getElementById('sms-provider').value;
     BASE_URL = PROVIDERS[activeProviderKey].url;
     localStorage.setItem('xurel_provider', activeProviderKey);
@@ -237,7 +230,8 @@ async function loadServersList() {
         if(res.success && res.servers) select.innerHTML = res.servers.map(k => `<option value="${k}">${k}</option>`).join('');
         else throw new Error("Kosong");
     } catch (e) {
-        select.innerHTML = ["HP1", "HP2"].map(k => `<option value="${k}">${k}</option>`).join('');
+        // Fallback cadangan diubah ke A, B, C, D, E jika Worker gagal diakses
+        select.innerHTML = ["A", "B", "C", "D", "E"].map(k => `<option value="${k}">${k}</option>`).join('');
     }
     const saved = localStorage.getItem(`xurel_hp_${activeProviderKey}`);
     currentServerName = (saved && Array.from(select.options).some(o => o.value === saved)) ? saved : select.options[0].value;
@@ -245,7 +239,6 @@ async function loadServersList() {
 }
 
 export function changeSmsServer() {
-    if(isSmsLocked) return;
     currentServerName = document.getElementById('sms-server').value;
     localStorage.setItem(`xurel_hp_${activeProviderKey}`, currentServerName);
     
@@ -258,30 +251,13 @@ export function changeSmsServer() {
 }
 window.changeSmsServer = changeSmsServer;
 
-export function toggleSmsLock() {
-    isSmsLocked = !isSmsLocked; localStorage.setItem('xurel_locked', isSmsLocked); applySmsLockUI();
-}
-window.toggleSmsLock = toggleSmsLock;
-
-function applySmsLockUI() {
-    const sHp = document.getElementById('sms-server');
-    const sProv = document.getElementById('sms-provider');
-    const icon = document.getElementById('sms-lock-icon');
-    if(sHp) sHp.disabled = isSmsLocked;
-    if(sProv) sProv.disabled = isSmsLocked;
-    if(icon) {
-        icon.className = isSmsLocked ? 'fa-solid fa-lock' : 'fa-solid fa-unlock';
-        icon.style.color = isSmsLocked ? 'var(--fb-red)' : 'var(--fb-muted)';
-    }
-}
-
 export function refreshSms() {
     const box = document.getElementById('sms-prices');
     if(box) box.innerHTML = '<div style="padding:30px; text-align:center; color:#888;">Mengambil Data...</div>';
     
     updateSmsBal(); 
     loadSmsPrices(); 
-    pollSms(); // Bangunkan worker
+    pollSms(); 
 }
 window.refreshSms = refreshSms;
 
@@ -356,7 +332,11 @@ async function loadSmsPrices() {
             .forEach(i => {
                  normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
                  if (i.operatorStock) {
-                     for (let op in i.operatorStock) normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: op.toUpperCase() });
+                     // FIX BUG HEROSMS: Menangani Array/Object agar tidak muncul angka 0, 1, 2, 3
+                     let opList = Array.isArray(i.operatorStock) ? i.operatorStock : Object.keys(i.operatorStock);
+                     opList.forEach(op => {
+                         normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: String(op).toUpperCase() });
+                     });
                  }
             });
             
@@ -523,7 +503,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const j = await apiCall('/create-order', 'POST', payload);
     if(j.success && j.data) {
         
-        // Simpan info replace ke memori lokal sementera
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
         if (operator) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, operator);
@@ -545,8 +524,6 @@ async function pollSms() {
     if (isPolling) return;
     isPolling = true;
     try {
-        // Panggilan ini hanya bertugas membangunkan Worker agar Worker menulis data ke Firebase
-        // Kita tidak perlu menggunakan datanya, karena layar akan update otomatis lewat listener Firebase
         await apiCall('/get-active', 'GET');
     } catch (e) {} finally { isPolling = false; }
 }
@@ -555,7 +532,6 @@ export function localHideSmsCard(id) {
     const strId = String(id);
     const currentHiddenStatus = globalOrders[strId] ? globalOrders[strId].hidden : false;
     
-    // Toggle Status Hide Langsung ke Firebase (Worker dan semua HP akan melihatnya)
     db.ref(`muis/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!currentHiddenStatus);
 }
 window.localHideSmsCard = localHideSmsCard;
@@ -589,13 +565,14 @@ function renderSmsOrders() {
     let activeHTML = '';
     let hiddenHTML = '';
 
-    // Convert Object globalOrders dari Firebase menjadi Array agar bisa di-loop
     let ordersList = Object.keys(globalOrders).map(id => {
         return { id: id, ...globalOrders[id] };
     });
 
     // Urutkan pesanan dari yang paling baru
     ordersList.sort((a,b) => b.created_at - a.created_at);
+
+    let activeCount = 0; // Penghitung untuk pesanan aktif (tidak tersembunyi)
 
     ordersList.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
@@ -606,7 +583,19 @@ function renderSmsOrders() {
         
         const price = o.price || 0;
         const opName = o.operator || "ANY";
-        const isHidden = !!o.hidden; 
+        
+        // AUTO-HIDE LOGIC: Sembunyikan otomatis jika ada pesanan baru yang mendahuluinya
+        let isHidden = !!o.hidden; 
+        if (!isHidden) {
+            if (activeCount === 0) {
+                // Ini adalah pesanan teratas yang masih aktif, izinkan tampil
+                activeCount++; 
+            } else {
+                // Ini pesanan kedua, ketiga, dst. Paksa pindah ke status Hide dan laporkan ke Firebase
+                isHidden = true; 
+                db.ref(`muis/${activeProviderKey}/${currentServerName}/${o.id}/hidden`).set(true);
+            }
+        }
         
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 900000; 
