@@ -8,9 +8,10 @@ const MIN_PRICE_IDR = 1000;
 const MAX_PRICE_IDR = 3000; 
 
 const PROVIDERS = {
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" },
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
-    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" }
+    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
+    "otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" }, // <-- UBAH URL INI JIKA PERLU
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
@@ -20,7 +21,6 @@ let currentServerName = "";
 let currentUsdRate = 16000; 
 
 let smsInitialized = false; 
-// Variabel Lock sudah dihapus total
 let pollingInterval = null;
 let timerInterval = null;
 let isPolling = false;
@@ -230,7 +230,6 @@ async function loadServersList() {
         if(res.success && res.servers) select.innerHTML = res.servers.map(k => `<option value="${k}">${k}</option>`).join('');
         else throw new Error("Kosong");
     } catch (e) {
-        // Fallback cadangan diubah ke A, B, C, D, E jika Worker gagal diakses
         select.innerHTML = ["A", "B", "C", "D", "E"].map(k => `<option value="${k}">${k}</option>`).join('');
     }
     const saved = localStorage.getItem(`xurel_hp_${activeProviderKey}`);
@@ -332,7 +331,6 @@ async function loadSmsPrices() {
             .forEach(i => {
                  normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
                  if (i.operatorStock) {
-                     // FIX BUG HEROSMS: Menangani Array/Object agar tidak muncul angka 0, 1, 2, 3
                      let opList = Array.isArray(i.operatorStock) ? i.operatorStock : Object.keys(i.operatorStock);
                      opList.forEach(op => {
                          normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: String(op).toUpperCase() });
@@ -347,6 +345,11 @@ async function loadSmsPrices() {
                 return idrPrice >= MIN_PRICE_IDR && idrPrice <= MAX_PRICE_IDR;
             })
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
+            
+    } else if (activeProviderKey === "otpinstan") {
+        json.data
+            .filter(i => i.price >= MIN_PRICE_IDR && i.price <= MAX_PRICE_IDR)
+            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)', country: i.country }));
     }
 
     cachedPriceGroups = {};
@@ -444,7 +447,11 @@ window.openProviderMenu = openProviderMenu;
 // ==========================================
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
-    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
+    
+    // Memberikan warna unik per provider agar mudah dibedakan di UI
+    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
+                 activeProviderKey === "svco" ? "#007bff" : 
+                 activeProviderKey === "otpinstan" ? "#e67e22" : "#95a5a6"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
@@ -493,6 +500,8 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     let payload;
     if (activeProviderKey === "svco") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
+    } else if (activeProviderKey === "otpinstan") {
+        payload = { product_id: pid, price: Number(price), operator: operator, country: parseInt(countryRank) || 6 };
     } else if (activeProviderKey === "herosms") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
@@ -572,7 +581,7 @@ function renderSmsOrders() {
     // Urutkan pesanan dari yang paling baru
     ordersList.sort((a,b) => b.created_at - a.created_at);
 
-    let activeCount = 0; // Penghitung untuk pesanan aktif (tidak tersembunyi)
+    let activeCount = 0; 
 
     ordersList.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
@@ -588,10 +597,8 @@ function renderSmsOrders() {
         let isHidden = !!o.hidden; 
         if (!isHidden) {
             if (activeCount === 0) {
-                // Ini adalah pesanan teratas yang masih aktif, izinkan tampil
                 activeCount++; 
             } else {
-                // Ini pesanan kedua, ketiga, dst. Paksa pindah ke status Hide dan laporkan ke Firebase
                 isHidden = true; 
                 db.ref(`muis/${activeProviderKey}/${currentServerName}/${o.id}/hidden`).set(true);
             }
@@ -602,9 +609,14 @@ function renderSmsOrders() {
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
+        // Sistem Suara Anti "Bom Waktu" Storage
         if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
             playSimpleSound('otp');
             notifiedOtps.push(String(o.id));
+            
+            // Batasi memori suara hanya menyimpan 50 ID terakhir agar tidak memenuhi local storage
+            if (notifiedOtps.length > 50) notifiedOtps.shift();
+            
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
