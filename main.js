@@ -4,84 +4,37 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
-// === IMPORT NOTE DI SINI SUDAH AKTIF ===
-import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
-
-// ==========================================
-// PENDAFTARAN WINDOW
-// ==========================================
+// Daftarkan ke Window
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
 window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
 window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
 window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
-window.actionRandomLink = actionRandomLink; 
-
-// Pendaftaran Note
-window.openNoteList = openNoteList; 
-window.openNoteModal = openNoteModal;
-window.saveNote = saveNote; 
-window.editNote = editNote; 
-window.deleteNote = deleteNote;
-window.copyNoteContent = copyNoteContent;
-
-window.changeSmsServer = changeSmsServer;
+window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; window.openNoteModal = openNoteModal;
+window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent; window.changeSmsServer = changeSmsServer;
 window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
 
 // ==========================================
-// LOGIKA MULTI-DASHBOARD & SWIPE
+// LOGIKA LACI (DRAWER) DI TOOLBAR
 // ==========================================
-let currentDash = 1;
-
-window.switchDashboard = function(dashIndex) {
-    currentDash = dashIndex;
-    const slider = document.getElementById('main-slider');
-    const tab1 = document.getElementById('tab-1');
-    const tab2 = document.getElementById('tab-2');
-    const fabShopee = document.getElementById('fab-shopee');
-
-    if (dashIndex === 1) {
-        // Geser ke Dashboard 1 (SMS)
-        slider.style.transform = 'translateX(0)';
-        if(tab1) tab1.classList.add('active');
-        if(tab2) tab2.classList.remove('active');
-        if(fabShopee) fabShopee.classList.add('hidden'); // Sembunyikan tambah link
+window.toggleTopDrawer = function() {
+    const drawer = document.getElementById('top-drawer');
+    const icon = document.getElementById('drawer-icon');
+    
+    const isOpen = drawer.classList.toggle('active');
+    
+    if (isOpen) {
+        icon.style.transform = "rotate(180deg)";
+        icon.style.color = "var(--fb-blue)";
     } else {
-        // Geser ke Dashboard 2 (Tools)
-        slider.style.transform = 'translateX(-100vw)';
-        if(tab2) tab2.classList.add('active');
-        if(tab1) tab1.classList.remove('active');
-        if(fabShopee) fabShopee.classList.remove('hidden'); // Munculkan tambah link
+        icon.style.transform = "rotate(0deg)";
+        icon.style.color = "var(--fb-muted)";
     }
 };
 
-// Deteksi Swipe Layar HP
-let touchstartX = 0;
-let touchendX = 0;
-const sliderEl = document.getElementById('main-slider');
-
-if(sliderEl) {
-    sliderEl.addEventListener('touchstart', e => {
-        touchstartX = e.changedTouches[0].screenX;
-    }, {passive: true});
-
-    sliderEl.addEventListener('touchend', e => {
-        touchendX = e.changedTouches[0].screenX;
-        
-        const swipeDist = touchendX - touchstartX;
-        // Swipe ke Kiri -> Pindah ke Halaman 2
-        if (swipeDist < -60 && currentDash === 1) {
-            window.switchDashboard(2);
-        } 
-        // Swipe ke Kanan -> Pindah ke Halaman 1
-        else if (swipeDist > 60 && currentDash === 2) {
-            window.switchDashboard(1);
-        }
-    }, {passive: true});
-}
-
 // ==========================================
-// KONFIGURASI COUNTER EMAIL
+// KONFIGURASI COUNTER EMAIL (AMAN REFRESH)
 // ==========================================
 window.openEmailConfig = function() {
     document.getElementById('cfg-email').value = localStorage.getItem('xurel_base_email') || "";
@@ -98,6 +51,7 @@ window.saveEmailConfig = function() {
     let startVal = parseInt(document.getElementById('cfg-start').value) || 1;
     let endVal = parseInt(document.getElementById('cfg-end').value) || 100;
     
+    // Jangan ulangi hitungan dari awal jika masih di dalam batas wajar saat ini
     let currentIndexStr = localStorage.getItem('xurel_email_index');
     if (!currentIndexStr) {
         localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
@@ -111,7 +65,7 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// LOGIKA NEXT & PREV EMAIL
+// LOGIKA NEXT & PREV EMAIL (KOLOM MULTIFUNGSI)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnNext = document.getElementById('btn-next-email');
@@ -128,19 +82,25 @@ document.addEventListener('DOMContentLoaded', () => {
         let indexStr = localStorage.getItem('xurel_email_index');
         let index = indexStr ? parseInt(indexStr) : (startCount - 1);
 
-        if (direction === 1) { // NEXT
-            if (index >= endCount) return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
+        if (direction === 1) { // Aksi NEXT
+            if (index >= endCount) {
+                return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
+            }
             index++;
-        } else if (direction === -1) { // PREV
-            if (index <= startCount) return showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
+        } else if (direction === -1) { // Aksi PREV
+            if (index <= startCount) {
+                return showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
+            }
             index--;
         }
 
+        // Menyimpan progres ke local storage
         localStorage.setItem('xurel_email_index', index.toString());
         
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
+        // Auto Copy ke Clipboard
         try {
             if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
             else throw new Error("Fallback");
@@ -152,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.execCommand('copy'); document.body.removeChild(textArea);
         }
         
+        // Tampilkan Hasil di Kolom IP
         if (ipInput) {
             ipInput.value = newEmail;
             ipInput.style.color = "var(--fb-blue)";
@@ -242,7 +203,7 @@ window.saveMyIP = async function() {
 };
 
 // ==========================================
-// KONTROL LOGIN & AUTO CAPS
+// KONTROL LOGIN
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
@@ -259,14 +220,19 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ==========================================
+// AUTO-KAPITAL JUDUL LINK SHOPEE
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Gunakan setInterval ringan untuk berjaga-jaga jika form modal belum dirender saat DOMContentLoaded
     const checkForm = setInterval(() => {
         const shopeeTitleInput = document.getElementById('shopee-title');
         if (shopeeTitleInput) {
             shopeeTitleInput.addEventListener('input', function() {
+                // Membuat huruf awal setiap kata menjadi kapital
                 this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
             });
-            clearInterval(checkForm);
+            clearInterval(checkForm); // Hentikan pencarian elemen setelah ketemu
         }
     }, 500);
 });
