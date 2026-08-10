@@ -5,7 +5,7 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
 const MIN_PRICE_IDR = 500; 
-const MAX_PRICE_IDR = 2000; 
+const MAX_PRICE_IDR = 5000; 
 
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
