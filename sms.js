@@ -346,9 +346,9 @@ async function loadSmsPrices() {
             })
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
             
-    } else if (activeProviderKey === "otpinstan") {
+   } else if (activeProviderKey === "otpinstan") {
         json.data
-            .filter(i => i.price >= MIN_PRICE_IDR && i.price <= MAX_PRICE_IDR)
+            // Filter harga dimatikan khusus untuk otpinstan, semua harga akan langsung masuk!
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)', country: i.country }));
     }
 
