@@ -3,8 +3,6 @@ import { db, masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
-
-// === IMPORT NOTE DI SINI SUDAH AKTIF ===
 import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
 
 // ==========================================
@@ -16,7 +14,6 @@ window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; wind
 window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
 window.actionRandomLink = actionRandomLink; 
 
-// Pendaftaran Note
 window.openNoteList = openNoteList; 
 window.openNoteModal = openNoteModal;
 window.saveNote = saveNote; 
@@ -40,18 +37,18 @@ window.switchDashboard = function(dashIndex) {
     const tab2 = document.getElementById('tab-2');
     const fabShopee = document.getElementById('fab-shopee');
 
+    if (!slider) return;
+
     if (dashIndex === 1) {
-        // Geser ke Dashboard 1 (SMS)
         slider.style.transform = 'translateX(0)';
         if(tab1) tab1.classList.add('active');
         if(tab2) tab2.classList.remove('active');
-        if(fabShopee) fabShopee.classList.add('hidden'); // Sembunyikan tambah link
+        if(fabShopee) fabShopee.classList.add('hidden');
     } else {
-        // Geser ke Dashboard 2 (Tools)
         slider.style.transform = 'translateX(-100vw)';
         if(tab2) tab2.classList.add('active');
         if(tab1) tab1.classList.remove('active');
-        if(fabShopee) fabShopee.classList.remove('hidden'); // Munculkan tambah link
+        if(fabShopee) fabShopee.classList.remove('hidden');
     }
 };
 
@@ -67,16 +64,10 @@ if(sliderEl) {
 
     sliderEl.addEventListener('touchend', e => {
         touchendX = e.changedTouches[0].screenX;
-        
         const swipeDist = touchendX - touchstartX;
-        // Swipe ke Kiri -> Pindah ke Halaman 2
-        if (swipeDist < -60 && currentDash === 1) {
-            window.switchDashboard(2);
-        } 
-        // Swipe ke Kanan -> Pindah ke Halaman 1
-        else if (swipeDist > 60 && currentDash === 2) {
-            window.switchDashboard(1);
-        }
+        
+        if (swipeDist < -60 && currentDash === 1) window.switchDashboard(2);
+        else if (swipeDist > 60 && currentDash === 2) window.switchDashboard(1);
     }, {passive: true});
 }
 
@@ -111,9 +102,9 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// LOGIKA NEXT & PREV EMAIL
+// LOGIKA NEXT & PREV EMAIL (TANPA DOMContentLoaded)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+function initEmailCounter() {
     const btnNext = document.getElementById('btn-next-email');
     const btnPrev = document.getElementById('btn-prev-email');
     const ipInput = document.getElementById('ip-result');
@@ -164,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnNext) btnNext.addEventListener('click', function() { handleEmailCount(1, this); });
     if (btnPrev) btnPrev.addEventListener('click', function() { handleEmailCount(-1, this); });
-});
+}
 
 // ==========================================
 // LOGIKA CEK & SIMPAN IP
@@ -246,27 +237,30 @@ window.saveMyIP = async function() {
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
-    document.getElementById('login-form').classList.toggle('hidden', isAdmin);
-    document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
+    const formLogin = document.getElementById('login-form');
+    const formLogout = document.getElementById('logout-form');
+    if(formLogin) formLogin.classList.toggle('hidden', isAdmin);
+    if(formLogout) formLogout.classList.toggle('hidden', !isAdmin);
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
 document.addEventListener('click', function(e) {
     const popup = document.getElementById('main-menu-popup');
     const btn = document.querySelector('.menu-btn');
-    if(popup && popup.classList.contains('active') && !popup.contains(e.target) && !btn.contains(e.target)) {
+    if(popup && popup.classList.contains('active') && !popup.contains(e.target) && (!btn || !btn.contains(e.target))) {
         popup.classList.remove('active');
     }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const checkForm = setInterval(() => {
-        const shopeeTitleInput = document.getElementById('shopee-title');
-        if (shopeeTitleInput) {
-            shopeeTitleInput.addEventListener('input', function() {
-                this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
-            });
-            clearInterval(checkForm);
-        }
-    }, 500);
-});
+function initAutoCaps() {
+    const shopeeTitleInput = document.getElementById('shopee-title');
+    if (shopeeTitleInput) {
+        shopeeTitleInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
+        });
+    }
+}
+
+// Eksekusi fungsi inisialisasi secara langsung saat file dimuat
+initEmailCounter();
+initAutoCaps();
