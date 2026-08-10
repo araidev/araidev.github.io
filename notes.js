@@ -24,15 +24,13 @@ function getStatsPath() {
 function incrementStat(type) {
     try {
         const path = getStatsPath();
-        db.ref(path).child(type).transaction((val) => (val || 0) + 1);
-    } catch (e) {
-        console.error("Gagal increment stat:", e);
-    }
+        db.ref(path).child(type).transaction((val) => (val || 0) + 1).catch(e => console.warn("Abaikan: Gagal update stat"));
+    } catch (e) {}
 }
 
 async function resetStatsManual() {
     if (await showModal("Reset Statistik", "Hapus data simpan & hapus hari ini menjadi 0?", "danger")) {
-        try { await db.ref(getStatsPath()).update({ saved: 0, deleted: 0 }); } catch (e) {}
+        try { await db.ref(getStatsPath()).update({ saved: 0, deleted: 0 }); } catch (e) { console.warn("Abaikan: Gagal reset"); }
     }
 }
 
@@ -41,15 +39,17 @@ function syncStats() {
         const path = getStatsPath();
         if (currentStatsRef) currentStatsRef.off();
         currentStatsRef = db.ref(path);
+        
+        // DITAMBAHKAN ERROR HANDLER AGAR WEB TIDAK MATI JIKA DITOLAK FIREBASE
         currentStatsRef.on('value', snap => {
             const d = snap.val() || { saved: 0, deleted: 0 };
             statsData.saved = d.saved || 0;
             statsData.deleted = d.deleted || 0;
             updateStatsUI(); 
+        }, (error) => {
+            console.warn("Abaikan: Akses Statistik Ditolak Firebase.", error);
         });
-    } catch (e) {
-        console.error("Gagal syncStats:", e);
-    }
+    } catch (e) {}
 }
 
 function updateStatsUI() {
@@ -58,15 +58,9 @@ function updateStatsUI() {
         if (!statsContainer) return;
 
         statsContainer.style.cssText = `
-            background: #f8f9fa;
-            border: 1px solid #e4e6eb;
-            border-radius: 6px;
-            padding: 10px 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            margin-bottom: 12px;
+            background: #f8f9fa; border: 1px solid #e4e6eb; border-radius: 6px;
+            padding: 10px 12px; display: flex; align-items: center;
+            justify-content: space-around; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 12px;
         `;
         
         statsContainer.innerHTML = `
@@ -76,56 +70,33 @@ function updateStatsUI() {
                 </div>
                 <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
             </div>
-            
             <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
             <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
                 <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;">
                     <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
                 </div>
                 <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
             </div>
-
             <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
             <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
                 <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;">
                     <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
                 </div>
                 <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
             </div>
-
             <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
-            <button id="btn-reset-stat" style="
-                width: 28px; 
-                height: 28px; 
-                border: none; 
-                background: #e4e6eb; 
-                border-radius: 50%; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                cursor: pointer; 
-                transition: 0.2s;
-            " title="Reset Hari Ini">
+            <button id="btn-reset-stat" style="width: 28px; height: 28px; border: none; background: #e4e6eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;" title="Reset Hari Ini">
                 <i class="fas fa-sync-alt" style="font-size: 11px; color: #65676B;"></i>
             </button>
         `;
 
         const btnReset = statsContainer.querySelector('#btn-reset-stat');
-        if (btnReset) {
-            btnReset.onclick = (e) => { 
-                e.preventDefault(); 
-                e.stopPropagation(); 
-                resetStatsManual(); 
-            };
+        if(btnReset) {
+            btnReset.onclick = (e) => { e.preventDefault(); e.stopPropagation(); resetStatsManual(); };
             btnReset.onmouseover = () => { btnReset.style.background = '#d8dadf'; btnReset.querySelector('i').style.color = '#1877f2'; };
             btnReset.onmouseout = () => { btnReset.style.background = '#e4e6eb'; btnReset.querySelector('i').style.color = '#65676B'; };
         }
-    } catch (err) {
-        console.error("Gagal render stat:", err);
-    }
+    } catch (err) {}
 }
 
 // ==========================================
@@ -139,65 +110,33 @@ function formatDate(ts) {
     return `${['Ming', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function autoLinkText(text) { 
-    if(!text) return "";
-    return String(text).replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-link" onclick="event.stopPropagation()">${url}</a>`); 
-}
-
-function escapeHTML(str) { 
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); 
-}
+function autoLinkText(text) { return !text ? "" : String(text).replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-link" onclick="event.stopPropagation()">${url}</a>`); }
+function escapeHTML(str) { return (str === null || str === undefined) ? "" : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
 
 function syncNotes() {
     try {
         const path = getNotesPath(); 
         db.ref(path).off();
+        
+        // DITAMBAHKAN ERROR HANDLER FIREBASE
         db.ref(path).orderByChild('timestamp').on('value', snap => {
             statsData.total = snap.numChildren();
             updateStatsUI();
             
             const grid = document.getElementById('notes-grid'); 
             if(!grid) return;
-            
-            grid.style.display = 'flex';
-            grid.style.flexDirection = 'column';
-            grid.style.gap = '8px'; 
-            grid.style.overscrollBehavior = 'contain'; 
-            
+            grid.style.cssText = 'display:flex; flex-direction:column; gap:8px; overscroll-behavior:contain;';
             grid.innerHTML = ''; 
             
             let items = [];
             snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
             
             items.reverse().forEach(d => {
-                const card = document.createElement('div'); 
-                card.className = 'note-card'; 
-                
-                card.style.cssText = `
-                    background: #ffffff;
-                    border: 1px solid #cdd0d4; 
-                    border-radius: 6px;
-                    padding: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    cursor: pointer;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-                    transition: transform 0.2s ease, box-shadow 0.2s ease;
-                    height: 100px; 
-                    flex-shrink: 0;
-                `;
+                const card = document.createElement('div'); card.className = 'note-card'; 
+                card.style.cssText = 'background: #ffffff; border: 1px solid #cdd0d4; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100px; flex-shrink: 0;';
 
-                card.onmouseover = () => {
-                    card.style.transform = 'translateY(-2px)';
-                    card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
-                    card.style.borderColor = '#aeb1b5'; 
-                };
-                card.onmouseout = () => {
-                    card.style.transform = 'translateY(0)';
-                    card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                    card.style.borderColor = '#cdd0d4'; 
-                };
+                card.onmouseover = () => { card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)'; card.style.borderColor = '#aeb1b5'; };
+                card.onmouseout = () => { card.style.transform = 'translateY(0)'; card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; card.style.borderColor = '#cdd0d4'; };
 
                 card.onclick = () => {
                     selectedNoteKey = d.key; currentNoteRaw = d.content;
@@ -205,31 +144,23 @@ function syncNotes() {
                     document.getElementById('view-title').innerText = d.title;
                     document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
                     document.getElementById('modal-note-view').classList.add('active');
-                    
-                    document.documentElement.style.overflow = 'hidden';
-                    document.body.style.overflow = 'hidden'; 
+                    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; 
                 };
 
                 const titleStr = escapeHTML(d.title) || 'Untitled';
                 const previewStr = escapeHTML(d.content);
 
                 card.innerHTML = `
-                    <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${titleStr}
-                    </div>
-                    <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
-                        ${previewStr}
-                    </div>
-                    <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;">
-                        <i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}
-                    </div>
+                    <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${titleStr}</div>
+                    <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${previewStr}</div>
+                    <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;"><i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}</div>
                 `;
                 grid.appendChild(card);
             });
+        }, (error) => {
+            console.warn("Abaikan: Akses List Notes Ditolak Firebase.", error);
         });
-    } catch (err) {
-        console.error("Gagal syncNotes:", err);
-    }
+    } catch (err) {}
 }
 
 export function openNoteList() {
@@ -276,7 +207,7 @@ export async function saveNote() {
         }
         executeNoteSave(t, c, path);
     } catch (e) { 
-        showModal("Gagal", "Gagal menghubungi database.", "alert"); 
+        showModal("Gagal", "Akses Database Ditolak (Belum Login / Rules Firebase).", "alert"); 
     }
 }
 
@@ -304,7 +235,7 @@ export async function deleteNote() {
         db.ref(`${getNotesPath()}/${selectedNoteKey}`).remove().then(() => {
             incrementStat('deleted');
             closeModal('modal-note-view');
-        });
+        }).catch(e => showModal("Gagal", "Tidak bisa dihapus (Akses ditolak).", "alert"));
     }
 }
 
@@ -313,16 +244,16 @@ export function copyNoteContent(btn) {
     btn.innerHTML = '<i class="fas fa-check"></i> Tersalin'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
 }
 
-
 // ==========================================
-// PENANGANAN INISIALISASI AMAN (ANTI-CRASH)
+// INISIALISASI AMAN
 // ==========================================
 function initNotes() {
-    syncNotes();
-    syncStats();
+    setTimeout(() => {
+        syncNotes();
+        syncStats();
+    }, 500); // Diberi jeda agar tidak berebut koneksi dengan Firebase utama
 }
 
-// Memastikan DOM siap agar Javascript module tidak crash
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initNotes);
 } else {
