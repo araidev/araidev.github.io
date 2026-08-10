@@ -10,23 +10,37 @@ import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteCo
 // ==========================================
 // PENDAFTARAN WINDOW (ANTI-CRASH)
 // ==========================================
-window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
-window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
-window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
-window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
+// Global UI & Auth
+window.showModal = showModal; 
+window.closeModal = closeModal; 
+window.toggleMainMenu = toggleMainMenu;
+window.masukSistem = masukSistem; 
+window.keluarSistem = keluarSistem; 
+window.generateName = generateName;
+
+// Global Shopee
+window.openShopeeList = openShopeeList; 
+window.formatRupiah = formatRupiah; 
+window.openShopeeModal = openShopeeModal;
+window.saveShopee = saveShopee; 
+window.deleteShopee = deleteShopee; 
+window.copyShopeeLink = copyShopeeLink;
 window.actionRandomLink = actionRandomLink; 
-
-// Pendaftaran Aman untuk Note (Cegah Layar Blank/Crash)
-if (typeof openNoteList !== 'undefined') window.openNoteList = openNoteList;
-if (typeof openNoteModal !== 'undefined') window.openNoteModal = openNoteModal;
-if (typeof saveNote !== 'undefined') window.saveNote = saveNote;
-if (typeof editNote !== 'undefined') window.editNote = editNote;
-if (typeof deleteNote !== 'undefined') window.deleteNote = deleteNote;
-if (typeof copyNoteContent !== 'undefined') window.copyNoteContent = copyNoteContent;
-
-window.changeSmsServer = changeSmsServer;
-window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
+
+// Global Note (Didaftarkan secara langsung agar terdeteksi HTML)
+window.openNoteList = openNoteList;
+window.openNoteModal = openNoteModal;
+window.saveNote = saveNote;
+window.editNote = editNote;
+window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent;
+
+// Global SMS
+window.changeSmsServer = changeSmsServer;
+window.executeBuySms = executeBuySms; 
+window.copyPhoneNumber = copyPhoneNumber; 
+window.actSms = actSms;
 
 
 // ==========================================
