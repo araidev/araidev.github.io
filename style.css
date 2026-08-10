@@ -32,7 +32,16 @@ body {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch; /* Biar scroll HP mulus */
     padding: 15px;
-    padding-bottom: 100px; /* Ruang agar tombol bawah tidak menabrak konten */
+}
+
+/* Jarak bawah normal untuk Dashboard 1 (Karena tidak ada tombol melayang) */
+#dash-1 {
+    padding-bottom: 25px;
+}
+
+/* Jarak bawah ekstra untuk Dashboard 2 (Agar teks tidak tertutup 2 tombol melayang) */
+#dash-2 {
+    padding-bottom: 150px; 
 }
 
 .single-page-container {
