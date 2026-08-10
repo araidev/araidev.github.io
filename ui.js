@@ -1,4 +1,4 @@
-export function showModal(title, msg, type='confirm') {
+ export function showModal(title, msg, type='confirm') {
     return new Promise(resolve => {
         const ov = document.getElementById('universal-modal');
         document.getElementById('u-modal-title').innerText = title;
