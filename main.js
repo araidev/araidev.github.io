@@ -1,29 +1,48 @@
-import { showModal, closeModal, toggleMainMenu } from './ui.js';
-import { db, masukSistem, keluarSistem, auth } from './firebase.js';
-import { generateName } from './randomName.js';
-import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
-import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
-import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
+import * as UI from './ui.js';
+import * as FB from './firebase.js';
+import * as Name from './randomName.js';
+import * as Shopee from './shopee.js';
+import * as SMS from './sms.js';
+import * as Note from './note.js';
 
 // ==========================================
-// PENDAFTARAN WINDOW
+// PENDAFTARAN WINDOW (ANTI-CRASH)
 // ==========================================
-window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
-window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
-window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
-window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
-window.actionRandomLink = actionRandomLink; 
+// UI
+window.showModal = UI.showModal; 
+window.closeModal = UI.closeModal; 
+window.toggleMainMenu = UI.toggleMainMenu;
 
-window.openNoteList = openNoteList; 
-window.openNoteModal = openNoteModal;
-window.saveNote = saveNote; 
-window.editNote = editNote; 
-window.deleteNote = deleteNote;
-window.copyNoteContent = copyNoteContent;
+// Firebase
+window.masukSistem = FB.masukSistem; 
+window.keluarSistem = FB.keluarSistem;
 
-window.changeSmsServer = changeSmsServer;
-window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
-window.togglePinShopee = togglePinShopee;
+// Nama Random
+window.generateName = Name.generateName;
+
+// Shopee
+window.openShopeeList = Shopee.openShopeeList; 
+window.formatRupiah = Shopee.formatRupiah; 
+window.openShopeeModal = Shopee.openShopeeModal; 
+window.saveShopee = Shopee.saveShopee; 
+window.deleteShopee = Shopee.deleteShopee; 
+window.copyShopeeLink = Shopee.copyShopeeLink; 
+window.actionRandomLink = Shopee.actionRandomLink; 
+window.togglePinShopee = Shopee.togglePinShopee;
+
+// SMS
+window.changeSmsServer = SMS.changeSmsServer;
+window.executeBuySms = SMS.executeBuySms; 
+window.copyPhoneNumber = SMS.copyPhoneNumber; 
+window.actSms = SMS.actSms;
+
+// Note
+window.openNoteList = Note.openNoteList; 
+window.openNoteModal = Note.openNoteModal;
+window.saveNote = Note.saveNote; 
+window.editNote = Note.editNote; 
+window.deleteNote = Note.deleteNote;
+window.copyNoteContent = Note.copyNoteContent;
 
 // ==========================================
 // LOGIKA MULTI-DASHBOARD & SWIPE
@@ -112,7 +131,7 @@ function initEmailCounter() {
 
     async function handleEmailCount(direction, btnElement) {
         let base = localStorage.getItem('xurel_base_email');
-        if (!base) return showModal("Peringatan", "Silakan setting Base Email (Edit) terlebih dahulu.", "alert");
+        if (!base) return UI.showModal("Peringatan", "Silakan setting Base Email (Edit) terlebih dahulu.", "alert");
 
         let endCount = parseInt(localStorage.getItem('xurel_email_end') || 100);
         let startCount = parseInt(localStorage.getItem('xurel_email_start') || 1);
@@ -120,11 +139,11 @@ function initEmailCounter() {
         let indexStr = localStorage.getItem('xurel_email_index');
         let index = indexStr ? parseInt(indexStr) : (startCount - 1);
 
-        if (direction === 1) { // NEXT
-            if (index >= endCount) return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
+        if (direction === 1) { 
+            if (index >= endCount) return UI.showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
             index++;
-        } else if (direction === -1) { // PREV
-            if (index <= startCount) return showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
+        } else if (direction === -1) { 
+            if (index <= startCount) return UI.showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
             index--;
         }
 
@@ -193,10 +212,10 @@ window.checkMyIP = async function() {
         let isUsed = false;
         try {
             const now = Date.now();
-            const snap = await db.ref('ip_logs').once('value');
+            const snap = await FB.db.ref('ip_logs').once('value');
             if (snap.exists()) {
                 snap.forEach(child => {
-                    if (now - child.val().timestamp > 7 * 24 * 60 * 60 * 1000) db.ref('ip_logs/'+child.key).remove();
+                    if (now - child.val().timestamp > 7 * 24 * 60 * 60 * 1000) FB.db.ref('ip_logs/'+child.key).remove();
                     else if (child.val().ip === myIP) isUsed = true;
                 });
             }
@@ -223,12 +242,12 @@ window.saveMyIP = async function() {
     btnSave.disabled = true; btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
     try {
-        await db.ref('ip_logs').push({ ip: currentFetchedIP, timestamp: Date.now() });
+        await FB.db.ref('ip_logs').push({ ip: currentFetchedIP, timestamp: Date.now() });
         ipInput.value = `${currentFetchedIP} - TERCATAT`;
         ipInput.style.color = "var(--fb-blue)"; 
         setTimeout(() => { btnSave.style.display = "none"; btnSave.disabled = false; btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>'; }, 1000);
     } catch(e) {
-        showModal("Gagal", "Gagal menyimpan. Pastikan Anda sudah Login Admin.", "alert");
+        UI.showModal("Gagal", "Gagal menyimpan. Pastikan Anda sudah Login Admin.", "alert");
         btnSave.disabled = false; btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
     }
 };
@@ -236,14 +255,16 @@ window.saveMyIP = async function() {
 // ==========================================
 // KONTROL LOGIN & AUTO CAPS
 // ==========================================
-auth.onAuthStateChanged(user => {
-    const isAdmin = !!user;
-    const formLogin = document.getElementById('login-form');
-    const formLogout = document.getElementById('logout-form');
-    if(formLogin) formLogin.classList.toggle('hidden', isAdmin);
-    if(formLogout) formLogout.classList.toggle('hidden', !isAdmin);
-    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
-});
+if (FB.auth) {
+    FB.auth.onAuthStateChanged(user => {
+        const isAdmin = !!user;
+        const formLogin = document.getElementById('login-form');
+        const formLogout = document.getElementById('logout-form');
+        if(formLogin) formLogin.classList.toggle('hidden', isAdmin);
+        if(formLogout) formLogout.classList.toggle('hidden', !isAdmin);
+        window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
+    });
+}
 
 document.addEventListener('click', function(e) {
     const popup = document.getElementById('main-menu-popup');
