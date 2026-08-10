@@ -519,13 +519,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
         
         pollSms(); updateSmsBal();
-        
-        // --- PERBAIKAN TARGET AUTO SCROLL ---
-        const dashSms = document.getElementById('dash-1');
-        if (dashSms) {
-            dashSms.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
         showModal("Gagal", j.error?.message || "Stok Sedang Kosong.", "alert");
     }
