@@ -85,8 +85,8 @@ body {
 .hidden { display: none !important; }
 
 /* ================= CSS ACTION TOOLS & SHOPEE ================= */
-.action-row { display: flex; gap: 10px; width: 100%; }
-.action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.action-row { display: flex; gap: 8px; width: 100%; }
+.action-row button { flex: 1; padding: 12px 8px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; }
 
 /* ================= CSS NOTES ================= */
 .notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
@@ -165,10 +165,14 @@ body {
     .nav-btn { width: 65px; font-size: 18px; }
     .nav-tabs-center { gap: 2px; }
     .nav-left, .nav-right { width: 40px; }
-    .action-row { flex-direction: column; } /* Agar tombol acak & next tidak berdesakan di HP */
-    .action-row button { width: 100%; }
+    
+    /* Tombol aksi tetap menyamping, hanya font dikecilkan sedikit agar muat di HP kecil */
+    .action-row button { font-size: 12px; padding: 12px 5px; }
+
     .notes-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .fab-left, .fab-right { width: 50px; height: 50px; font-size: 20px; bottom: 20px; } /* Sesuaikan ukuran FAB di HP */
+    
+    /* Penyesuaian ukuran FAB di layar HP */
+    .fab-left, .fab-right { width: 50px; height: 50px; font-size: 20px; bottom: 20px; } 
     .fab-left { left: 20px; }
     .fab-right { right: 20px; }
 }
