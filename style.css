@@ -34,14 +34,13 @@ body {
     padding: 15px;
 }
 
-/* Jarak bawah normal untuk Dashboard 1 (Karena tidak ada tombol melayang) */
-#dash-1 {
-    padding-bottom: 25px;
+/* Memaksa jarak bawah agar pas dan tidak kelebihan ruang kosong */
+.dashboard-page#dash-1 {
+    padding-bottom: 25px !important;
 }
 
-/* Jarak bawah ekstra untuk Dashboard 2 (Agar teks tidak tertutup 2 tombol melayang) */
-#dash-2 {
-    padding-bottom: 150px; 
+.dashboard-page#dash-2 {
+    padding-bottom: 150px !important; 
 }
 
 .single-page-container {
@@ -95,7 +94,7 @@ body {
 .action-row { display: flex; gap: 10px; width: 100%; }
 .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-/* ================= CSS NOTES (A2) ================= */
+/* ================= CSS NOTES ================= */
 .notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
 .note-tab { border: none; background: transparent; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fb-muted); }
 .note-tab.active { background: white; color: var(--fb-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -107,6 +106,7 @@ body {
 .note-date { position: absolute; bottom: 10px; left: 10px; font-size: 8.5px; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; color: #888; font-weight: 600; border: 1px solid #eee; text-transform: uppercase; }
 
 /* ================= FAB (TOMBOL MELAYANG) ================= */
+/* Tombol Note diletakkan di atas Tombol Shopee */
 .fab-right-up { 
     position: fixed; bottom: 85px; right: 20px; z-index: 1000; 
     width: 55px; height: 55px; border-radius: 50%; 
@@ -117,6 +117,7 @@ body {
 .fab-right-up:active { transform: scale(0.9); }
 .fab-right-up.hidden { display: none !important; pointer-events: none; }
 
+/* Tombol Shopee diletakkan paling bawah */
 .fab-right { 
     position: fixed; bottom: 20px; right: 20px; z-index: 1000; 
     width: 55px; height: 55px; border-radius: 50%; 
