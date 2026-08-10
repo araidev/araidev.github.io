@@ -4,8 +4,8 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
-// === IMPORT FILE NOTE.JS ===
-import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
+// === JIKA ADA FILE NOTE.JS, IMPORT DI SINI (Contoh) ===
+// import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
 
 // ==========================================
 // PENDAFTARAN WINDOW (ANTI-CRASH)
@@ -27,6 +27,7 @@ if (typeof copyNoteContent !== 'undefined') window.copyNoteContent = copyNoteCon
 window.changeSmsServer = changeSmsServer;
 window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
+
 
 // ==========================================
 // LOGIKA MULTI-DASHBOARD & SWIPE
