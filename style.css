@@ -98,14 +98,15 @@ body {
 .note-date { position: absolute; bottom: 10px; left: 10px; font-size: 8.5px; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; color: #888; font-weight: 600; border: 1px solid #eee; text-transform: uppercase; }
 
 /* ================= FAB (TOMBOL MELAYANG) ================= */
-.fab-left { 
-    position: fixed; bottom: 20px; left: 20px; z-index: 1000; 
+.fab-right-up { 
+    position: fixed; bottom: 85px; right: 20px; z-index: 1000; 
     width: 55px; height: 55px; border-radius: 50%; 
     background: var(--fb-blue); color: white; display: flex; 
     align-items: center; justify-content: center; font-size: 24px; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; 
 }
-.fab-left:active { transform: scale(0.9); }
+.fab-right-up:active { transform: scale(0.9); }
+.fab-right-up.hidden { display: none !important; pointer-events: none; }
 
 .fab-right { 
     position: fixed; bottom: 20px; right: 20px; z-index: 1000; 
