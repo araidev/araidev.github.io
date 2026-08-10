@@ -1,194 +1,169 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xurel - Multi Dashboard</title>
-    
-    <link rel="stylesheet" href="./style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
-</head>
-<body>
+/* ================= GLOBAL STYLES ================= */
+:root {
+    --fb-bg: #f0f2f5; --fb-card: #ffffff; --fb-text: #050505;
+    --fb-muted: #65676B; --fb-blue: #1877f2; --fb-border: #ccd0d5;
+    --fb-hover: #e4e6eb; --fb-red: #e41e3f; --fb-green: #31a24c;
+}
 
-    <nav class="top-nav">
-        <!-- Tab Indikator Dashboard -->
-        <div class="nav-tabs-center" style="margin-left: 0;">
-            <button onclick="switchDashboard(1)" id="tab-1" class="nav-btn active" style="width: 50px;" title="Dashboard SMS"><i class="fa-solid fa-message"></i></button>
-            <button onclick="switchDashboard(2)" id="tab-2" class="nav-btn" style="width: 50px;" title="Dashboard Tools"><i class="fa-solid fa-toolbox"></i></button>
-        </div>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+input, textarea { user-select: auto !important; pointer-events: auto !important; }
 
-        <div class="nav-right">
-            <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
-            <div id="main-menu-popup" class="global-login">
-                <div id="login-form">
-                    <div style="font-weight: bold; margin-bottom: 15px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">SISTEM ADMIN</div>
-                    <input type="email" id="global-email" class="form-input" placeholder="Email">
-                    <input type="password" id="global-pass" class="form-input" placeholder="Password">
-                    <button class="btn-primary" onclick="masukSistem()">Masuk</button>
-                </div>
-                <div id="logout-form" class="hidden">
-                    <p style="text-align: center; font-weight: bold; color: var(--fb-green); margin-bottom: 15px;">ADMIN TERVERIFIKASI</p>
-                    <button class="btn-danger" onclick="keluarSistem()">Keluar (Logout)</button>
-                </div>
-            </div>
-        </div>
-    </nav>
+/* ================= MULTI-DASHBOARD LAYOUT ================= */
+body {
+    background-color: var(--fb-bg);
+    color: var(--fb-text);
+    overflow: hidden; /* Matikan scroll utama */
+    padding-top: 60px; /* Ruang untuk navbar */
+    padding-bottom: 0;
+}
 
-    <!-- WRAPPER MULTI-DASHBOARD -->
-    <div class="dashboard-slider" id="main-slider">
-        
-        <!-- ================= DASHBOARD 1 (SMS) ================= -->
-        <div class="dashboard-page" id="dash-1">
-            <div class="single-page-container">
-                <div class="section-card sms-wrapper" style="padding: 0;">
-                    <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
-                            <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
-                                <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
-                            </button>
-                        </div>
-                        <div class="bal-val" id="sms-balance">Rp 0</div>
-                    </div>
-                    <div style="padding: 15px;">
-                        <div id="sms-active-orders"></div>
-                        <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
-                        <div class="price-list" id="sms-prices">
-                            <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.dashboard-slider {
+    display: flex;
+    width: 200vw; /* 2 Layar Penuh */
+    height: calc(100vh - 60px);
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
+}
 
-        <!-- ================= DASHBOARD 2 (TOOLS & SHOPEE) ================= -->
-        <div class="dashboard-page" id="dash-2">
-            <div class="single-page-container">
-                <!-- IP & Count Email -->
-                <div class="section-card" style="padding: 10px; display: flex; gap: 8px; align-items: center;">
-                    <button id="btn-prev-email" style="background: var(--fb-muted); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;"><i class="fa-solid fa-chevron-left"></i></button>
-                    <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px;">
-                    <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">IP</button>
-                    <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i></button>
-                </div>
+.dashboard-page {
+    width: 100vw; /* Lebar pas 1 layar */
+    height: 100%; /* Tinggi mentok ke layar bawah */
+    overflow-y: auto; /* Scroll independen */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; /* Biar scroll HP mulus */
+    padding: 15px;
+    padding-bottom: 100px; /* Ruang agar tombol bawah tidak menabrak konten */
+}
 
-                <!-- Aksi (Acak, Next, Edit) -->
-                <div class="section-card action-row" style="padding: 10px;">
-                    <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
-                        <i class="fa-solid fa-shuffle"></i> Acak Data
-                    </button>
-                    <button id="btn-next-email" style="background: var(--fb-green); flex: 1;">
-                        Next <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                    <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
-                        <i class="fa-solid fa-pen"></i> Edit
-                    </button>
-                </div>
+.single-page-container {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
 
-                <!-- List Shopee -->
-                <h4 style="color: var(--fb-muted); font-size: 13px; margin-top: 5px;">DAFTAR LINK SHOPEE</h4>
-                <div id="shopee-container" style="display: flex; flex-direction: column;"></div>
-            </div>
-        </div>
+/* ================= TOP NAVIGATION ================= */
+.top-nav {
+    position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+    background: var(--fb-card); box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 1000;
+}
 
-    </div>
+.menu-btn {
+    width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent; 
+    color: var(--fb-muted); font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s;
+}
+.menu-btn:hover { background: var(--fb-hover); }
 
-    <!-- ================= TOMBOL MELAYANG (FAB) ================= -->
-    <!-- Tombol Note (Selalu tampil di Kiri Bawah) -->
-    <button id="fab-note" class="fab-left" onclick="openNoteList()"><i class="fa-solid fa-note-sticky"></i></button>
-    
-    <!-- Tombol Tambah Shopee (Tampil di Kanan Bawah, HANYA di Dash 2) -->
-    <button id="fab-shopee" class="fab-right hidden" onclick="openShopeeModal()"><i class="fas fa-plus"></i></button>
+/* Dropdown User */
+.global-login {
+    display: none; position: absolute; top: 50px; right: 15px; background: var(--fb-card); 
+    padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 260px; border: 1px solid var(--fb-border); z-index: 1001;
+}
+.global-login.active { display: block; animation: fadeIn 0.2s ease; }
 
+.form-input { width: 100%; padding: 12px 10px; margin-bottom: 10px; border: 1px solid var(--fb-border); border-radius: 6px; outline: none; font-size: 14px;}
+.btn-primary { width: 100%; padding: 12px 10px; background: var(--fb-blue); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+.btn-primary:hover { background: #1558b0; }
+.btn-danger { width: 100%; padding: 12px 10px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
 
-    <!-- ================= MODAL & POPUP ================= -->
-    <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom:15px;">Setting Counter Email</h3>
-            <input type="text" id="cfg-email" class="form-input" placeholder="Base Email (misal: aku@upil.com)">
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="cfg-start" class="form-input" placeholder="Start (misal: 1)">
-                <input type="number" id="cfg-end" class="form-input" placeholder="End (misal: 100)">
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-email-config')">BATAL</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0;" onclick="saveEmailConfig()">SIMPAN</button>
-            </div>
-        </div>
-    </div>
+.nav-tabs-center { display: flex; height: 100%; gap: 10px; }
+.nav-btn {
+    width: 90px; height: 100%; border: none; background: transparent; color: var(--fb-muted); font-size: 22px; 
+    cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; display: flex; justify-content: center; align-items: center;
+}
+.nav-btn:hover { background: var(--fb-hover); border-radius: 8px; margin: 5px 0; height: calc(100% - 10px); }
+.nav-btn.active { color: var(--fb-blue); border-bottom-color: var(--fb-blue); border-radius: 0; margin: 0; height: 100%; background: transparent; }
+.nav-right { width: 50px; display: flex; justify-content: flex-end; }
 
-    <div id="modal-shopee-form" class="modal-overlay" onclick="closeModal('modal-shopee-form')">
-        <div class="modal-box" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
-            <h3 id="modal-shopee-title" style="margin-bottom:15px; font-size: 16px;">Edit Link Shopee</h3>
-            <input type="hidden" id="shopee-edit-key">
-            <input type="text" id="shopee-title" class="form-input" placeholder="Nama Produk">
-            <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
-            <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
-            <select id="shopee-status" class="form-input">
-                <option value="">-- Tanpa Label --</option>
-                <option value="STAR">Star</option>
-                <option value="MALL">Mall</option>
-            </select>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 10px;" onclick="closeModal('modal-shopee-form')">BATAL</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 10px;" onclick="saveShopee()">SIMPAN</button>
-            </div>
-        </div>
-    </div>
+/* ================= CARDS & UTILS ================= */
+.section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.content-card { background: var(--fb-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; position: relative; z-index: 2; }
+.hidden { display: none !important; }
 
-    <div id="universal-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
-            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
-            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
-        </div>
-    </div>
+/* ================= CSS SHOPEE & TOOLS ================= */
+.action-row { display: flex; gap: 10px; width: 100%; }
+.action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-    <div id="modal-note-list" class="modal-overlay" onclick="closeModal('modal-note-list')">
-        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px;" onclick="event.stopPropagation()">
-            <div id="note-stats-container"></div>
-            <div id="notes-grid" class="notes-grid" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
-            <div style="display: flex; gap: 10px; margin-top: auto;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 12px;" onclick="closeModal('modal-note-list')">TUTUP</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
-            </div>
-        </div>
-    </div>
+/* ================= CSS NOTES (A2) ================= */
+.notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
+.note-tab { border: none; background: transparent; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fb-muted); }
+.note-tab.active { background: white; color: var(--fb-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.note-card { background: white; padding: 15px; border-radius: 12px; border: 1px solid var(--fb-border); cursor: pointer; height: 110px; position: relative; }
+.note-card:hover { background: #f8f9fa; }
+.note-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-preview { font-size: 11px; color: var(--fb-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.note-date { position: absolute; bottom: 10px; left: 10px; font-size: 8.5px; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; color: #888; font-weight: 600; border: 1px solid #eee; text-transform: uppercase; }
 
-    <div id="modal-note-form" class="modal-overlay" onclick="closeModal('modal-note-form')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <h3 style="margin-bottom:15px;">Catatan Baru</h3>
-            <input type="text" id="note-title" class="form-input" placeholder="Judul (Kosongkan utk auto-number)">
-            <textarea id="note-content" class="form-input" style="min-height: 150px; resize: vertical;" placeholder="Tulis sesuatu..."></textarea>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-note-form')">BATAL</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0;" onclick="saveNote()">SIMPAN</button>
-            </div>
-        </div>
-    </div>
+/* ================= FAB (TOMBOL MELAYANG) ================= */
+.fab-left { 
+    position: fixed; bottom: 20px; left: 20px; z-index: 1000; 
+    width: 55px; height: 55px; border-radius: 50%; 
+    background: var(--fb-blue); color: white; display: flex; 
+    align-items: center; justify-content: center; font-size: 24px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; 
+}
+.fab-left:active { transform: scale(0.9); }
 
-    <div id="modal-note-view" class="modal-overlay" onclick="closeModal('modal-note-view')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span id="view-tag" style="font-size:10px; font-weight:bold; background:#eee; padding:4px 10px; border-radius:20px; color:#555"></span>
-                <i class="fa-solid fa-times" style="cursor:pointer; color:#888; font-size:18px;" onclick="closeModal('modal-note-view')"></i>
-            </div>
-            <h2 id="view-title" style="margin-bottom:15px; font-weight:800; font-size:20px;"></h2>
-            <div id="view-content" style="background:#f8f9fa; padding:15px; border-radius:8px; min-height:150px; max-height:50vh; overflow-y:auto; white-space:pre-wrap; word-wrap:break-word; font-size:14px;"></div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="m-btn btn-primary" style="flex:1; margin-left:0; padding:12px;" onclick="editNote()"><i class="fas fa-edit"></i> Edit</button>
-                <button class="m-btn btn-primary" style="flex:1; background:#f39c12; margin-left:0; padding:12px;" onclick="copyNoteContent(this)"><i class="fas fa-copy"></i> Salin</button>
-                <button class="m-btn btn-danger" style="width:50px; margin-left:0; padding:12px;" onclick="deleteNote()"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    </div>
+.fab-right { 
+    position: fixed; bottom: 20px; right: 20px; z-index: 1000; 
+    width: 55px; height: 55px; border-radius: 50%; 
+    background: var(--fb-red); color: white; display: flex; 
+    align-items: center; justify-content: center; font-size: 24px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; 
+}
+.fab-right:active { transform: scale(0.9); }
+.fab-right.hidden { display: none !important; pointer-events: none; }
 
-    <script type="module" src="./main.js"></script>
-</body>
-</html>
+/* ================= CSS SMS ================= */
+.sms-wrapper { --sms-grn: var(--fb-green); --sms-blu: var(--fb-blue); --sms-org: var(--fb-red); }
+.sms-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.sms-select { padding: 8px; border-radius: 8px; border: 1px solid var(--fb-border); font-weight: bold; outline: none; }
+.sms-select:disabled { opacity: 0.6; cursor: not-allowed; }
+.bal-val { font-weight: bold; color: var(--sms-grn); font-size: 16px; background: #e6f4ea; padding: 5px 12px; border-radius: 15px; }
+.price-list { border: 1px solid var(--fb-border); border-radius: 12px; overflow: hidden; background: white; }
+.price-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--fb-border); cursor: pointer; }
+.price-item:hover { background: #f8f9fa; }
+.price-item:last-child { border-bottom: none; }
+.order-card { border: 1px solid var(--fb-border); background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+.phone-box { 
+    font-size: 24px; font-weight: bold; font-family: monospace; cursor: pointer; 
+    padding: 10px 0; color: var(--fb-text); display: flex; align-items: center; justify-content: flex-start; gap: 10px; 
+    width: 100%;
+}
+.phone-box i { font-size: 20px; transition: color 0.2s ease; }
+
+.btn-grid-4 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sms-btn { flex: 1 1 calc(50% - 8px); padding: 12px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer; border: 1px solid var(--fb-border); background: var(--fb-bg); color: var(--fb-muted); text-transform: uppercase; text-align: center; transition: 0.2s;}
+.sms-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sms-btn:not(:disabled):hover { background: var(--fb-hover); color: var(--fb-text); }
+
+.loader-bars { display: flex; align-items: center; justify-content: center; gap: 4px; height: 20px;}
+.loader-bars span { display: block; width: 4px; height: 100%; background-color: var(--fb-muted); border-radius: 2px; animation: bounceBar 1.2s infinite ease-in-out; }
+.loader-bars span:nth-child(1) { animation-delay: -0.24s; }
+.loader-bars span:nth-child(2) { animation-delay: -0.12s; }
+.loader-bars span:nth-child(3) { animation-delay: 0s; }
+@keyframes bounceBar { 0%, 40%, 100% { transform: scaleY(0.4); opacity: 0.5; } 20% { transform: scaleY(1); opacity: 1; background-color: var(--fb-blue); } }
+
+/* ================= MODAL UNIVERSAL & NOTES ================= */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
+.modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+#universal-modal { z-index: 9999 !important; background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
+.modal-box { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.m-btn { padding: 14px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; border: none; margin-left: 8px; transition: 0.2s; text-transform: uppercase; }
+.m-btn:hover { opacity: 0.8; }
+
+/* ================= RESPONSIVE LAYOUT (KHUSUS HP) ================= */
+@media screen and (max-width: 600px) {
+    .nav-btn { width: 65px; font-size: 18px; }
+    .nav-tabs-center { gap: 2px; }
+    .nav-left, .nav-right { width: 40px; }
+    .generate-box { flex-direction: column; }
+    .generate-box button { width: 100%; }
+    .shopee-grid { grid-template-columns: 1fr; }
+    .notes-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
