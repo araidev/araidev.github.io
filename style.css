@@ -12,27 +12,28 @@ input, textarea { user-select: auto !important; pointer-events: auto !important;
 body {
     background-color: var(--fb-bg);
     color: var(--fb-text);
-    overflow: hidden; /* Matikan scroll utama */
-    padding-top: 60px; /* Ruang untuk navbar */
+    overflow: hidden; /* Matikan scroll utama layar agar tidak bertabrakan */
+    padding-top: 60px; /* Ruang untuk navbar atas */
     padding-bottom: 0;
 }
 
 .dashboard-slider {
     display: flex;
-    width: 200vw; /* 2 Layar Penuh */
+    width: 200vw; /* Lebar 2 Layar Penuh (100vw per halaman) */
     height: calc(100vh - 60px);
     transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
     will-change: transform;
 }
 
 .dashboard-page {
-    width: 100vw; /* Lebar pas 1 layar */
+    width: 100vw; /* Lebar pas 1 layar penuh */
     height: 100%; /* Tinggi mentok ke layar bawah */
-    overflow-y: auto; /* Scroll independen */
+    flex-shrink: 0; /* KUNCI PENTING: Mencegah layar mengecil/stuck */
+    overflow-y: auto; /* Scroll vertikal independen per halaman */
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch; /* Biar scroll HP mulus */
+    -webkit-overflow-scrolling: touch; /* Biar scroll di HP terasa mulus */
     padding: 15px;
-    padding-bottom: 100px; /* Ruang agar tombol bawah tidak menabrak konten */
+    padding-bottom: 100px; /* Ruang napas agar konten terbawah tidak tertutup FAB */
 }
 
 .single-page-container {
@@ -56,7 +57,7 @@ body {
 }
 .menu-btn:hover { background: var(--fb-hover); }
 
-/* Dropdown User */
+/* Dropdown Login Admin */
 .global-login {
     display: none; position: absolute; top: 50px; right: 15px; background: var(--fb-card); 
     padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 260px; border: 1px solid var(--fb-border); z-index: 1001;
@@ -68,6 +69,7 @@ body {
 .btn-primary:hover { background: #1558b0; }
 .btn-danger { width: 100%; padding: 12px 10px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
 
+/* Tab Navigasi Tengah */
 .nav-tabs-center { display: flex; height: 100%; gap: 10px; }
 .nav-btn {
     width: 90px; height: 100%; border: none; background: transparent; color: var(--fb-muted); font-size: 22px; 
@@ -82,11 +84,11 @@ body {
 .content-card { background: var(--fb-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; position: relative; z-index: 2; }
 .hidden { display: none !important; }
 
-/* ================= CSS SHOPEE & TOOLS ================= */
+/* ================= CSS ACTION TOOLS & SHOPEE ================= */
 .action-row { display: flex; gap: 10px; width: 100%; }
 .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-/* ================= CSS NOTES (A2) ================= */
+/* ================= CSS NOTES ================= */
 .notes-subnav { display: flex; gap: 10px; margin-bottom: 15px; background: #e4e6eb; padding: 5px; border-radius: 20px; width: fit-content; }
 .note-tab { border: none; background: transparent; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fb-muted); }
 .note-tab.active { background: white; color: var(--fb-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -96,23 +98,25 @@ body {
 .note-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note-preview { font-size: 11px; color: var(--fb-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .note-date { position: absolute; bottom: 10px; left: 10px; font-size: 8.5px; background: #f8f9fa; padding: 2px 6px; border-radius: 4px; color: #888; font-weight: 600; border: 1px solid #eee; text-transform: uppercase; }
+.text-link { color: var(--fb-blue); text-decoration: none; font-weight: 500; }
+.text-link:hover { text-decoration: underline; color: #1558b0; }
 
 /* ================= FAB (TOMBOL MELAYANG) ================= */
 .fab-left { 
-    position: fixed; bottom: 20px; left: 20px; z-index: 1000; 
-    width: 55px; height: 55px; border-radius: 50%; 
+    position: fixed; bottom: 25px; left: 25px; z-index: 1500; 
+    width: 60px; height: 60px; border-radius: 50%; 
     background: var(--fb-blue); color: white; display: flex; 
     align-items: center; justify-content: center; font-size: 24px; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; 
+    box-shadow: 0 4px 10px rgba(24,119,242,0.4); cursor: pointer; border: none; transition: 0.2s; 
 }
 .fab-left:active { transform: scale(0.9); }
 
 .fab-right { 
-    position: fixed; bottom: 20px; right: 20px; z-index: 1000; 
-    width: 55px; height: 55px; border-radius: 50%; 
+    position: fixed; bottom: 25px; right: 25px; z-index: 1500; 
+    width: 60px; height: 60px; border-radius: 50%; 
     background: var(--fb-red); color: white; display: flex; 
     align-items: center; justify-content: center; font-size: 24px; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; 
+    box-shadow: 0 4px 10px rgba(228,30,63,0.4); cursor: pointer; border: none; transition: 0.2s; 
 }
 .fab-right:active { transform: scale(0.9); }
 .fab-right.hidden { display: none !important; pointer-events: none; }
@@ -148,8 +152,8 @@ body {
 .loader-bars span:nth-child(3) { animation-delay: 0s; }
 @keyframes bounceBar { 0%, 40%, 100% { transform: scaleY(0.4); opacity: 0.5; } 20% { transform: scaleY(1); opacity: 1; background-color: var(--fb-blue); } }
 
-/* ================= MODAL UNIVERSAL & NOTES ================= */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
+/* ================= MODAL UNIVERSAL & POPUPS ================= */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; }
 .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
 #universal-modal { z-index: 9999 !important; background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
 .modal-box { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
@@ -161,9 +165,12 @@ body {
     .nav-btn { width: 65px; font-size: 18px; }
     .nav-tabs-center { gap: 2px; }
     .nav-left, .nav-right { width: 40px; }
-    .generate-box { flex-direction: column; }
-    .generate-box button { width: 100%; }
-    .shopee-grid { grid-template-columns: 1fr; }
+    .action-row { flex-direction: column; } /* Agar tombol acak & next tidak berdesakan di HP */
+    .action-row button { width: 100%; }
     .notes-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .fab-left, .fab-right { width: 50px; height: 50px; font-size: 20px; bottom: 20px; } /* Sesuaikan ukuran FAB di HP */
+    .fab-left { left: 20px; }
+    .fab-right { right: 20px; }
 }
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
