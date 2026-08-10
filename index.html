@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xurel - Multi Dashboard</title>
+    <title>Xurel - Single Dashboard</title>
     
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -13,15 +13,25 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
+
+    <style>
+        body { padding-bottom: 80px; }
+        .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .action-row { display: flex; gap: 10px; width: 100%; }
+        .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
+        .fab-left:active { transform: scale(0.9); }
+    </style>
 </head>
 <body>
 
     <nav class="top-nav">
-        <!-- Tab Indikator Dashboard -->
-        <div class="nav-tabs-center" style="margin-left: 0;">
-            <button onclick="switchDashboard(1)" id="tab-1" class="nav-btn active" style="width: 50px;" title="Dashboard SMS"><i class="fa-solid fa-message"></i></button>
-            <button onclick="switchDashboard(2)" id="tab-2" class="nav-btn" style="width: 50px;" title="Dashboard Tools"><i class="fa-solid fa-toolbox"></i></button>
-        </div>
+        <div style="width: 40px;"></div>
+        
+        <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: transparent; border: none; width: 40px; height: 40px; border-radius: 50%; color: var(--fb-muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+            <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s;"></i>
+        </button>
 
         <div class="nav-right">
             <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
@@ -40,45 +50,20 @@
         </div>
     </nav>
 
-    <!-- WRAPPER MULTI-DASHBOARD -->
-    <div class="dashboard-slider" id="main-slider">
+    <div class="single-page-container">
         
-        <!-- ================= DASHBOARD 1 (SMS) ================= -->
-        <div class="dashboard-page" id="dash-1">
-            <div class="single-page-container">
-                <div class="section-card sms-wrapper" style="padding: 0;">
-                    <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
-                            <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
-                                <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
-                            </button>
-                        </div>
-                        <div class="bal-val" id="sms-balance">Rp 0</div>
-                    </div>
-                    <div style="padding: 15px;">
-                        <div id="sms-active-orders"></div>
-                        <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
-                        <div class="price-list" id="sms-prices">
-                            <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= DASHBOARD 2 (TOOLS & SHOPEE) ================= -->
-        <div class="dashboard-page" id="dash-2">
-            <div class="single-page-container">
-                <!-- IP & Count Email -->
+        <div id="top-drawer" class="top-drawer-content">
+            <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 5px;">
+                
                 <div class="section-card" style="padding: 10px; display: flex; gap: 8px; align-items: center;">
                     <button id="btn-prev-email" style="background: var(--fb-muted); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;"><i class="fa-solid fa-chevron-left"></i></button>
+                    
                     <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px;">
+                    
                     <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">IP</button>
                     <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i></button>
                 </div>
 
-                <!-- Aksi (Acak, Next, Edit) -->
                 <div class="section-card action-row" style="padding: 10px;">
                     <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
                         <i class="fa-solid fa-shuffle"></i> Acak Data
@@ -91,25 +76,56 @@
                     </button>
                 </div>
 
-                <!-- List Shopee -->
-                <h4 style="color: var(--fb-muted); font-size: 13px; margin-top: 5px;">DAFTAR LINK SHOPEE</h4>
-                <div id="shopee-container" style="display: flex; flex-direction: column;"></div>
+                <div class="section-card" style="padding: 10px;">
+                    <button onclick="openShopeeList()" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        <i class="fa-solid fa-store"></i> Buka Menu Shopee
+                    </button>
+                </div>
+
             </div>
         </div>
 
-    </div> <!-- AKHIR DARI DASHBOARD SLIDER -->
+        <div class="section-card sms-wrapper" style="padding: 0;">
+            <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
+                    <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
+                        <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
+                    </button>
+                </div>
+                <div class="bal-val" id="sms-balance">Rp 0</div>
+            </div>
+            <div style="padding: 15px;">
+                <div id="sms-active-orders"></div>
+                <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
+                <div class="price-list" id="sms-prices">
+                    <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-
-    <!-- ================= TOMBOL MELAYANG (FAB) BERADA DI LUAR SLIDER ================= -->
-    
-    <!-- Tombol Note (Selalu tampil di Kiri Bawah) -->
     <button id="fab-note" class="fab-left" onclick="openNoteList()"><i class="fa-solid fa-note-sticky"></i></button>
-    
-    <!-- Tombol Tambah Shopee (Tampil di Kanan Bawah, HANYA di Dash 2) -->
-    <button id="fab-shopee" class="fab-right hidden" onclick="openShopeeModal()"><i class="fas fa-plus"></i></button>
 
+    <div id="universal-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
+            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
+            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
+        </div>
+    </div>
 
-    <!-- ================= MODAL & POPUP ================= -->
+    <div id="modal-shopee-list" class="modal-overlay" onclick="closeModal('modal-shopee-list')">
+        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px; background: #f0f2f5;" onclick="event.stopPropagation()">
+            <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Link Shopee</h3>
+            <div id="shopee-container" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: auto;">
+                <button class="m-btn" style="flex: 1; background: #fff; border: 1px solid var(--fb-border); color:var(--fb-muted); font-weight: bold; margin-left:0; padding: 12px;" onclick="closeModal('modal-shopee-list')">TUTUP</button>
+                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px; font-weight: bold;" onclick="openShopeeModal()"><i class="fas fa-plus"></i> TAMBAH LINK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
         <div class="modal-box" onclick="event.stopPropagation()">
             <h3 style="margin-bottom:15px;">Setting Counter Email</h3>
@@ -141,14 +157,6 @@
                 <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 10px;" onclick="closeModal('modal-shopee-form')">BATAL</button>
                 <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 10px;" onclick="saveShopee()">SIMPAN</button>
             </div>
-        </div>
-    </div>
-
-    <div id="universal-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
-            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
-            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
         </div>
     </div>
 

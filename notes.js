@@ -24,13 +24,13 @@ function getStatsPath() {
 function incrementStat(type) {
     try {
         const path = getStatsPath();
-        db.ref(path).child(type).transaction((val) => (val || 0) + 1).catch(e => console.warn("Abaikan: Gagal update stat"));
+        db.ref(path).child(type).transaction((val) => (val || 0) + 1);
     } catch (e) {}
 }
 
 async function resetStatsManual() {
     if (await showModal("Reset Statistik", "Hapus data simpan & hapus hari ini menjadi 0?", "danger")) {
-        try { await db.ref(getStatsPath()).update({ saved: 0, deleted: 0 }); } catch (e) { console.warn("Abaikan: Gagal reset"); }
+        try { await db.ref(getStatsPath()).update({ saved: 0, deleted: 0 }); } catch (e) {}
     }
 }
 
@@ -39,69 +39,93 @@ function syncStats() {
         const path = getStatsPath();
         if (currentStatsRef) currentStatsRef.off();
         currentStatsRef = db.ref(path);
-        
-        // DITAMBAHKAN ERROR HANDLER AGAR WEB TIDAK MATI JIKA DITOLAK FIREBASE
         currentStatsRef.on('value', snap => {
             const d = snap.val() || { saved: 0, deleted: 0 };
             statsData.saved = d.saved || 0;
             statsData.deleted = d.deleted || 0;
             updateStatsUI(); 
-        }, (error) => {
-            console.warn("Abaikan: Akses Statistik Ditolak Firebase.", error);
         });
     } catch (e) {}
 }
 
 function updateStatsUI() {
-    try {
-        const statsContainer = document.getElementById('note-stats-container');
-        if (!statsContainer) return;
+    const statsContainer = document.getElementById('note-stats-container');
+    if (!statsContainer) return;
 
-        statsContainer.style.cssText = `
-            background: #f8f9fa; border: 1px solid #e4e6eb; border-radius: 6px;
-            padding: 10px 12px; display: flex; align-items: center;
-            justify-content: space-around; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 12px;
-        `;
+    statsContainer.style.cssText = `
+        background: #f8f9fa;
+        border: 1px solid #e4e6eb;
+        border-radius: 6px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        margin-bottom: 12px;
+    `;
+    
+    statsContainer.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#1877f2; font-size:14px;">
+                <i class="fa-solid fa-folder"></i> <span>${statsData.total}</span>
+            </div>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
+        </div>
         
-        statsContainer.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-                <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#1877f2; font-size:14px;">
-                    <i class="fa-solid fa-folder"></i> <span>${statsData.total}</span>
-                </div>
-                <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
-            </div>
-            <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-            <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-                <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;">
-                    <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
-                </div>
-                <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
-            </div>
-            <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-            <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-                <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;">
-                    <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
-                </div>
-                <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
-            </div>
-            <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-            <button id="btn-reset-stat" style="width: 28px; height: 28px; border: none; background: #e4e6eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;" title="Reset Hari Ini">
-                <i class="fas fa-sync-alt" style="font-size: 11px; color: #65676B;"></i>
-            </button>
-        `;
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
 
-        const btnReset = statsContainer.querySelector('#btn-reset-stat');
-        if(btnReset) {
-            btnReset.onclick = (e) => { e.preventDefault(); e.stopPropagation(); resetStatsManual(); };
-            btnReset.onmouseover = () => { btnReset.style.background = '#d8dadf'; btnReset.querySelector('i').style.color = '#1877f2'; };
-            btnReset.onmouseout = () => { btnReset.style.background = '#e4e6eb'; btnReset.querySelector('i').style.color = '#65676B'; };
-        }
-    } catch (err) {}
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;">
+                <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
+            </div>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
+        </div>
+
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;">
+                <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
+            </div>
+            <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
+        </div>
+
+        <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
+
+        <button id="btn-reset-stat" style="
+            width: 28px; 
+            height: 28px; 
+            border: none; 
+            background: #e4e6eb; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            transition: 0.2s;
+        " title="Reset Hari Ini">
+            <i class="fas fa-sync-alt" style="font-size: 11px; color: #65676B;"></i>
+        </button>
+    `;
+
+    const btnReset = statsContainer.querySelector('#btn-reset-stat');
+    btnReset.onclick = (e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+        resetStatsManual(); 
+    };
+    btnReset.onmouseover = () => { btnReset.style.background = '#d8dadf'; btnReset.querySelector('i').style.color = '#1877f2'; };
+    btnReset.onmouseout = () => { btnReset.style.background = '#e4e6eb'; btnReset.querySelector('i').style.color = '#65676B'; };
 }
 
 // ==========================================
 // CORE FUNCTIONS
 // ==========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    syncNotes();
+    syncStats();
+});
 
 function getNotesPath() { return 'notes/public'; }
 
@@ -110,57 +134,88 @@ function formatDate(ts) {
     return `${['Ming', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function autoLinkText(text) { return !text ? "" : String(text).replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-link" onclick="event.stopPropagation()">${url}</a>`); }
-function escapeHTML(str) { return (str === null || str === undefined) ? "" : String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
+function autoLinkText(text) { return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank" class="text-link" onclick="event.stopPropagation()">${url}</a>`); }
+function escapeHTML(str) { return !str ? "" : str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
 
 function syncNotes() {
-    try {
-        const path = getNotesPath(); 
-        db.ref(path).off();
+    const path = getNotesPath(); 
+    db.ref(path).off();
+    db.ref(path).orderByChild('timestamp').on('value', snap => {
+        statsData.total = snap.numChildren();
+        updateStatsUI();
         
-        // DITAMBAHKAN ERROR HANDLER FIREBASE
-        db.ref(path).orderByChild('timestamp').on('value', snap => {
-            statsData.total = snap.numChildren();
-            updateStatsUI();
+        const grid = document.getElementById('notes-grid'); 
+        if(!grid) return;
+        
+        grid.style.display = 'flex';
+        grid.style.flexDirection = 'column';
+        grid.style.gap = '8px'; 
+        
+        // Mencegah scroll bocor ke background
+        grid.style.overscrollBehavior = 'contain'; 
+        
+        grid.innerHTML = ''; 
+        
+        let items = [];
+        snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
+        
+        items.reverse().forEach(d => {
+            const card = document.createElement('div'); 
+            card.className = 'note-card'; 
             
-            const grid = document.getElementById('notes-grid'); 
-            if(!grid) return;
-            grid.style.cssText = 'display:flex; flex-direction:column; gap:8px; overscroll-behavior:contain;';
-            grid.innerHTML = ''; 
-            
-            let items = [];
-            snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
-            
-            items.reverse().forEach(d => {
-                const card = document.createElement('div'); card.className = 'note-card'; 
-                card.style.cssText = 'background: #ffffff; border: 1px solid #cdd0d4; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100px; flex-shrink: 0;';
+            card.style.cssText = `
+                background: #ffffff;
+                border: 1px solid #cdd0d4; 
+                border-radius: 6px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                cursor: pointer;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                height: 100px; 
+                flex-shrink: 0;
+            `;
 
-                card.onmouseover = () => { card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)'; card.style.borderColor = '#aeb1b5'; };
-                card.onmouseout = () => { card.style.transform = 'translateY(0)'; card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; card.style.borderColor = '#cdd0d4'; };
+            card.onmouseover = () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
+                card.style.borderColor = '#aeb1b5'; 
+            };
+            card.onmouseout = () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                card.style.borderColor = '#cdd0d4'; 
+            };
 
-                card.onclick = () => {
-                    selectedNoteKey = d.key; currentNoteRaw = d.content;
-                    document.getElementById('view-tag').innerText = "PUB | " + formatDate(d.timestamp);
-                    document.getElementById('view-title').innerText = d.title;
-                    document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
-                    document.getElementById('modal-note-view').classList.add('active');
-                    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; 
-                };
+            card.onclick = () => {
+                selectedNoteKey = d.key; currentNoteRaw = d.content;
+                document.getElementById('view-tag').innerText = "PUB | " + formatDate(d.timestamp);
+                document.getElementById('view-title').innerText = d.title;
+                document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
+                document.getElementById('modal-note-view').classList.add('active');
+                
+                document.documentElement.style.overflow = 'hidden';
+                document.body.style.overflow = 'hidden'; 
+            };
 
-                const titleStr = escapeHTML(d.title) || 'Untitled';
-                const previewStr = escapeHTML(d.content);
+            const titleStr = escapeHTML(d.title) || 'Untitled';
+            const previewStr = escapeHTML(d.content);
 
-                card.innerHTML = `
-                    <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${titleStr}</div>
-                    <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${previewStr}</div>
-                    <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;"><i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}</div>
-                `;
-                grid.appendChild(card);
-            });
-        }, (error) => {
-            console.warn("Abaikan: Akses List Notes Ditolak Firebase.", error);
+            card.innerHTML = `
+                <div style="font-weight: 600; color: #1c1e21; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${titleStr}
+                </div>
+                <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                    ${previewStr}
+                </div>
+                <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;">
+                    <i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}
+                </div>
+            `;
+            grid.appendChild(card);
         });
-    } catch (err) {}
+    });
 }
 
 export function openNoteList() {
@@ -207,7 +262,7 @@ export async function saveNote() {
         }
         executeNoteSave(t, c, path);
     } catch (e) { 
-        showModal("Gagal", "Akses Database Ditolak (Belum Login / Rules Firebase).", "alert"); 
+        showModal("Gagal", "Gagal menghubungi database.", "alert"); 
     }
 }
 
@@ -235,27 +290,11 @@ export async function deleteNote() {
         db.ref(`${getNotesPath()}/${selectedNoteKey}`).remove().then(() => {
             incrementStat('deleted');
             closeModal('modal-note-view');
-        }).catch(e => showModal("Gagal", "Tidak bisa dihapus (Akses ditolak).", "alert"));
+        });
     }
 }
 
 export function copyNoteContent(btn) {
     navigator.clipboard.writeText(currentNoteRaw); const originalHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> Tersalin'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
-}
-
-// ==========================================
-// INISIALISASI AMAN
-// ==========================================
-function initNotes() {
-    setTimeout(() => {
-        syncNotes();
-        syncStats();
-    }, 500); // Diberi jeda agar tidak berebut koneksi dengan Firebase utama
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initNotes);
-} else {
-    initNotes();
 }
