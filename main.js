@@ -4,8 +4,8 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
-// === JIKA ADA FILE NOTE.JS, IMPORT DI SINI (Contoh) ===
-// import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
+// === IMPORT NOTE.JS DIAKTIFKAN ===
+import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
 
 // ==========================================
 // PENDAFTARAN WINDOW (ANTI-CRASH)
