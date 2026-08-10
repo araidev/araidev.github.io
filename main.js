@@ -40,6 +40,7 @@ window.switchDashboard = function(dashIndex) {
     const tab1 = document.getElementById('tab-1');
     const tab2 = document.getElementById('tab-2');
     const fabShopee = document.getElementById('fab-shopee');
+    const fabNote = document.getElementById('fab-note');
 
     if (dashIndex === 1) {
         // Geser ke Dashboard 1 (SMS)
@@ -47,12 +48,14 @@ window.switchDashboard = function(dashIndex) {
         if(tab1) tab1.classList.add('active');
         if(tab2) tab2.classList.remove('active');
         if(fabShopee) fabShopee.classList.add('hidden'); // Sembunyikan tambah link
+        if(fabNote) fabNote.classList.add('hidden'); // Sembunyikan note
     } else {
         // Geser ke Dashboard 2 (Tools)
         slider.style.transform = 'translateX(-100vw)';
         if(tab2) tab2.classList.add('active');
         if(tab1) tab1.classList.remove('active');
         if(fabShopee) fabShopee.classList.remove('hidden'); // Munculkan tambah link
+        if(fabNote) fabNote.classList.remove('hidden'); // Munculkan note
     }
 };
 
