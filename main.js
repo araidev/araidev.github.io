@@ -4,25 +4,16 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
-// === JIKA ANDA PUNYA FILE note.js, BUKA KOMENTAR IMPORT DI BAWAH INI ===
-// import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
-
-// Daftarkan ke Window (Versi Aman / Anti-Crash)
+// Daftarkan ke Window
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
 window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
 window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
 window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
-window.actionRandomLink = actionRandomLink; 
-window.changeSmsServer = changeSmsServer; window.executeBuySms = executeBuySms; 
-window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms; window.togglePinShopee = togglePinShopee;
-
-// Pendaftaran Note Secara Aman (Menghindari script mati jika file note belum ada/belum diimport)
-if (typeof openNoteList !== 'undefined') window.openNoteList = openNoteList;
-if (typeof openNoteModal !== 'undefined') window.openNoteModal = openNoteModal;
-if (typeof saveNote !== 'undefined') window.saveNote = saveNote;
-if (typeof editNote !== 'undefined') window.editNote = editNote;
-if (typeof deleteNote !== 'undefined') window.deleteNote = deleteNote;
-if (typeof copyNoteContent !== 'undefined') window.copyNoteContent = copyNoteContent;
+window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; window.openNoteModal = openNoteModal;
+window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent; window.changeSmsServer = changeSmsServer;
+window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
+window.togglePinShopee = togglePinShopee;
 
 // ==========================================
 // LOGIKA SIDEBAR KIRI & AKSI SWAP (SWIPE)
@@ -31,16 +22,14 @@ window.toggleSidebar = function() {
     const sidebar = document.getElementById('left-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     
-    if (sidebar && overlay) {
-        sidebar.classList.toggle('active');
-        overlay.classList.toggle('active');
-        
-        // Kunci scroll utama saat sidebar terbuka agar background tidak ikut ter-scroll
-        if (sidebar.classList.contains('active')) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+    
+    // Kunci scroll utama saat sidebar terbuka agar background tidak ikut ter-scroll
+    if (sidebar.classList.contains('active')) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
     }
 };
 
@@ -266,13 +255,15 @@ document.addEventListener('click', function(e) {
 // AUTO-KAPITAL JUDUL LINK SHOPEE
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Gunakan setInterval ringan untuk berjaga-jaga jika form modal belum dirender saat DOMContentLoaded
     const checkForm = setInterval(() => {
         const shopeeTitleInput = document.getElementById('shopee-title');
         if (shopeeTitleInput) {
             shopeeTitleInput.addEventListener('input', function() {
+                // Membuat huruf awal setiap kata menjadi kapital
                 this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
             });
-            clearInterval(checkForm);
+            clearInterval(checkForm); // Hentikan pencarian elemen setelah ketemu
         }
     }, 500);
 });
