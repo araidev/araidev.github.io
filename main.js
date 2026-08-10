@@ -52,23 +52,24 @@ window.switchDashboard = function(dashIndex) {
     }
 };
 
-// Deteksi Swipe Layar HP
-let touchstartX = 0;
-let touchendX = 0;
-const sliderEl = document.getElementById('main-slider');
+function initSwipeLogic() {
+    let touchstartX = 0;
+    let touchendX = 0;
+    const sliderEl = document.getElementById('main-slider');
 
-if(sliderEl) {
-    sliderEl.addEventListener('touchstart', e => {
-        touchstartX = e.changedTouches[0].screenX;
-    }, {passive: true});
+    if(sliderEl) {
+        sliderEl.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+        }, {passive: true});
 
-    sliderEl.addEventListener('touchend', e => {
-        touchendX = e.changedTouches[0].screenX;
-        const swipeDist = touchendX - touchstartX;
-        
-        if (swipeDist < -60 && currentDash === 1) window.switchDashboard(2);
-        else if (swipeDist > 60 && currentDash === 2) window.switchDashboard(1);
-    }, {passive: true});
+        sliderEl.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX;
+            const swipeDist = touchendX - touchstartX;
+            
+            if (swipeDist < -60 && currentDash === 1) window.switchDashboard(2);
+            else if (swipeDist > 60 && currentDash === 2) window.switchDashboard(1);
+        }, {passive: true});
+    }
 }
 
 // ==========================================
@@ -102,7 +103,7 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// LOGIKA NEXT & PREV EMAIL (TANPA DOMContentLoaded)
+// LOGIKA NEXT & PREV EMAIL
 // ==========================================
 function initEmailCounter() {
     const btnNext = document.getElementById('btn-next-email');
@@ -261,6 +262,17 @@ function initAutoCaps() {
     }
 }
 
-// Eksekusi fungsi inisialisasi secara langsung saat file dimuat
-initEmailCounter();
-initAutoCaps();
+// ==========================================
+// INISIALISASI AMAN (ANTI STUCK)
+// ==========================================
+function initAllSystems() {
+    initSwipeLogic();
+    initEmailCounter();
+    initAutoCaps();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAllSystems);
+} else {
+    initAllSystems();
+}
