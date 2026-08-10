@@ -4,11 +4,11 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, openShopeeList, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 
-// === JIKA ADA FILE NOTE.JS, IMPORT DI SINI (Contoh) ===
-// import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
+// === IMPORT NOTE DI SINI SUDAH AKTIF ===
+import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './note.js';
 
 // ==========================================
-// PENDAFTARAN WINDOW (ANTI-CRASH)
+// PENDAFTARAN WINDOW
 // ==========================================
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
 window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
@@ -16,18 +16,17 @@ window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; wind
 window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
 window.actionRandomLink = actionRandomLink; 
 
-// Pendaftaran Aman untuk Note (Cegah Layar Blank/Crash)
-if (typeof openNoteList !== 'undefined') window.openNoteList = openNoteList;
-if (typeof openNoteModal !== 'undefined') window.openNoteModal = openNoteModal;
-if (typeof saveNote !== 'undefined') window.saveNote = saveNote;
-if (typeof editNote !== 'undefined') window.editNote = editNote;
-if (typeof deleteNote !== 'undefined') window.deleteNote = deleteNote;
-if (typeof copyNoteContent !== 'undefined') window.copyNoteContent = copyNoteContent;
+// Pendaftaran Note
+window.openNoteList = openNoteList; 
+window.openNoteModal = openNoteModal;
+window.saveNote = saveNote; 
+window.editNote = editNote; 
+window.deleteNote = deleteNote;
+window.copyNoteContent = copyNoteContent;
 
 window.changeSmsServer = changeSmsServer;
 window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
-
 
 // ==========================================
 // LOGIKA MULTI-DASHBOARD & SWIPE
