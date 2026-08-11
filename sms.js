@@ -5,7 +5,7 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
 const MIN_PRICE_IDR = 600; 
-const MAX_PRICE_IDR = 1400; 
+const MAX_PRICE_IDR = 1500; 
 
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
@@ -14,7 +14,8 @@ const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
-let activeProviderKey = localStorage.getItem('xurel_provider') || "smscode";
+// DEFAULT DIUBAH MENJADI HEROSMS
+let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
 let BASE_URL = PROVIDERS[activeProviderKey].url;
 
 let currentServerName = ""; 
@@ -45,7 +46,7 @@ function attachGlobalOrderListener() {
     window.ordersRef = db.ref(path);
     window.ordersRef.on('value', snap => {
         globalOrders = snap.val() || {};
-        renderSmsOrders(); // Render otomatis tiap kali Worker/Firebase update
+        renderSmsOrders(); 
     });
 }
 
@@ -194,6 +195,9 @@ async function initSms() {
         });
     }
 
+    // Terapkan Gembok saat inisialisasi
+    applySmsLock();
+    
     await loadServersList();
     
     attachGlobalOrderListener(); 
@@ -259,6 +263,34 @@ export function refreshSms() {
     pollSms(); 
 }
 window.refreshSms = refreshSms;
+
+// ==========================================
+// 4B. SISTEM PENGUNCI LAYAR (GEMBOK)
+// ==========================================
+export function toggleSmsLock() {
+    let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
+    isLocked = !isLocked; 
+    localStorage.setItem('sms_ui_locked', isLocked);
+    applySmsLock();
+}
+window.toggleSmsLock = toggleSmsLock;
+
+export function applySmsLock() {
+    let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
+    let prov = document.getElementById('sms-provider');
+    let srv = document.getElementById('sms-server');
+    
+    if(prov) prov.disabled = isLocked;
+    if(srv) srv.disabled = isLocked;
+
+    // Menangani ikon gembok FontAwesome
+    let lockIcon = document.querySelector('.fa-lock') || document.querySelector('.fa-lock-open') || document.querySelector('.fa-unlock');
+    if (lockIcon) {
+        lockIcon.className = isLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open";
+        lockIcon.style.color = isLocked ? "var(--fb-red)" : "var(--fb-muted)";
+    }
+}
+window.applySmsLock = applySmsLock;
 
 async function apiCall(endpoint, method = "GET", body = null) {
     const options = { method, headers: { "Content-Type": "application/json", "X-Server-Name": currentServerName } };
@@ -348,7 +380,6 @@ async function loadSmsPrices() {
             
     } else if (activeProviderKey === "otpinstan") {
         json.data
-            // Filter harga dihilangkan khusus otpinstan agar semua data server masuk
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)', country: i.country }));
     }
 
@@ -382,7 +413,6 @@ export function renderPriceGroups() {
         
         let ops = cachedPriceGroups[price];
         
-        // JIKA INI OTPINSTAN, JADIKAN LANGSUNG TOMBOL BELI (Bypass Menu Provider)
         if (activeProviderKey === "otpinstan" || ops.length === 1) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -394,7 +424,6 @@ export function renderPriceGroups() {
                     </div>`;
         }
 
-        // TAMPILAN NORMAL (Untuk Provider Lain)
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:16px; display:flex; align-items:center; gap:8px;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
@@ -463,7 +492,6 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
-    // Memberikan warna unik per provider agar mudah dibedakan di UI
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
                  activeProviderKey === "svco" ? "#007bff" : 
                  activeProviderKey === "otpinstan" ? "#e67e22" : "#95a5a6"; 
