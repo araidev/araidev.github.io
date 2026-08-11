@@ -1,3 +1,8 @@
+// === PENGATURAN FILTER ===
+// Ubah menjadi true untuk HANYA Pulau Jawa, atau false untuk semua provinsi
+const FILTER_HANYA_JAWA = true; 
+const DAFTAR_PROVINSI_JAWA = ["JAWA TIMUR", "JAWA TENGAH", "JAWA BARAT", "BANTEN", "DKI JAKARTA", "DI YOGYAKARTA", "DAERAH ISTIMEWA YOGYAKARTA"];
+
 const STORAGE_BASE_EMAIL = 'xurel_base_email';
 const STORAGE_EMAIL_INDEX = 'xurel_email_index';
 
@@ -52,7 +57,18 @@ export async function generateName() {
                 
                 let flatData = [];
                 for (const prov in data) {
-                    if (prov.toUpperCase().includes("PAPUA")) continue; 
+                    const namaProv = prov.toUpperCase();
+                    
+                    // PENERAPAN FILTER:
+                    if (FILTER_HANYA_JAWA) {
+                        // Jika provinsi tidak ada dalam list Jawa, lewati (skip)
+                        const isJawa = DAFTAR_PROVINSI_JAWA.some(p => namaProv.includes(p));
+                        if (!isJawa) continue;
+                    } else {
+                        // Bawaan asli dari kodemu: mengecualikan Papua jika filter mati
+                        if (namaProv.includes("PAPUA")) continue; 
+                    }
+
                     for (const kota in data[prov]) {
                         for (const kec in data[prov][kota]) {
                             for (const desa in data[prov][kota][kec]) {
