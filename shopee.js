@@ -102,7 +102,6 @@ function renderShopee() {
     const container = document.getElementById('shopee-container'); 
     if(!container) return;
     
-    // Mencegah scroll merambat ke body (scroll bleed)
     container.style.overscrollBehavior = 'contain';
     container.innerHTML = "";
     const isAdmin = !!userAdmin;
@@ -180,7 +179,7 @@ function renderShopee() {
             <button onclick="copyShopeeLink(event, '${data.url}', this)" style="background:#f0f2f5; border:none; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#65676b; cursor:pointer; margin-right:12px; flex-shrink:0;">
                 <i class="fa-regular fa-copy"></i>
             </button>
-            <div onclick="window.open('${data.url}', '_blank')" style="flex:1; cursor:pointer; overflow:hidden;">
+            <div onclick="openShopeeUrl(event, '${data.url}')" style="flex:1; cursor:pointer; overflow:hidden;">
                 <div style="font-weight:800; color:#1c1e21; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                     ${pinIconTitle}${data.title}
                 </div>
@@ -192,8 +191,31 @@ function renderShopee() {
     });
 }
 
+// Validasi link HANYA saat tombol open/klik area teks diklik
+export function openShopeeUrl(event, url) {
+    event.preventDefault(); 
+    event.stopPropagation();
+    
+    // Pastikan URL tidak kosong dan diawali dengan http atau https
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        showModal("Peringatan", "Data ini tidak memiliki link yang valid untuk dibuka.", "alert");
+        return;
+    }
+    
+    window.open(url, '_blank');
+}
+
+// Tombol copy sekarang akan menyalin apa pun, termasuk teks biasa
 export function copyShopeeLink(event, url, btnElement) {
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault(); 
+    event.stopPropagation();
+
+    // Opsional: cegah copy jika datanya benar-benar kosong
+    if (!url) {
+        showModal("Peringatan", "Data kosong, tidak ada yang disalin.", "alert");
+        return;
+    }
+
     navigator.clipboard.writeText(url).then(() => {
         const originalIcon = btnElement.innerHTML; 
         btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:var(--fb-green);"></i>';
@@ -207,10 +229,11 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
     let cardData = shopeeDataCache[key];
     if(!cardData || !cardData.url) return;
 
+    // Untuk link acak, tetap disaring hanya yang berupa link
     let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
 
     if(links.length === 0) {
-        return showModal("Peringatan", "Belum ada link valid yang dimasukkan.", "alert");
+        return showModal("Peringatan", "Belum ada link valid yang dimasukkan pada menu ini.", "alert");
     }
 
     let randomLink = links[Math.floor(Math.random() * links.length)];
