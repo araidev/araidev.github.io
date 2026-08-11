@@ -191,8 +191,8 @@ function renderShopee() {
     });
 }
 
-// Fungsi membuka link, memvalidasi apakah ini link http/https
-export function openShopeeUrl(event, url) {
+// === FUNGSI DIUBAH MENJADI ASYNC UNTUK MENDUKUNG POPUP AWAIT ===
+export async function openShopeeUrl(event, url) {
     event.preventDefault(); 
     event.stopPropagation();
     
@@ -202,18 +202,18 @@ export function openShopeeUrl(event, url) {
         return;
     }
     
-    // Membuka di tab baru seperti sebelumnya
-    window.open(url, '_blank');
+    // Memunculkan popup notif konfirmasi
+    if (await showModal("Buka Link", "Apakah kamu ingin menuju link ini?", "info")) {
+        window.open(url, '_blank');
+    }
 }
 // Daftarkan fungsi ke window agar dikenali oleh HTML (onclick)
 window.openShopeeUrl = openShopeeUrl;
 
-// Fungsi copy text, membebaskan untuk copy apa saja
 export function copyShopeeLink(event, url, btnElement) {
     event.preventDefault(); 
     event.stopPropagation();
 
-    // Mencegah copy jika datanya benar-benar kosong
     if (!url) {
         showModal("Peringatan", "Data kosong, tidak ada yang disalin.", "alert");
         return;
@@ -226,7 +226,8 @@ export function copyShopeeLink(event, url, btnElement) {
     });
 }
 
-export function actionRandomLink(event, key, action = 'open', btnElement = null) {
+// === FUNGSI DIUBAH MENJADI ASYNC UNTUK MENDUKUNG POPUP AWAIT ===
+export async function actionRandomLink(event, key, action = 'open', btnElement = null) {
     event.preventDefault(); event.stopPropagation();
     
     let cardData = shopeeDataCache[key];
@@ -248,9 +249,14 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
             setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
         });
     } else {
-        window.open(randomLink, '_blank');
+        // Memunculkan popup notif konfirmasi untuk link acak
+        if (await showModal("Buka Link", "Apakah kamu ingin menuju link acak ini?", "info")) {
+            window.open(randomLink, '_blank');
+        }
     }
 }
+// Pastikan ini juga terdaftar di window (berjaga-jaga jika dipanggil via inline HTML)
+window.actionRandomLink = actionRandomLink;
 
 export function openShopeeList() {
     document.getElementById('modal-shopee-list').classList.add('active');
