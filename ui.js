@@ -14,10 +14,21 @@ export function showModal(title, msg, type='confirm') {
             ov.classList.remove('active');
             document.documentElement.style.overflow = ''; 
             document.body.style.overflow = ''; 
+            
+            // Bersihkan event listener agar tidak bocor saat dipanggil ulang
+            ov.onclick = null; 
             resolve(result);
         };
         
-        if (type === 'confirm' || type === 'danger') {
+        // FITUR BARU: Tutup modal (Batal) jika user mengklik area gelap (luar popup)
+        ov.onclick = (e) => {
+            if (e.target === ov) {
+                closeThisModal(false);
+            }
+        };
+        
+        // Tambahkan 'info' ke dalam syarat agar memunculkan tombol BATAL juga
+        if (type === 'confirm' || type === 'danger' || type === 'info') {
             const btnCancel = document.createElement('button');
             btnCancel.className = 'm-btn'; 
             btnCancel.style.background = 'var(--fb-hover)'; 
@@ -33,18 +44,21 @@ export function showModal(title, msg, type='confirm') {
             actions.appendChild(btnCancel);
             actions.appendChild(btnOk);
         } else {
+            // Untuk type lain (seperti 'alert' peringatan link kosong), hanya muncul tombol OKE
             const btnOk = document.createElement('button');
             btnOk.className = 'm-btn btn-primary'; 
             btnOk.innerText = 'OKE';
             btnOk.onclick = () => closeThisModal(true);
             actions.appendChild(btnOk);
         }
+        
         ov.classList.add('active');
     });
 }
 
 export function closeModal(id) { 
-    document.getElementById(id).classList.remove('active'); 
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active'); 
     document.documentElement.style.overflow = ''; 
     document.body.style.overflow = ''; 
 }
