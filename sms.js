@@ -4,13 +4,13 @@ import { db, auth } from './firebase.js';
 // ==========================================
 // 1. KONFIGURASI PROVIDER & HARGA
 // ==========================================
-const MIN_PRICE_IDR = 500; 
-const MAX_PRICE_IDR = 5000; 
+const MIN_PRICE_IDR = 700; 
+const MAX_PRICE_IDR = 1350; 
 
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
     "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
-    "otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" }, // <-- UBAH URL INI JIKA PERLU
+    "otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
@@ -346,9 +346,9 @@ async function loadSmsPrices() {
             })
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
             
-   } else if (activeProviderKey === "otpinstan") {
+    } else if (activeProviderKey === "otpinstan") {
         json.data
-            // Filter harga dimatikan khusus untuk otpinstan, semua harga akan langsung masuk!
+            // Filter harga dihilangkan khusus otpinstan agar semua data server masuk
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)', country: i.country }));
     }
 
@@ -380,11 +380,26 @@ export function renderPriceGroups() {
         let isFav = favoritePrices.includes(price);
         let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
         
+        let ops = cachedPriceGroups[price];
+        
+        // JIKA INI OTPINSTAN, JADIKAN LANGSUNG TOMBOL BELI (Bypass Menu Provider)
+        if (activeProviderKey === "otpinstan" || ops.length === 1) {
+            let item = ops[0];
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
+                            ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
+                            <span style="color: #fff; font-size: 10px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px;">BELI</span>
+                        </div>
+                        <i class="fa-solid fa-star" onclick="toggleFavoritePrice('${price}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
+                    </div>`;
+        }
+
+        // TAMPILAN NORMAL (Untuk Provider Lain)
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:16px; display:flex; align-items:center; gap:8px;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
                         <span style="color: var(--fb-muted); font-size: 11px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif;">
-                            ${cachedPriceGroups[price].length} Provider
+                            ${ops.length} Provider
                         </span>
                     </div>
                     <i class="fa-solid fa-star" onclick="toggleFavoritePrice('${price}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
@@ -622,6 +637,8 @@ function renderSmsOrders() {
 
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
+        
+        // Kondisi awal (bisa diubah nanti secara otomatis oleh updateSmsTimers)
         const cancelState = passed2Mins && !o.otp_code ? '' : 'disabled';
         const replaceState = passed2Mins && !o.otp_code ? '' : 'disabled';
         
@@ -636,14 +653,43 @@ function renderSmsOrders() {
     wrapHidden.innerHTML = hiddenHTML;
 }
 
+// LOGIKA UPDATE TIMER & MEMBUKA GEMBOK CANCEL REAL-TIME
 function updateSmsTimers() {
     const now = Date.now();
     document.querySelectorAll('.sms-timer').forEach(el => {
         let end = parseInt(el.dataset.expire); 
+        let oId = el.dataset.id;
+        
         if(end && !isNaN(end)) {
+            // 1. Menggerakkan Teks Jam (Harus jalan setiap detik)
             const diff = Math.max(0, Math.floor((end - now)/1000));
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
             el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
+
+            // 2. Mengecek Matematika Selisih Waktu (120000 ms = 2 Menit)
+            let orderTime = end - 900000; 
+            let passed2Mins = (now - orderTime) >= 120000; 
+
+            // Jika sudah 2 menit, lakukan eksekusi pembukaan gembok otomatis
+            if (passed2Mins) {
+                let hasOtp = globalOrders[oId] && globalOrders[oId].otp_code;
+                
+                if (!hasOtp) {
+                    let card = document.getElementById(`order-${activeProviderKey}-${oId}`);
+                    if (card) {
+                        let btnCancel = card.querySelector('.btn-cancel');
+                        let btnReplace = card.querySelector('.btn-replace');
+                        
+                        // HANYA sentuh HTML jika gemboknya memang masih terpasang
+                        if (btnCancel && btnCancel.hasAttribute('disabled')) {
+                            btnCancel.removeAttribute('disabled');
+                        }
+                        if (btnReplace && btnReplace.hasAttribute('disabled')) {
+                            btnReplace.removeAttribute('disabled');
+                        }
+                    }
+                }
+            }
         }
     });
 }
