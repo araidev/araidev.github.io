@@ -62,6 +62,13 @@ export function openShopeeModal(key = null) {
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 }
+window.openShopeeModal = openShopeeModal;
+
+// === FUNGSI BARU UNTUK TOMBOL BATAL DI FORM SHOPEE ===
+export function closeShopeeForm() {
+    closeModal('modal-shopee-form');
+}
+window.closeShopeeForm = closeShopeeForm;
 
 export function saveShopee() {
     const key = document.getElementById('shopee-edit-key').value;
@@ -84,12 +91,14 @@ export function saveShopee() {
         db.ref('linkshopee').push(data).then(() => closeModal('modal-shopee-form'));
     }
 }
+window.saveShopee = saveShopee;
 
 export async function deleteShopee(key) { 
     if(await showModal("Hapus Link", "Yakin ingin menghapus link ini?", "danger")) {
         db.ref('linkshopee/'+key).remove(); 
     }
 }
+window.deleteShopee = deleteShopee;
 
 export function togglePinShopee(key, currentPinStatus) {
     db.ref('linkshopee/' + key).update({
@@ -97,6 +106,7 @@ export function togglePinShopee(key, currentPinStatus) {
         updatedAt: Date.now() 
     });
 }
+window.togglePinShopee = togglePinShopee;
 
 function renderShopee() {
     const container = document.getElementById('shopee-container'); 
@@ -191,23 +201,19 @@ function renderShopee() {
     });
 }
 
-// === FUNGSI DIUBAH MENJADI ASYNC UNTUK MENDUKUNG POPUP AWAIT ===
 export async function openShopeeUrl(event, url) {
     event.preventDefault(); 
     event.stopPropagation();
     
-    // Pastikan URL tidak kosong dan diawali dengan http atau https
     if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
         showModal("Peringatan", "Data ini tidak memiliki link yang valid untuk dibuka.", "alert");
         return;
     }
     
-    // Memunculkan popup notif konfirmasi
     if (await showModal("Buka Link", "Apakah kamu ingin menuju link ini?", "info")) {
         window.open(url, '_blank');
     }
 }
-// Daftarkan fungsi ke window agar dikenali oleh HTML (onclick)
 window.openShopeeUrl = openShopeeUrl;
 
 export function copyShopeeLink(event, url, btnElement) {
@@ -225,15 +231,14 @@ export function copyShopeeLink(event, url, btnElement) {
         setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
     });
 }
+window.copyShopeeLink = copyShopeeLink;
 
-// === FUNGSI DIUBAH MENJADI ASYNC UNTUK MENDUKUNG POPUP AWAIT ===
 export async function actionRandomLink(event, key, action = 'open', btnElement = null) {
     event.preventDefault(); event.stopPropagation();
     
     let cardData = shopeeDataCache[key];
     if(!cardData || !cardData.url) return;
 
-    // Untuk link acak, menyaring (filter) baris yang benar-benar sebuah link
     let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
 
     if(links.length === 0) {
@@ -249,13 +254,11 @@ export async function actionRandomLink(event, key, action = 'open', btnElement =
             setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
         });
     } else {
-        // Memunculkan popup notif konfirmasi untuk link acak
         if (await showModal("Buka Link", "Apakah kamu ingin menuju link acak ini?", "info")) {
             window.open(randomLink, '_blank');
         }
     }
 }
-// Pastikan ini juga terdaftar di window (berjaga-jaga jika dipanggil via inline HTML)
 window.actionRandomLink = actionRandomLink;
 
 export function openShopeeList() {
@@ -263,18 +266,46 @@ export function openShopeeList() {
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 }
+window.openShopeeList = openShopeeList;
 
-function initAutoCaps() {
+// === FUNGSI BARU UNTUK TOMBOL BATAL DI LIST SHOPEE ===
+export function closeShopeeListModal() {
+    closeModal('modal-shopee-list');
+}
+window.closeShopeeListModal = closeShopeeListModal;
+
+// === SETUP FITUR 'KLIK DI LUAR POPUP UNTUK MENUTUP' ===
+function initModalsBehavior() {
     const shopeeTitleInput = document.getElementById('shopee-title');
     if (shopeeTitleInput) {
         shopeeTitleInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
         });
     }
+
+    // Deteksi klik area gelap untuk Form Edit/Tambah
+    const formModal = document.getElementById('modal-shopee-form');
+    if (formModal) {
+        formModal.addEventListener('click', function(e) {
+            if (e.target === formModal) {
+                closeShopeeForm();
+            }
+        });
+    }
+
+    // Deteksi klik area gelap untuk Menu List (jika ada)
+    const listModal = document.getElementById('modal-shopee-list');
+    if (listModal) {
+        listModal.addEventListener('click', function(e) {
+            if (e.target === listModal) {
+                closeShopeeListModal();
+            }
+        });
+    }
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAutoCaps);
+    document.addEventListener('DOMContentLoaded', initModalsBehavior);
 } else {
-    initAutoCaps();
+    initModalsBehavior();
 }
