@@ -191,7 +191,7 @@ function renderShopee() {
     });
 }
 
-// Validasi link HANYA saat tombol open/klik area teks diklik
+// Fungsi membuka link, memvalidasi apakah ini link http/https
 export function openShopeeUrl(event, url) {
     event.preventDefault(); 
     event.stopPropagation();
@@ -202,15 +202,18 @@ export function openShopeeUrl(event, url) {
         return;
     }
     
+    // Membuka di tab baru seperti sebelumnya
     window.open(url, '_blank');
 }
+// Daftarkan fungsi ke window agar dikenali oleh HTML (onclick)
+window.openShopeeUrl = openShopeeUrl;
 
-// Tombol copy sekarang akan menyalin apa pun, termasuk teks biasa
+// Fungsi copy text, membebaskan untuk copy apa saja
 export function copyShopeeLink(event, url, btnElement) {
     event.preventDefault(); 
     event.stopPropagation();
 
-    // Opsional: cegah copy jika datanya benar-benar kosong
+    // Mencegah copy jika datanya benar-benar kosong
     if (!url) {
         showModal("Peringatan", "Data kosong, tidak ada yang disalin.", "alert");
         return;
@@ -229,7 +232,7 @@ export function actionRandomLink(event, key, action = 'open', btnElement = null)
     let cardData = shopeeDataCache[key];
     if(!cardData || !cardData.url) return;
 
-    // Untuk link acak, tetap disaring hanya yang berupa link
+    // Untuk link acak, menyaring (filter) baris yang benar-benar sebuah link
     let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
 
     if(links.length === 0) {
