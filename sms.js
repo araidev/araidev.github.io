@@ -547,12 +547,12 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     } else if (activeProviderKey === "herosms") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // PENYATUAN JALUR PEMBELIAN: Menggunakan product_id, tapi tetap mengirimkan price & operator untuk dicatat Worker ke Database
+        // PENYATUAN JALUR PEMBELIAN: Menggunakan parameter 'name' ("TELKOMSEL") untuk dicatat oleh Worker, bukan 'operator' (kode 310)
         payload = { 
             type: "product", 
             product_id: parseInt(pid),
             price: Number(price),
-            operator: operator
+            operator: name 
         };
     }
 
@@ -561,7 +561,10 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
-        if (operator) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, operator);
+        
+        // Memastikan fitur Replace mengingat nama dengan benar
+        const savedOp = activeProviderKey === "smscode" ? name : operator;
+        if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
 
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
         
