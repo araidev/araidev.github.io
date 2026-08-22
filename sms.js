@@ -10,7 +10,7 @@ const MAX_PRICE_IDR = 1500;
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
     "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
-    "otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
+    //"otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
