@@ -9,8 +9,8 @@ const MAX_PRICE_IDR = 1500;
 
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
-    //"svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
-    //"otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
+    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
+    "otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
@@ -138,6 +138,14 @@ function formatDisplayPrice(price, currency) {
         return `$${price}`; 
     }
     return `Rp ${parseInt(price || 0).toLocaleString('id-ID')}`; 
+}
+
+// FUNGSI PEMBERSIH NAMA PROVIDER (Mengubah INDOSAT OOREDOO jadi INDOSAT)
+function cleanOpName(name) {
+    if (!name) return "ANY (ACAK)";
+    let upper = String(name).toUpperCase();
+    if (upper.includes("INDOSAT")) return "INDOSAT";
+    return upper;
 }
 
 // ==========================================
@@ -349,7 +357,7 @@ async function loadSmsPrices() {
     if (activeProviderKey === "smscode") {
         json.data
             .filter(i => i.price >= MIN_PRICE_IDR && i.price <= MAX_PRICE_IDR)
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)' }));
+            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) }));
             
     } else if (activeProviderKey === "herosms") {
         json.data
@@ -362,7 +370,7 @@ async function loadSmsPrices() {
                  if (i.operatorStock) {
                      let opList = Array.isArray(i.operatorStock) ? i.operatorStock : Object.keys(i.operatorStock);
                      opList.forEach(op => {
-                         normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: String(op).toUpperCase() });
+                         normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: cleanOpName(op) });
                      });
                  }
             });
@@ -373,11 +381,11 @@ async function loadSmsPrices() {
                 let idrPrice = parseFloat(i.price) * currentUsdRate;
                 return idrPrice >= MIN_PRICE_IDR && idrPrice <= MAX_PRICE_IDR;
             })
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: i.operatorName || 'ANY (ACAK)', country: i.country }));
+            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: cleanOpName(i.operatorName), country: i.country }));
             
     } else if (activeProviderKey === "otpinstan") {
         json.data
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: i.operator || 'ANY (ACAK)', country: i.country }));
+            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator), country: i.country }));
     }
 
     cachedPriceGroups = {};
@@ -639,7 +647,9 @@ function renderSmsOrders() {
         }
         
         const price = o.price || 0;
-        const opName = o.operator || "ANY";
+        
+        // MENGGUNAKAN FUNGSI PEMBERSIH UNTUK KARTU PEMBELIAN (INDOSAT OOREDOO jadi INDOSAT)
+        const opName = cleanOpName(o.operator);
         
         // Membaca status hidden secara murni dari data Firebase yang disetel oleh Worker
         let isHidden = !!o.hidden; 
