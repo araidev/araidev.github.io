@@ -199,30 +199,35 @@ function renderShopee() {
         container.appendChild(wrapper);
     });
 
-    // ====== LOGIKA UNTUK TOMBOL B DAN C DI TOOLBAR ======
+// ====== LOGIKA UNTUK TOMBOL B, C, D, E DI TOOLBAR ======
     const pinnedLinks = orderedShopee.filter(d => d.isPinned);
-    const btnB = document.getElementById('toolbar-btn-b');
-    const btnC = document.getElementById('toolbar-btn-c');
+    
+    // Ambil elemen tombol
+    const pinBtns = [
+        document.getElementById('toolbar-btn-b'),
+        document.getElementById('toolbar-btn-c'),
+        document.getElementById('toolbar-btn-d'),
+        document.getElementById('toolbar-btn-e')
+    ];
 
-    if (btnB) btnB.style.display = 'none';
-    if (btnC) btnC.style.display = 'none';
-
-    // Tombol B (Pin Pertama)
-    if (pinnedLinks.length > 0 && btnB) {
-        btnB.style.display = 'flex';
-        btnB.innerHTML = pinnedLinks[0].title.substring(0, 2).toUpperCase();
-        btnB.title = `Salin: ${pinnedLinks[0].title}`;
-        btnB.onclick = (e) => copyShopeeLink(e, pinnedLinks[0].url, btnB);
+    // Fungsi pintar untuk mengatur masing-masing tombol
+    pinBtns.forEach((btn, index) => {
+        if (!btn) return; 
+        
+        // Cek apakah ada data pin untuk urutan ini
+        const linkData = pinnedLinks[index];
+        
+        if (linkData) {
+            btn.style.display = 'flex';
+            btn.innerHTML = linkData.title.substring(0, 2).toUpperCase();
+            btn.title = `Salin: ${linkData.title}`;
+            // Override event klik untuk link yang sesuai
+            btn.onclick = (e) => copyShopeeLink(e, linkData.url, btn);
+        } else {
+            // Sembunyikan tombol jika tidak ada link yang di-pin
+            btn.style.display = 'none';
+        }
     }
-
-    // Tombol C (Pin Kedua)
-    if (pinnedLinks.length > 1 && btnC) {
-        btnC.style.display = 'flex';
-        btnC.innerHTML = pinnedLinks[1].title.substring(0, 2).toUpperCase();
-        btnC.title = `Salin: ${pinnedLinks[1].title}`;
-        btnC.onclick = (e) => copyShopeeLink(e, pinnedLinks[1].url, btnC);
-    }
-}
 
 export async function openShopeeUrl(event, url) {
     event.preventDefault(); 
