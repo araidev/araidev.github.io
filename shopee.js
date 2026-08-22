@@ -199,7 +199,7 @@ function renderShopee() {
         container.appendChild(wrapper);
     });
 
-// ====== LOGIKA UNTUK TOMBOL B, C, D, E DI TOOLBAR ======
+    // ====== LOGIKA UNTUK TOMBOL B, C, D, E DI TOOLBAR ======
     const pinnedLinks = orderedShopee.filter(d => d.isPinned);
     
     // Ambil elemen tombol
@@ -210,7 +210,7 @@ function renderShopee() {
         document.getElementById('toolbar-btn-e')
     ];
 
-    // Fungsi pintar untuk mengatur masing-masing tombol
+    // Fungsi pintar untuk mengatur masing-masing tombol secara dinamis
     pinBtns.forEach((btn, index) => {
         if (!btn) return; 
         
@@ -219,6 +219,7 @@ function renderShopee() {
         
         if (linkData) {
             btn.style.display = 'flex';
+            // Mengambil 2 huruf pertama
             btn.innerHTML = linkData.title.substring(0, 2).toUpperCase();
             btn.title = `Salin: ${linkData.title}`;
             // Override event klik untuk link yang sesuai
@@ -227,7 +228,8 @@ function renderShopee() {
             // Sembunyikan tombol jika tidak ada link yang di-pin
             btn.style.display = 'none';
         }
-    }
+    });
+}
 
 export async function openShopeeUrl(event, url) {
     event.preventDefault(); 
