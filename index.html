@@ -26,24 +26,27 @@
 </head>
 <body>
 
-    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px;">
+    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; z-index: 1002;">
         <!-- KIRI: Kumpulan Tombol Pintasan -->
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 6px;">
             <!-- Tombol Pintasan: Acak Data -->
-            <button id="toolbar-btn-gen" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
+            <button id="toolbar-btn-gen" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
                 <i class="fa-solid fa-shuffle"></i>
             </button>
 
             <!-- Tombol A: Daftar Link Acak -->
-            <button id="toolbar-btn-a" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
+            <button id="toolbar-btn-a" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
                 <i class="fa-solid fa-dice"></i>
             </button>
 
-            <!-- Tombol B: Pinned Link 1 -->
-            <button id="toolbar-btn-b" style="display: none; background: var(--fb-green); color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;"></button>
-
-            <!-- Tombol C: Pinned Link 2 -->
-            <button id="toolbar-btn-c" style="display: none; background: var(--fb-green); color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;"></button>
+            <!-- Tombol B, C, D, E: Pinned Links -->
+            <button id="toolbar-btn-b" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-btn-c" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-btn-d" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-btn-e" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
         <!-- KANAN: Menu Profil / Admin -->
@@ -64,10 +67,10 @@
         </div>
     </nav>
 
-    <!-- TOMBOL DRAWER MENU -->
-    <div style="display: flex; justify-content: center; background: #fff; padding: 2px 0; border-bottom: 1px solid #eaeaea; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 10px;">
-        <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: transparent; border: none; width: 60px; height: 24px; color: var(--fb-muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-            <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s;"></i>
+    <!-- TOMBOL DRAWER MENU (DESAIN PULL-TAB MODERN) -->
+    <div style="display: flex; justify-content: center; position: relative; z-index: 1001; margin-top: -1px; margin-bottom: 15px;">
+        <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: var(--fb-card); border: 1px solid var(--fb-border); border-top: none; width: 65px; height: 22px; border-radius: 0 0 16px 16px; color: #a0a3a7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 5px rgba(0,0,0,0.04); transition: background 0.2s, color 0.2s;">
+            <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
         </button>
     </div>
 
