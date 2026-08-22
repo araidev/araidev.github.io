@@ -547,8 +547,13 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     } else if (activeProviderKey === "herosms") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // PENYATUAN JALUR PEMBELIAN: Semua operator spesifik maupun Acak (Any) menggunakan "product_id"
-        payload = { type: "product", product_id: parseInt(pid) };
+        // PENYATUAN JALUR PEMBELIAN: Menggunakan product_id, tapi tetap mengirimkan price & operator untuk dicatat Worker ke Database
+        payload = { 
+            type: "product", 
+            product_id: parseInt(pid),
+            price: Number(price),
+            operator: operator
+        };
     }
 
     const j = await apiCall('/create-order', 'POST', payload);
