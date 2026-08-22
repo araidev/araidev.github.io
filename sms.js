@@ -14,7 +14,6 @@ const PROVIDERS = {
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
 };
 
-// DEFAULT DIUBAH MENJADI HEROSMS
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
 let BASE_URL = PROVIDERS[activeProviderKey].url;
 
@@ -26,10 +25,8 @@ let pollingInterval = null;
 let timerInterval = null;
 let isPolling = false;
 
-// Variabel Penampung Data Firebase Global
 let globalOrders = {}; 
 
-// Memori Favorit & Suara 
 let favoritePrices = [];
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
@@ -195,7 +192,6 @@ async function initSms() {
         });
     }
 
-    // Terapkan Gembok saat inisialisasi
     applySmsLock();
     
     await loadServersList();
@@ -206,7 +202,8 @@ async function initSms() {
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
     
-    pollingInterval = setInterval(pollSms, 4000);
+    // Interval Polling diubah menjadi 15 detik agar aman limit
+    pollingInterval = setInterval(pollSms, 15000); 
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
 
@@ -269,8 +266,7 @@ window.refreshSms = refreshSms;
 // ==========================================
 export function toggleSmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
-    isLocked = !isLocked; 
-    localStorage.setItem('sms_ui_locked', isLocked);
+    localStorage.setItem('sms_ui_locked', !isLocked);
     applySmsLock();
 }
 window.toggleSmsLock = toggleSmsLock;
@@ -283,9 +279,10 @@ export function applySmsLock() {
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
 
-    // Menangani ikon gembok FontAwesome
-    let lockIcon = document.querySelector('.fa-lock') || document.querySelector('.fa-lock-open') || document.querySelector('.fa-unlock');
+    // Perbaikan gembok macet: Memberi ID dan mengubah spesifik tanpa bentrok
+    let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
     if (lockIcon) {
+        if (!lockIcon.id) lockIcon.id = 'global-sms-lock-icon'; // Pasang ID agar query cepat di klik berikutnya
         lockIcon.className = isLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open";
         lockIcon.style.color = isLocked ? "var(--fb-red)" : "var(--fb-muted)";
     }
@@ -624,8 +621,6 @@ function renderSmsOrders() {
     // Urutkan pesanan dari yang paling baru
     ordersList.sort((a,b) => b.created_at - a.created_at);
 
-    let activeCount = 0; 
-
     ordersList.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
         
@@ -636,28 +631,18 @@ function renderSmsOrders() {
         const price = o.price || 0;
         const opName = o.operator || "ANY";
         
-        // AUTO-HIDE LOGIC: Sembunyikan otomatis jika ada pesanan baru yang mendahuluinya
+        // Membaca status hidden secara murni dari data Firebase yang disetel oleh Worker
         let isHidden = !!o.hidden; 
-        if (!isHidden) {
-            if (activeCount === 0) {
-                activeCount++; 
-            } else {
-                isHidden = true; 
-                db.ref(`muis/${activeProviderKey}/${currentServerName}/${o.id}/hidden`).set(true);
-            }
-        }
         
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 900000; 
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // Sistem Suara Anti "Bom Waktu" Storage
         if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
             playSimpleSound('otp');
             notifiedOtps.push(String(o.id));
             
-            // Batasi memori suara hanya menyimpan 50 ID terakhir agar tidak memenuhi local storage
             if (notifiedOtps.length > 50) notifiedOtps.shift();
             
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
@@ -666,7 +651,6 @@ function renderSmsOrders() {
         let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
         
-        // Kondisi awal (bisa diubah nanti secara otomatis oleh updateSmsTimers)
         const cancelState = passed2Mins && !o.otp_code ? '' : 'disabled';
         const replaceState = passed2Mins && !o.otp_code ? '' : 'disabled';
         
@@ -689,16 +673,13 @@ function updateSmsTimers() {
         let oId = el.dataset.id;
         
         if(end && !isNaN(end)) {
-            // 1. Menggerakkan Teks Jam (Harus jalan setiap detik)
             const diff = Math.max(0, Math.floor((end - now)/1000));
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
             el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
 
-            // 2. Mengecek Matematika Selisih Waktu (120000 ms = 2 Menit)
             let orderTime = end - 900000; 
             let passed2Mins = (now - orderTime) >= 120000; 
 
-            // Jika sudah 2 menit, lakukan eksekusi pembukaan gembok otomatis
             if (passed2Mins) {
                 let hasOtp = globalOrders[oId] && globalOrders[oId].otp_code;
                 
@@ -708,7 +689,6 @@ function updateSmsTimers() {
                         let btnCancel = card.querySelector('.btn-cancel');
                         let btnReplace = card.querySelector('.btn-replace');
                         
-                        // HANYA sentuh HTML jika gemboknya memang masih terpasang
                         if (btnCancel && btnCancel.hasAttribute('disabled')) {
                             btnCancel.removeAttribute('disabled');
                         }
