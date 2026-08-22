@@ -410,7 +410,9 @@ export function renderPriceGroups() {
         
         let ops = cachedPriceGroups[price];
         
-        if (activeProviderKey === "otpinstan" || ops.length === 1) {
+        // PEMBERSIHAN TAMPILAN DEPAN: 
+        // smscode dipaksa masuk ke dalam menu "X Provider" meskipun hanya 1 opsi.
+        if (activeProviderKey === "otpinstan" || (activeProviderKey !== "smscode" && ops.length === 1)) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
@@ -545,8 +547,8 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     } else if (activeProviderKey === "herosms") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        if (operator !== "any") payload = { type: "catalog", catalog_product_id: parseInt(pid), operator_id: parseInt(operator), max_price: parseInt(price) };
-        else payload = { type: "product", product_id: parseInt(pid) };
+        // PENYATUAN JALUR PEMBELIAN: Semua operator spesifik maupun Acak (Any) menggunakan "product_id"
+        payload = { type: "product", product_id: parseInt(pid) };
     }
 
     const j = await apiCall('/create-order', 'POST', payload);
