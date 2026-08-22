@@ -64,7 +64,6 @@ export function openShopeeModal(key = null) {
 }
 window.openShopeeModal = openShopeeModal;
 
-// === FUNGSI BARU UNTUK TOMBOL BATAL DI FORM SHOPEE ===
 export function closeShopeeForm() {
     closeModal('modal-shopee-form');
 }
@@ -199,6 +198,30 @@ function renderShopee() {
         `;
         container.appendChild(wrapper);
     });
+
+    // ====== LOGIKA UNTUK TOMBOL B DAN C DI TOOLBAR ======
+    const pinnedLinks = orderedShopee.filter(d => d.isPinned);
+    const btnB = document.getElementById('toolbar-btn-b');
+    const btnC = document.getElementById('toolbar-btn-c');
+
+    if (btnB) btnB.style.display = 'none';
+    if (btnC) btnC.style.display = 'none';
+
+    // Tombol B (Pin Pertama)
+    if (pinnedLinks.length > 0 && btnB) {
+        btnB.style.display = 'flex';
+        btnB.innerHTML = pinnedLinks[0].title.substring(0, 2).toUpperCase();
+        btnB.title = `Salin: ${pinnedLinks[0].title}`;
+        btnB.onclick = (e) => copyShopeeLink(e, pinnedLinks[0].url, btnB);
+    }
+
+    // Tombol C (Pin Kedua)
+    if (pinnedLinks.length > 1 && btnC) {
+        btnC.style.display = 'flex';
+        btnC.innerHTML = pinnedLinks[1].title.substring(0, 2).toUpperCase();
+        btnC.title = `Salin: ${pinnedLinks[1].title}`;
+        btnC.onclick = (e) => copyShopeeLink(e, pinnedLinks[1].url, btnC);
+    }
 }
 
 export async function openShopeeUrl(event, url) {
@@ -268,13 +291,11 @@ export function openShopeeList() {
 }
 window.openShopeeList = openShopeeList;
 
-// === FUNGSI BARU UNTUK TOMBOL BATAL DI LIST SHOPEE ===
 export function closeShopeeListModal() {
     closeModal('modal-shopee-list');
 }
 window.closeShopeeListModal = closeShopeeListModal;
 
-// === SETUP FITUR 'KLIK DI LUAR POPUP UNTUK MENUTUP' ===
 function initModalsBehavior() {
     const shopeeTitleInput = document.getElementById('shopee-title');
     if (shopeeTitleInput) {
@@ -283,7 +304,6 @@ function initModalsBehavior() {
         });
     }
 
-    // Deteksi klik area gelap untuk Form Edit/Tambah
     const formModal = document.getElementById('modal-shopee-form');
     if (formModal) {
         formModal.addEventListener('click', function(e) {
@@ -293,7 +313,6 @@ function initModalsBehavior() {
         });
     }
 
-    // Deteksi klik area gelap untuk Menu List (jika ada)
     const listModal = document.getElementById('modal-shopee-list');
     if (listModal) {
         listModal.addEventListener('click', function(e) {
