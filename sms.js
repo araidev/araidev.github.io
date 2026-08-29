@@ -6,13 +6,12 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 }, // Layanan baru Hero WA
-    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
+    "hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 },
+    "smsvirtual": { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 1310, maxPrice: 1400 }
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
-// Proteksi jika activeProviderKey yang tersimpan di localStorage sudah dihapus dari daftar (misal: otpinstan)
 if (!PROVIDERS[activeProviderKey]) activeProviderKey = "herosms";
 let BASE_URL = PROVIDERS[activeProviderKey].url;
 
@@ -141,9 +140,7 @@ function formatDisplayPrice(price, currency) {
 
 function cleanOpName(name) {
     if (!name) return "ANY (ACAK)";
-    let upper = String(name).toUpperCase();
-    if (upper.includes("INDOSAT")) return "INDOSAT";
-    return upper;
+    return String(name).toUpperCase();
 }
 
 // ==========================================
@@ -177,7 +174,7 @@ async function initSms() {
             <div id="wrapper-active-orders"></div>
             <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
                 <summary style="cursor: pointer; outline: none; display: flex; align-items: center; justify-content: flex-start;">
-                    <span id="hidden-toggle-text" style="background:#e9ecef; padding:6px 12px; border-radius:6px; font-size: 11px; font-weight:900; color:var(--fb-muted); letter-spacing:0.5px; border: 1px solid #ddd;">SHOW</span>
+                    <span id="hidden-toggle-text" style="background:#e9ecef; padding:6px 12px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-muted); letter-spacing:0.5px; border: 1px solid #ddd;">SHOW</span>
                 </summary>
                 <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
             </details>
@@ -359,7 +356,6 @@ async function loadSmsPrices() {
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) }));
             
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
-        // HWA dan HeroSMS menggunakan algoritma pembacaan API yang sama persis
         json.data
             .filter(i => {
                 let idrPrice = parseFloat(i.price) * currentUsdRate;
@@ -375,7 +371,7 @@ async function loadSmsPrices() {
                  }
             });
             
-    } else if (activeProviderKey === "svco") {
+    } else if (activeProviderKey === "smsvirtual") {
         json.data
             .filter(i => {
                 let idrPrice = parseFloat(i.price) * currentUsdRate;
@@ -418,18 +414,18 @@ export function renderPriceGroups() {
         if (activeProviderKey !== "smscode" && ops.length === 1) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
+                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:14px; display:flex; align-items:center; gap:8px;">
                             ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                            <span style="color: #fff; font-size: 10px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px;">BELI</span>
+                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px;">BELI</span>
                         </div>
                         <i class="fa-solid fa-star" onclick="toggleFavoritePrice('${price}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
                     </div>`;
         }
 
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:16px; display:flex; align-items:center; gap:8px;">
+                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                        <span style="color: var(--fb-muted); font-size: 11px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif;">
+                        <span style="color: var(--fb-muted); font-size: 10px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif;">
                             ${ops.length} Provider
                         </span>
                     </div>
@@ -471,15 +467,15 @@ export function openProviderMenu(price) {
                 
     html += ops.map(item => {
         return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 14px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
+                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 13px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
                         ${item.opName.toUpperCase()}
                     </div>
-                    <i class="fa-solid fa-chevron-right" style="color:var(--fb-muted); font-size: 12px;"></i>
+                    <i class="fa-solid fa-chevron-right" style="color:var(--fb-muted); font-size: 11px;"></i>
                 </div>`;
     }).join('');
     
     html += `
-        <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
+        <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 13px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
             <i class="fa-solid fa-arrow-left" style="margin-right:8px;"></i> KEMBALI
         </div>
     `;
@@ -494,13 +490,12 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
-    // PERBAIKAN: Warna khusus Hijau WhatsApp untuk HWA
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
                  activeProviderKey === "hwa" ? "#25D366" : 
-                 activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
+                 activeProviderKey === "smsvirtual" ? "#007bff" : "#95a5a6"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
-    const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
+    const recycledBadge = isRecycled ? `<span style="font-size:9px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
 
     const toggleTitle = isHidden ? 'SHOW' : 'HIDE';
     const toggleColor = isHidden ? 'var(--fb-blue)' : 'var(--fb-muted)';
@@ -508,20 +503,20 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" style="border: 2px solid ${bColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
-                <span class="hide-btn-text" onclick="localHideSmsCard('${oId}')" style="cursor:pointer; font-size:11px; font-weight:900; color:${toggleColor}; background:#e9ecef; padding:4px 8px; border-radius:4px; letter-spacing:0.5px;">${toggleTitle}</span>
-                <span style="font-size:16px; font-weight:900; color:var(--fb-text); text-transform:uppercase;">${operatorName.toUpperCase()}</span>
-                <span style="font-size:14px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
+                <span class="hide-btn-text" onclick="localHideSmsCard('${oId}')" style="cursor:pointer; font-size:10px; font-weight:900; color:${toggleColor}; background:#e9ecef; padding:4px 8px; border-radius:4px; letter-spacing:0.5px;">${toggleTitle}</span>
+                <span style="font-size:15px; font-weight:900; color:var(--fb-text); text-transform:uppercase;">${operatorName.toUpperCase()}</span>
+                <span style="font-size:13px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <span class="sms-timer" data-id="${oId}" data-expire="${expireTime}" style="font-family:monospace; font-weight:900; color:var(--fb-blue);">--:--</span>
             </div>
         </div>
-        <div style="font-size:11px; color:var(--fb-muted); margin-bottom:5px; text-transform:uppercase; font-weight:900;">Nomor HP: ${recycledBadge}</div>
+        <div style="font-size:10px; color:var(--fb-muted); margin-bottom:5px; text-transform:uppercase; font-weight:900;">Nomor HP: ${recycledBadge}</div>
         <div class="phone-box" onclick="copyPhoneNumber('${phone}', 'copy-icon-${oId}')" style="font-weight: 900;">
             <span class="phone-text-span" style="${phoneColorStyle}">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>
         </div>
         <div style="text-align: center; margin: 10px 0 15px 0; padding: 15px 0; background: #fafafa; border-radius: 8px;">
-            <div style="font-size:11px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
+            <div style="font-size:10px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
             <div class="otp-container" style="min-height:35px; display:flex; align-items:center; justify-content:center; font-weight: 900;">${otpDisplay}</div>
         </div>
         <div class="btn-grid-4">
@@ -544,10 +539,9 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${plainPText}?`, "confirm")) return;
 
     let payload;
-    if (activeProviderKey === "svco") {
+    if (activeProviderKey === "smsvirtual") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
-        // HWA menggunakan payload yang persis sama dengan HeroSMS
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
         payload = { 
@@ -657,7 +651,7 @@ function renderSmsOrders() {
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
-        let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:32px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
         const resendState = o.otp_code ? '' : 'disabled';
         
         const cancelState = passed2Mins && !o.otp_code ? '' : 'disabled';
