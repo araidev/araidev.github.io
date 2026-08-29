@@ -164,6 +164,41 @@ async function initSms() {
         selectHp.parentNode.insertBefore(provSelect, selectHp);
     }
 
+    // =============================================================
+    // INJEKSI TOMBOL REFRESH DI SEBELAH KIRI SALDO
+    // =============================================================
+    const elBal = document.getElementById('sms-balance');
+    if (elBal && !document.getElementById('btn-refresh-sms')) {
+        const balContainer = document.createElement('div');
+        balContainer.style.display = 'flex';
+        balContainer.style.alignItems = 'center';
+        balContainer.style.gap = '10px';
+
+        elBal.parentNode.insertBefore(balContainer, elBal);
+        
+        const refreshBtn = document.createElement('button');
+        refreshBtn.id = 'btn-refresh-sms';
+        refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+        refreshBtn.style.background = 'none';
+        refreshBtn.style.border = 'none';
+        refreshBtn.style.cursor = 'pointer';
+        refreshBtn.style.fontSize = '18px';
+        refreshBtn.style.color = 'var(--fb-blue)';
+        refreshBtn.title = 'Refresh Saldo & Harga';
+        
+        // Animasi putar ikon saat diklik
+        refreshBtn.onclick = () => {
+            const icon = refreshBtn.querySelector('i');
+            icon.classList.add('fa-spin');
+            refreshSms();
+            setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+        };
+
+        balContainer.appendChild(refreshBtn);
+        balContainer.appendChild(elBal); // Pindahkan elemen saldo ke dalam container baru
+    }
+    // =============================================================
+
     const container = document.getElementById('sms-active-orders');
     if (container && !document.getElementById('wrapper-active-orders')) {
         container.innerHTML = `
