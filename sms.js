@@ -140,7 +140,7 @@ function formatDisplayPrice(price, currency) {
 
 function cleanOpName(name) {
     if (!name) return "ANY (ACAK)";
-    return String(name).toUpperCase();
+    return String(name).toUpperCase().replace(" OOREDOO", "").trim();
 }
 
 // ==========================================
