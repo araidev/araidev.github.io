@@ -2,19 +2,18 @@ import { showModal } from './ui.js';
 import { db, auth } from './firebase.js'; 
 
 // ==========================================
-// 1. KONFIGURASI PROVIDER & HARGA
+// 1. KONFIGURASI PROVIDER & HARGA SPESIFIK
 // ==========================================
-const MIN_PRICE_IDR = 600; 
-const MAX_PRICE_IDR = 1500; 
-
 const PROVIDERS = {
-    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD" },
-    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD" },
-    //"otpinstan": { name: "INS", url: "https://instan.aam-zip.workers.dev", currency: "IDR" },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR" }
+    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 600, maxPrice: 1500 },
+    "hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 }, // Layanan baru Hero WA
+    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 600, maxPrice: 2000 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 500, maxPrice: 3000 }
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
+// Proteksi jika activeProviderKey yang tersimpan di localStorage sudah dihapus dari daftar (misal: otpinstan)
+if (!PROVIDERS[activeProviderKey]) activeProviderKey = "herosms";
 let BASE_URL = PROVIDERS[activeProviderKey].url;
 
 let currentServerName = ""; 
@@ -37,7 +36,7 @@ let cachedPriceGroups = {};
 function attachGlobalOrderListener() {
     if (!currentServerName) return;
     
-    const path = `muis/${activeProviderKey}/${currentServerName}`;
+    const path = `OTP/${activeProviderKey}/${currentServerName}`;
     
     if (window.ordersRef) window.ordersRef.off();
     window.ordersRef = db.ref(path);
@@ -140,7 +139,6 @@ function formatDisplayPrice(price, currency) {
     return `Rp ${parseInt(price || 0).toLocaleString('id-ID')}`; 
 }
 
-// FUNGSI PEMBERSIH NAMA PROVIDER (Mengubah INDOSAT OOREDOO jadi INDOSAT)
 function cleanOpName(name) {
     if (!name) return "ANY (ACAK)";
     let upper = String(name).toUpperCase();
@@ -210,7 +208,6 @@ async function initSms() {
     if(pollingInterval) clearInterval(pollingInterval);
     if(timerInterval) clearInterval(timerInterval);
     
-    // Interval Polling diubah menjadi 15 detik agar aman limit
     pollingInterval = setInterval(pollSms, 15000); 
     timerInterval = setInterval(updateSmsTimers, 1000);
 }
@@ -287,10 +284,9 @@ export function applySmsLock() {
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
 
-    // Perbaikan gembok macet: Memberi ID dan mengubah spesifik tanpa bentrok
     let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
     if (lockIcon) {
-        if (!lockIcon.id) lockIcon.id = 'global-sms-lock-icon'; // Pasang ID agar query cepat di klik berikutnya
+        if (!lockIcon.id) lockIcon.id = 'global-sms-lock-icon'; 
         lockIcon.className = isLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open";
         lockIcon.style.color = isLocked ? "var(--fb-red)" : "var(--fb-muted)";
     }
@@ -354,16 +350,20 @@ async function loadSmsPrices() {
 
     let normalizedPrices = [];
     
+    let currentMinPrice = PROVIDERS[activeProviderKey].minPrice;
+    let currentMaxPrice = PROVIDERS[activeProviderKey].maxPrice;
+    
     if (activeProviderKey === "smscode") {
         json.data
-            .filter(i => i.price >= MIN_PRICE_IDR && i.price <= MAX_PRICE_IDR)
+            .filter(i => i.price >= currentMinPrice && i.price <= currentMaxPrice)
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) }));
             
-    } else if (activeProviderKey === "herosms") {
+    } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
+        // HWA dan HeroSMS menggunakan algoritma pembacaan API yang sama persis
         json.data
             .filter(i => {
                 let idrPrice = parseFloat(i.price) * currentUsdRate;
-                return idrPrice >= MIN_PRICE_IDR && idrPrice <= MAX_PRICE_IDR;
+                return idrPrice >= currentMinPrice && idrPrice <= currentMaxPrice;
             })
             .forEach(i => {
                  normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
@@ -379,13 +379,10 @@ async function loadSmsPrices() {
         json.data
             .filter(i => {
                 let idrPrice = parseFloat(i.price) * currentUsdRate;
-                return idrPrice >= MIN_PRICE_IDR && idrPrice <= MAX_PRICE_IDR;
+                return idrPrice >= currentMinPrice && idrPrice <= currentMaxPrice;
             })
             .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: cleanOpName(i.operatorName), country: i.country }));
             
-    } else if (activeProviderKey === "otpinstan") {
-        json.data
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator), country: i.country }));
     }
 
     cachedPriceGroups = {};
@@ -418,9 +415,7 @@ export function renderPriceGroups() {
         
         let ops = cachedPriceGroups[price];
         
-        // PEMBERSIHAN TAMPILAN DEPAN: 
-        // smscode dipaksa masuk ke dalam menu "X Provider" meskipun hanya 1 opsi.
-        if (activeProviderKey === "otpinstan" || (activeProviderKey !== "smscode" && ops.length === 1)) {
+        if (activeProviderKey !== "smscode" && ops.length === 1) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
@@ -499,9 +494,10 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
+    // PERBAIKAN: Warna khusus Hijau WhatsApp untuk HWA
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
-                 activeProviderKey === "svco" ? "#007bff" : 
-                 activeProviderKey === "otpinstan" ? "#e67e22" : "#95a5a6"; 
+                 activeProviderKey === "hwa" ? "#25D366" : 
+                 activeProviderKey === "svco" ? "#007bff" : "#95a5a6"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:10px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
@@ -550,12 +546,10 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     let payload;
     if (activeProviderKey === "svco") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
-    } else if (activeProviderKey === "otpinstan") {
-        payload = { product_id: pid, price: Number(price), operator: operator, country: parseInt(countryRank) || 6 };
-    } else if (activeProviderKey === "herosms") {
+    } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
+        // HWA menggunakan payload yang persis sama dengan HeroSMS
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
-        // PENYATUAN JALUR PEMBELIAN: Menggunakan parameter 'name' ("TELKOMSEL") untuk dicatat oleh Worker, bukan 'operator' (kode 310)
         payload = { 
             type: "product", 
             product_id: parseInt(pid),
@@ -570,7 +564,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
         
-        // Memastikan fitur Replace mengingat nama dengan benar
         const savedOp = activeProviderKey === "smscode" ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
 
@@ -598,8 +591,7 @@ async function pollSms() {
 export function localHideSmsCard(id) {
     const strId = String(id);
     const currentHiddenStatus = globalOrders[strId] ? globalOrders[strId].hidden : false;
-    
-    db.ref(`muis/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!currentHiddenStatus);
+    db.ref(`OTP/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!currentHiddenStatus);
 }
 window.localHideSmsCard = localHideSmsCard;
 
@@ -636,7 +628,6 @@ function renderSmsOrders() {
         return { id: id, ...globalOrders[id] };
     });
 
-    // Urutkan pesanan dari yang paling baru
     ordersList.sort((a,b) => b.created_at - a.created_at);
 
     ordersList.forEach(o => {
@@ -648,10 +639,8 @@ function renderSmsOrders() {
         
         const price = o.price || 0;
         
-        // MENGGUNAKAN FUNGSI PEMBERSIH UNTUK KARTU PEMBELIAN (INDOSAT OOREDOO jadi INDOSAT)
         const opName = cleanOpName(o.operator);
         
-        // Membaca status hidden secara murni dari data Firebase yang disetel oleh Worker
         let isHidden = !!o.hidden; 
         
         let orderTime = o.created_at || Date.now();
@@ -685,7 +674,6 @@ function renderSmsOrders() {
     wrapHidden.innerHTML = hiddenHTML;
 }
 
-// LOGIKA UPDATE TIMER & MEMBUKA GEMBOK CANCEL REAL-TIME
 function updateSmsTimers() {
     const now = Date.now();
     document.querySelectorAll('.sms-timer').forEach(el => {
