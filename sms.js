@@ -5,10 +5,10 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA SPESIFIK
 // ==========================================
 const PROVIDERS = {
-    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 600, maxPrice: 1500 },
+    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
     "hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 }, // Layanan baru Hero WA
-    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 600, maxPrice: 2000 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 500, maxPrice: 3000 }
+    "svco":    { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 600, maxPrice: 1400 }
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
