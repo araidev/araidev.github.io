@@ -2,9 +2,9 @@ import { showModal } from './ui.js';
 
 // Konfigurasi Firebase Anda yang baru (sms-xurel)
 const firebaseConfig = {
-  const firebaseConfig = {
   apiKey: "AIzaSyAuJjd5dsuFIM8_oclq5V5BaiYmin2ZA4o",
   authDomain: "xurel-3b57a.firebaseapp.com",
+  databaseURL: "https://xurel-3b57a-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "xurel-3b57a",
   storageBucket: "xurel-3b57a.firebasestorage.app",
   messagingSenderId: "626566395991",
