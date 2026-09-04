@@ -8,7 +8,8 @@ const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
     "hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 },
     "smsvirtual": { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 1310, maxPrice: 1400 }
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 1310, maxPrice: 1400 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 2000 } // <-- OtpCepat Ditambahkan
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -139,7 +140,7 @@ function formatDisplayPrice(price, currency) {
 }
 
 function cleanOpName(name) {
-    if (!name) return "ANY (ACAK)";
+    if (!name || name === "any") return "ANY (ACAK)";
     return String(name).toUpperCase().replace(" OOREDOO", "").trim();
 }
 
@@ -186,7 +187,6 @@ async function initSms() {
         refreshBtn.style.color = 'var(--fb-blue)';
         refreshBtn.title = 'Refresh Saldo & Harga';
         
-        // Animasi putar ikon saat diklik
         refreshBtn.onclick = () => {
             const icon = refreshBtn.querySelector('i');
             icon.classList.add('fa-spin');
@@ -195,7 +195,7 @@ async function initSms() {
         };
 
         balContainer.appendChild(refreshBtn);
-        balContainer.appendChild(elBal); // Pindahkan elemen saldo ke dalam container baru
+        balContainer.appendChild(elBal); 
     }
     // =============================================================
 
@@ -385,10 +385,11 @@ async function loadSmsPrices() {
     let currentMinPrice = PROVIDERS[activeProviderKey].minPrice;
     let currentMaxPrice = PROVIDERS[activeProviderKey].maxPrice;
     
-    if (activeProviderKey === "smscode") {
+    // --> OtpCepat ditambahkan ke filter langsung mata uang IDR
+    if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data
             .filter(i => i.price >= currentMinPrice && i.price <= currentMaxPrice)
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) }));
+            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
             
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
         json.data
@@ -525,8 +526,10 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
+    // --> Tambahkan warna Oranye khusus untuk OtpCepat
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
                  activeProviderKey === "hwa" ? "#25D366" : 
+                 activeProviderKey === "otpcepat" ? "#fd9644" : 
                  activeProviderKey === "smsvirtual" ? "#007bff" : "#95a5a6"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
@@ -576,7 +579,8 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     let payload;
     if (activeProviderKey === "smsvirtual") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
-    } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
+    // --> OtpCepat ditambahkan ke logika format payload ini
+    } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa" || activeProviderKey === "otpcepat") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
         payload = { 
