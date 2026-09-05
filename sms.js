@@ -677,7 +677,7 @@ function renderSmsOrders() {
         let isHidden = !!o.hidden; 
         
         let orderTime = o.created_at || Date.now();
-        const expire = orderTime + 900000; 
+        const expire = orderTime + 1200000; // 20 Menit
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
@@ -718,7 +718,7 @@ function updateSmsTimers() {
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
             el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
 
-            let orderTime = end - 900000; 
+            let orderTime = end - 1200000; // 20 Menit
             let passed2Mins = (now - orderTime) >= 120000; 
 
             if (passed2Mins) {
