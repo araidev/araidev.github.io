@@ -22,29 +22,6 @@
         .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
         .fab-left:active { transform: scale(0.9); }
-
-        /* --- TAMBAHAN KELAS UNTUK MENGHILANGKAN ANIMASI & HOVER DI TOOLBAR --- */
-        .silent-btn { transition: none !important; outline: none !important; }
-        .silent-btn:hover { filter: none !important; background-color: inherit; transform: none !important; }
-        .silent-btn:active { transform: none !important; opacity: 1 !important; }
-
-        /* --- TAMBAHAN TOGGLE SWITCH INGAT SAYA --- */
-        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: var(--fb-blue); }
-        input:focus + .slider { box-shadow: 0 0 1px var(--fb-blue); }
-        input:checked + .slider:before { transform: translateX(14px); }
-        .slider.round { border-radius: 20px; }
-        .slider.round:before { border-radius: 50%; }
-
-        /* --- UI PINTASAN --- */
-        .shortcut-item { display: flex; justify-content: space-between; align-items: center; background: #f7f8fa; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--fb-border); }
-        .shortcut-title { font-weight: bold; font-size: 13px; color: var(--fb-text); }
-        .shortcut-actions button { background: none; border: none; cursor: pointer; font-size: 14px; margin-left: 5px; }
-        .btn-edit-sc { color: var(--fb-blue); }
-        .btn-del-sc { color: var(--fb-red); }
     </style>
 </head>
 <body>
@@ -62,10 +39,19 @@
                 <i class="fa-solid fa-dice"></i>
             </button>
 
-            <!-- Tombol Custom 1 & 2 dari Local Storage -->
-            <button id="toolbar-shortcut-0" class="silent-btn" onclick="copyShortcut(0)" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            <!-- Tombol B, C, D, E: Pinned Links Shopee -->
+            <button id="toolbar-btn-b" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
             
-            <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            <button id="toolbar-btn-c" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-btn-d" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-btn-e" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+
+            <!-- Tombol Custom 1 & 2 dari Local Storage -->
+            <button id="toolbar-shortcut-0" class="silent-btn" onclick="copyShortcut(0)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            
+            <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
         <!-- KANAN: Menu Profil / Admin -->
@@ -94,7 +80,7 @@
                     <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 15px;">Keluar (Logout)</button>
                 </div>
 
-                <!-- Pembatas Menu Pintasan -->
+                <!-- Pembatas -->
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
 
                 <!-- Pengaturan Pintasan -->
@@ -108,7 +94,7 @@
                     <!-- Form Tambah/Edit Pintasan -->
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
-                        <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf utk Label)" style="margin-bottom: 8px;">
+                        <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf)" style="margin-bottom: 8px;">
                         <input type="text" id="sc-content" class="form-input" placeholder="Teks/Link untuk disalin" style="margin-bottom: 8px;">
                         <div style="display: flex; gap: 5px;">
                             <button class="btn-primary" style="flex: 1; padding: 8px; font-size: 12px;" onclick="saveShortcut()">Simpan</button>
