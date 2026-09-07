@@ -7,7 +7,7 @@ import { openNoteList, openNoteModal, saveNote, editNote, deleteNote, copyNoteCo
 
 // Daftarkan ke Window
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
-window.masukSistem = masukSistem; window.keluarSistem = keluarSistem; window.generateName = generateName;
+window.keluarSistem = keluarSistem; window.generateName = generateName;
 window.openShopeeList = openShopeeList; window.formatRupiah = formatRupiah; window.openShopeeModal = openShopeeModal;
 window.saveShopee = saveShopee; window.deleteShopee = deleteShopee; window.copyShopeeLink = copyShopeeLink;
 window.actionRandomLink = actionRandomLink; window.openNoteList = openNoteList; window.openNoteModal = openNoteModal;
@@ -15,6 +15,169 @@ window.saveNote = saveNote; window.editNote = editNote; window.deleteNote = dele
 window.copyNoteContent = copyNoteContent; window.changeSmsServer = changeSmsServer;
 window.executeBuySms = executeBuySms; window.copyPhoneNumber = copyPhoneNumber; window.actSms = actSms;
 window.togglePinShopee = togglePinShopee;
+
+// ==========================================
+// FITUR: INGAT SAYA & OVERRIDE LOGIN
+// ==========================================
+window.masukSistem = function() {
+    const email = document.getElementById("global-email").value;
+    const pass = document.getElementById("global-pass").value;
+    const rememberSwitch = document.getElementById("remember-me-switch").checked;
+
+    // Simpan ke local storage jika dicentang
+    if (rememberSwitch) {
+        localStorage.setItem("xurel_remember_email", email);
+        localStorage.setItem("xurel_remember_pass", pass);
+    } else {
+        localStorage.removeItem("xurel_remember_email");
+        localStorage.removeItem("xurel_remember_pass");
+    }
+
+    // Panggil fungsi masukSistem asli bawaan dari firebase.js Anda
+    masukSistem();
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Muat preferensi Ingat Saya saat halaman dimuat
+    const savedEmail = localStorage.getItem("xurel_remember_email");
+    const savedPass = localStorage.getItem("xurel_remember_pass");
+    const rememberSwitch = document.getElementById("remember-me-switch");
+    
+    if (savedEmail && savedPass) {
+        document.getElementById("global-email").value = savedEmail;
+        document.getElementById("global-pass").value = savedPass;
+        if(rememberSwitch) rememberSwitch.checked = true;
+    }
+
+    // Render ulang pintasan di Toolbar
+    renderShortcuts();
+});
+
+
+// ==========================================
+// FITUR: SILENT COPY & MANAJEMEN PINTASAN
+// ==========================================
+function silentCopyToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).catch(err => console.error("Copy gagal", err));
+    } else {
+        let textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(textArea);
+    }
+    // Tidak ada notifikasi/alert yang muncul
+}
+
+// Data Array Pintasan Kustom (Maksimal 2)
+let myShortcuts = JSON.parse(localStorage.getItem("xurel_shortcuts")) || [];
+
+window.renderShortcuts = function() {
+    const listContainer = document.getElementById("shortcut-list-container");
+    const btnAdd = document.getElementById("btn-add-shortcut");
+    const tbBtn0 = document.getElementById("toolbar-shortcut-0");
+    const tbBtn1 = document.getElementById("toolbar-shortcut-1");
+
+    if(!listContainer || !tbBtn0 || !tbBtn1) return;
+
+    // Render Daftar di dalam Menu Admin
+    listContainer.innerHTML = "";
+    myShortcuts.forEach((sc, index) => {
+        listContainer.innerHTML += `
+            <div class="shortcut-item">
+                <span class="shortcut-title">${sc.title}</span>
+                <div class="shortcut-actions">
+                    <button class="btn-edit-sc" onclick="showShortcutForm(${index})"><i class="fas fa-edit"></i></button>
+                    <button class="btn-del-sc" onclick="deleteShortcut(${index})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Hilangkan tombol tambah jika sudah maksimal 2
+    if (myShortcuts.length >= 2) {
+        btnAdd.style.display = "none";
+    } else {
+        btnAdd.style.display = "block";
+    }
+
+    // Render di Toolbar Atas
+    tbBtn0.style.display = "none";
+    tbBtn1.style.display = "none";
+
+    if (myShortcuts[0]) {
+        tbBtn0.style.display = "flex";
+        tbBtn0.innerText = myShortcuts[0].title.substring(0, 2).toUpperCase();
+    }
+    if (myShortcuts[1]) {
+        tbBtn1.style.display = "flex";
+        tbBtn1.innerText = myShortcuts[1].title.substring(0, 2).toUpperCase();
+    }
+};
+
+window.showShortcutForm = function(index = -1) {
+    const form = document.getElementById("shortcut-form-container");
+    const titleInp = document.getElementById("sc-title");
+    const contentInp = document.getElementById("sc-content");
+    const indexInp = document.getElementById("sc-edit-index");
+    const btnAdd = document.getElementById("btn-add-shortcut");
+
+    if (index > -1) {
+        titleInp.value = myShortcuts[index].title;
+        contentInp.value = myShortcuts[index].content;
+        indexInp.value = index;
+    } else {
+        titleInp.value = "";
+        contentInp.value = "";
+        indexInp.value = -1;
+    }
+
+    form.style.display = "block";
+    btnAdd.style.display = "none";
+};
+
+window.hideShortcutForm = function() {
+    document.getElementById("shortcut-form-container").style.display = "none";
+    renderShortcuts();
+};
+
+window.saveShortcut = function() {
+    const title = document.getElementById("sc-title").value.trim();
+    const content = document.getElementById("sc-content").value.trim();
+    const index = parseInt(document.getElementById("sc-edit-index").value);
+
+    if (!title || !content) return alert("Judul dan isi tidak boleh kosong!");
+
+    if (index > -1) {
+        myShortcuts[index] = { title, content };
+    } else {
+        if (myShortcuts.length < 2) myShortcuts.push({ title, content });
+    }
+
+    localStorage.setItem("xurel_shortcuts", JSON.stringify(myShortcuts));
+    hideShortcutForm();
+};
+
+window.deleteShortcut = function(index) {
+    if (confirm("Hapus pintasan ini?")) {
+        myShortcuts.splice(index, 1);
+        localStorage.setItem("xurel_shortcuts", JSON.stringify(myShortcuts));
+        renderShortcuts();
+    }
+};
+
+window.copyShortcut = function(index) {
+    if (myShortcuts[index] && myShortcuts[index].content) {
+        silentCopyToClipboard(myShortcuts[index].content);
+    }
+};
+
 
 // ==========================================
 // LOGIKA LACI (DRAWER) DI TOOLBAR
@@ -52,7 +215,6 @@ window.saveEmailConfig = function() {
     let startVal = parseInt(document.getElementById('cfg-start').value) || 1;
     let endVal = parseInt(document.getElementById('cfg-end').value) || 100;
     
-    // Jangan ulangi hitungan dari awal jika masih di dalam batas wajar saat ini
     let currentIndexStr = localStorage.getItem('xurel_email_index');
     if (!currentIndexStr) {
         localStorage.setItem('xurel_email_index', (startVal - 1).toString()); 
@@ -83,37 +245,22 @@ document.addEventListener('DOMContentLoaded', () => {
         let indexStr = localStorage.getItem('xurel_email_index');
         let index = indexStr ? parseInt(indexStr) : (startCount - 1);
 
-        if (direction === 1) { // Aksi NEXT
-            if (index >= endCount) {
-                return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
-            }
+        if (direction === 1) { 
+            if (index >= endCount) return showModal("Batas Maksimal", `Batas akhir count email (${endCount}) telah tercapai!`, "alert");
             index++;
-        } else if (direction === -1) { // Aksi PREV
-            if (index <= startCount) {
-                return showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
-            }
+        } else if (direction === -1) { 
+            if (index <= startCount) return showModal("Batas Awal", `Anda sudah berada di batas awal email (${startCount})!`, "alert");
             index--;
         }
 
-        // Menyimpan progres ke local storage
         localStorage.setItem('xurel_email_index', index.toString());
         
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
-        // Auto Copy ke Clipboard
-        try {
-            if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(newEmail);
-            else throw new Error("Fallback");
-        } catch (err) {
-            const textArea = document.createElement("textarea");
-            textArea.value = newEmail;
-            textArea.style.position = "fixed"; textArea.style.left = "-9999px";
-            document.body.appendChild(textArea); textArea.focus(); textArea.select();
-            document.execCommand('copy'); document.body.removeChild(textArea);
-        }
+        // Menggunakan API Clipboard Diam-Diam untuk email counter
+        silentCopyToClipboard(newEmail);
         
-        // Tampilkan Hasil di Kolom IP
         if (ipInput) {
             ipInput.value = newEmail;
             ipInput.style.color = "var(--fb-blue)";
@@ -204,12 +351,17 @@ window.saveMyIP = async function() {
 };
 
 // ==========================================
-// KONTROL LOGIN
+// KONTROL LOGIN & MENU
 // ==========================================
 auth.onAuthStateChanged(user => {
     const isAdmin = !!user;
-    document.getElementById('login-form').classList.toggle('hidden', isAdmin);
-    document.getElementById('logout-form').classList.toggle('hidden', !isAdmin);
+    const loginForm = document.getElementById('login-form');
+    const logoutForm = document.getElementById('logout-form');
+    
+    if(loginForm && logoutForm) {
+        loginForm.classList.toggle('hidden', isAdmin);
+        logoutForm.classList.toggle('hidden', !isAdmin);
+    }
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
@@ -221,19 +373,31 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// override bawaan agar bisa menggunakan efek toggle class active untuk popup menu (jika menggunakan animasi CSS)
+window.toggleMainMenu = function() {
+    const popup = document.getElementById("main-menu-popup");
+    if(popup) {
+        if(popup.style.display === "block" || popup.classList.contains('active')) {
+            popup.style.display = "none";
+            popup.classList.remove('active');
+        } else {
+            popup.style.display = "block";
+            popup.classList.add('active');
+        }
+    }
+};
+
 // ==========================================
 // AUTO-KAPITAL JUDUL LINK SHOPEE
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Gunakan setInterval ringan untuk berjaga-jaga jika form modal belum dirender saat DOMContentLoaded
     const checkForm = setInterval(() => {
         const shopeeTitleInput = document.getElementById('shopee-title');
         if (shopeeTitleInput) {
             shopeeTitleInput.addEventListener('input', function() {
-                // Membuat huruf awal setiap kata menjadi kapital
                 this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
             });
-            clearInterval(checkForm); // Hentikan pencarian elemen setelah ketemu
+            clearInterval(checkForm); 
         }
     }, 500);
 });
