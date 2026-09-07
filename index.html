@@ -22,6 +22,29 @@
         .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
         .fab-left:active { transform: scale(0.9); }
+
+        /* --- TAMBAHAN KELAS UNTUK MENGHILANGKAN ANIMASI & HOVER DI TOOLBAR --- */
+        .silent-btn { transition: none !important; outline: none !important; }
+        .silent-btn:hover { filter: none !important; background-color: inherit; transform: none !important; }
+        .silent-btn:active { transform: none !important; opacity: 1 !important; }
+
+        /* --- TAMBAHAN TOGGLE SWITCH INGAT SAYA --- */
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: var(--fb-blue); }
+        input:focus + .slider { box-shadow: 0 0 1px var(--fb-blue); }
+        input:checked + .slider:before { transform: translateX(14px); }
+        .slider.round { border-radius: 20px; }
+        .slider.round:before { border-radius: 50%; }
+
+        /* --- UI PINTASAN --- */
+        .shortcut-item { display: flex; justify-content: space-between; align-items: center; background: #f7f8fa; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--fb-border); }
+        .shortcut-title { font-weight: bold; font-size: 13px; color: var(--fb-text); }
+        .shortcut-actions button { background: none; border: none; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        .btn-edit-sc { color: var(--fb-blue); }
+        .btn-del-sc { color: var(--fb-red); }
     </style>
 </head>
 <body>
@@ -30,23 +53,19 @@
         <!-- KIRI: Kumpulan Tombol Pintasan -->
         <div style="display: flex; gap: 6px;">
             <!-- Tombol Pintasan: Acak Data -->
-            <button id="toolbar-btn-gen" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
+            <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
                 <i class="fa-solid fa-shuffle"></i>
             </button>
 
             <!-- Tombol A: Daftar Link Acak -->
-            <button id="toolbar-btn-a" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
+            <button id="toolbar-btn-a" class="silent-btn" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
                 <i class="fa-solid fa-dice"></i>
             </button>
 
-            <!-- Tombol B, C, D, E: Pinned Links -->
-            <button id="toolbar-btn-b" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            <!-- Tombol Custom 1 & 2 dari Local Storage -->
+            <button id="toolbar-shortcut-0" class="silent-btn" onclick="copyShortcut(0)" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
             
-            <button id="toolbar-btn-c" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
-            <button id="toolbar-btn-d" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
-            <button id="toolbar-btn-e" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
+            <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
         <!-- KANAN: Menu Profil / Admin -->
@@ -57,11 +76,49 @@
                     <div style="font-weight: bold; margin-bottom: 15px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">SISTEM ADMIN</div>
                     <input type="email" id="global-email" class="form-input" placeholder="Email">
                     <input type="password" id="global-pass" class="form-input" placeholder="Password">
-                    <button class="btn-primary" onclick="masukSistem()">Masuk</button>
+                    
+                    <!-- Fitur Ingat Saya -->
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <label class="switch">
+                            <input type="checkbox" id="remember-me-switch">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 12px; color: var(--fb-muted); font-weight: bold;">Ingat Saya</span>
+                    </div>
+
+                    <button class="btn-primary" onclick="masukSistem()" style="margin-bottom: 15px;">Masuk</button>
                 </div>
+
                 <div id="logout-form" class="hidden">
                     <p style="text-align: center; font-weight: bold; color: var(--fb-green); margin-bottom: 15px;">ADMIN TERVERIFIKASI</p>
-                    <button class="btn-danger" onclick="keluarSistem()">Keluar (Logout)</button>
+                    <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 15px;">Keluar (Logout)</button>
+                </div>
+
+                <!-- Pembatas Menu Pintasan -->
+                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
+
+                <!-- Pengaturan Pintasan -->
+                <div id="shortcut-settings">
+                    <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">PENGATURAN PINTASAN KUSTOM</div>
+                    
+                    <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                        <!-- List pintasan akan dirender via JS -->
+                    </div>
+
+                    <!-- Form Tambah/Edit Pintasan -->
+                    <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                        <input type="hidden" id="sc-edit-index" value="-1">
+                        <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf utk Label)" style="margin-bottom: 8px;">
+                        <input type="text" id="sc-content" class="form-input" placeholder="Teks/Link untuk disalin" style="margin-bottom: 8px;">
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn-primary" style="flex: 1; padding: 8px; font-size: 12px;" onclick="saveShortcut()">Simpan</button>
+                            <button style="flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: none; background: #ccc; cursor: pointer; font-weight: bold;" onclick="hideShortcutForm()">Batal</button>
+                        </div>
+                    </div>
+
+                    <button id="btn-add-shortcut" onclick="showShortcutForm(-1)" style="width: 100%; padding: 10px; border-radius: 6px; border: none; background: var(--fb-green); color: white; font-weight: bold; cursor: pointer;">
+                        <i class="fa-solid fa-plus"></i> Tambah Pintasan
+                    </button>
                 </div>
             </div>
         </div>
@@ -89,7 +146,7 @@
                 </div>
 
                 <div class="section-card action-row" style="padding: 10px;">
-                    <button id="btn-gen" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
+                    <button id="btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
                         <i class="fa-solid fa-shuffle"></i> Acak Data
                     </button>
                     <button id="btn-next-email" style="background: var(--fb-green); flex: 1;">
