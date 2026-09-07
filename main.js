@@ -24,7 +24,6 @@ window.masukSistem = function() {
     const pass = document.getElementById("global-pass").value;
     const rememberSwitch = document.getElementById("remember-me-switch").checked;
 
-    // Simpan ke local storage jika dicentang
     if (rememberSwitch) {
         localStorage.setItem("xurel_remember_email", email);
         localStorage.setItem("xurel_remember_pass", pass);
@@ -32,8 +31,8 @@ window.masukSistem = function() {
         localStorage.removeItem("xurel_remember_email");
         localStorage.removeItem("xurel_remember_pass");
     }
-
-    // Panggil fungsi masukSistem asli bawaan dari firebase.js Anda
+    
+    // Panggil fungsi masukSistem orisinal bawaan firebase.js Anda
     masukSistem();
 };
 
@@ -72,10 +71,8 @@ function silentCopyToClipboard(text) {
         try { document.execCommand('copy'); } catch (err) {}
         document.body.removeChild(textArea);
     }
-    // Tidak ada notifikasi/alert yang muncul
 }
 
-// Data Array Pintasan Kustom (Maksimal 2)
 let myShortcuts = JSON.parse(localStorage.getItem("xurel_shortcuts")) || [];
 
 window.renderShortcuts = function() {
@@ -86,7 +83,6 @@ window.renderShortcuts = function() {
 
     if(!listContainer || !tbBtn0 || !tbBtn1) return;
 
-    // Render Daftar di dalam Menu Admin
     listContainer.innerHTML = "";
     myShortcuts.forEach((sc, index) => {
         listContainer.innerHTML += `
@@ -100,14 +96,12 @@ window.renderShortcuts = function() {
         `;
     });
 
-    // Hilangkan tombol tambah jika sudah maksimal 2
     if (myShortcuts.length >= 2) {
         btnAdd.style.display = "none";
     } else {
         btnAdd.style.display = "block";
     }
 
-    // Render di Toolbar Atas
     tbBtn0.style.display = "none";
     tbBtn1.style.display = "none";
 
@@ -152,7 +146,7 @@ window.saveShortcut = function() {
     const content = document.getElementById("sc-content").value.trim();
     const index = parseInt(document.getElementById("sc-edit-index").value);
 
-    if (!title || !content) return alert("Judul dan isi tidak boleh kosong!");
+    if (!title || !content) return; // Silent return if empty
 
     if (index > -1) {
         myShortcuts[index] = { title, content };
@@ -258,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
-        // Menggunakan API Clipboard Diam-Diam untuk email counter
+        // Menggunakan API Clipboard Diam-Diam
         silentCopyToClipboard(newEmail);
         
         if (ipInput) {
@@ -373,7 +367,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// override bawaan agar bisa menggunakan efek toggle class active untuk popup menu (jika menggunakan animasi CSS)
+// override bawaan agar bisa menggunakan efek toggle class active
 window.toggleMainMenu = function() {
     const popup = document.getElementById("main-menu-popup");
     if(popup) {
