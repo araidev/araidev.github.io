@@ -401,23 +401,34 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 let cloudNoteTimeout;
 
+// Hapus secara diam-diam tanpa konfirmasi pop-up
 window.clearCloudNote = function() {
     const cloudInput = document.getElementById('cloud-quick-note');
     const statusText = document.getElementById('cloud-note-status');
     
-    if (confirm("Kosongkan kolom dan hapus catatan dari database?")) {
-        cloudInput.value = "";
-        statusText.innerText = "Menghapus...";
-        
-        db.ref('admin_settings/cloud_quick_note').remove()
-            .then(() => {
-                statusText.innerText = "Data berhasil dihapus.";
-                setTimeout(() => { statusText.innerText = ""; }, 2000);
-            })
-            .catch(err => {
-                console.error("Gagal menghapus:", err);
-                statusText.innerText = "Gagal menghapus!";
-            });
+    cloudInput.value = "";
+    statusText.innerText = "Menghapus...";
+    
+    db.ref('admin_settings/cloud_quick_note').remove()
+        .then(() => {
+            statusText.innerText = "Dihapus ✓";
+            setTimeout(() => { statusText.innerText = ""; }, 2000);
+        })
+        .catch(err => {
+            console.error("Gagal menghapus:", err);
+            statusText.innerText = "Gagal menghapus!";
+        });
+};
+
+// Salin secara diam-diam
+window.copyCloudNote = function() {
+    const cloudInput = document.getElementById('cloud-quick-note');
+    const statusText = document.getElementById('cloud-note-status');
+    
+    if (cloudInput && cloudInput.value) {
+        silentCopyToClipboard(cloudInput.value);
+        statusText.innerText = "Disalin ✓";
+        setTimeout(() => { statusText.innerText = ""; }, 2000);
     }
 };
 
