@@ -395,3 +395,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 500);
 });
+
+// ==========================================
+// FITUR: CATATAN CLOUD OTOMATIS
+// ==========================================
+let cloudNoteTimeout;
+
+window.clearCloudNote = function() {
+    const cloudInput = document.getElementById('cloud-quick-note');
+    const statusText = document.getElementById('cloud-note-status');
+    
+    if (confirm("Kosongkan kolom dan hapus catatan dari database?")) {
+        cloudInput.value = "";
+        statusText.innerText = "Menghapus...";
+        
+        db.ref('admin_settings/cloud_quick_note').remove()
+            .then(() => {
+                statusText.innerText = "Data berhasil dihapus.";
+                setTimeout(() => { statusText.innerText = ""; }, 2000);
+            })
+            .catch(err => {
+                console.error("Gagal menghapus:", err);
+                statusText.innerText = "Gagal menghapus!";
+            });
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const cloudInput = document.getElementById('cloud-quick-note');
+    const statusText = document.getElementById('cloud-note-status');
+
+    if(cloudInput) {
+        // Sinkronisasi realtime dari Firebase
+        db.ref('admin_settings/cloud_quick_note').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                cloudInput.value = snapshot.val();
+            } else {
+                cloudInput.value = "";
+            }
+        });
+
+        // Simpan otomatis saat mengetik dengan Debounce (Jeda)
+        cloudInput.addEventListener('input', function() {
+            statusText.innerText = "Mengetik...";
+            
+            clearTimeout(cloudNoteTimeout);
+            cloudNoteTimeout = setTimeout(() => {
+                statusText.innerText = "Menyimpan ke awan...";
+                
+                db.ref('admin_settings/cloud_quick_note').set(this.value.trim())
+                    .then(() => {
+                        statusText.innerText = "Tersimpan ✓";
+                        setTimeout(() => { statusText.innerText = ""; }, 2000);
+                    })
+                    .catch(err => {
+                        console.error("Gagal menyimpan:", err);
+                        statusText.innerText = "Gagal menyimpan!";
+                    });
+            }, 800); // 800ms jeda setelah berhenti mengetik
+        });
+    }
+});
