@@ -101,7 +101,14 @@
                     <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">CATATAN CLOUD OTOMATIS</div>
                     <div style="display: flex; gap: 5px; align-items: center;">
                         <input type="text" id="cloud-quick-note" class="form-input" placeholder="Ketik untuk simpan ke database..." style="margin-bottom: 0; flex: 1;">
-                        <button id="btn-clear-cloud" onclick="clearCloudNote()" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Hapus Isi">
+                        
+                        <!-- Tombol Salin -->
+                        <button id="btn-copy-cloud" onclick="copyCloudNote()" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;" title="Salin Isi">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+
+                        <!-- Tombol Hapus -->
+                        <button id="btn-clear-cloud" onclick="clearCloudNote()" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;" title="Hapus Isi">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
