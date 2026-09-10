@@ -29,28 +29,20 @@
     <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 1002;">
         <!-- KIRI: Kumpulan Tombol Pintasan -->
         <div style="display: flex; gap: 6px;">
-            <!-- Tombol Pintasan: Acak Data -->
             <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
                 <i class="fa-solid fa-shuffle"></i>
             </button>
 
-            <!-- Tombol A: Daftar Link Acak -->
             <button id="toolbar-btn-a" class="silent-btn" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
                 <i class="fa-solid fa-dice"></i>
             </button>
 
-            <!-- Tombol B, C, D, E: Pinned Links Shopee -->
             <button id="toolbar-btn-b" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
             <button id="toolbar-btn-c" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
             <button id="toolbar-btn-d" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
             <button id="toolbar-btn-e" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
 
-            <!-- Tombol Custom 1 & 2 dari Local Storage -->
             <button id="toolbar-shortcut-0" class="silent-btn" onclick="copyShortcut(0)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            
             <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
@@ -63,7 +55,6 @@
                     <input type="email" id="global-email" class="form-input" placeholder="Email">
                     <input type="password" id="global-pass" class="form-input" placeholder="Password">
                     
-                    <!-- Fitur Ingat Saya -->
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                         <label class="switch">
                             <input type="checkbox" id="remember-me-switch">
@@ -80,18 +71,14 @@
                     <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 15px;">Keluar (Logout)</button>
                 </div>
 
-                <!-- Pembatas -->
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
 
-                <!-- Pengaturan Pintasan -->
                 <div id="shortcut-settings">
                     <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">PENGATURAN PINTASAN KUSTOM</div>
                     
                     <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
-                        <!-- List pintasan akan dirender via JS -->
                     </div>
 
-                    <!-- Form Tambah/Edit Pintasan -->
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
                         <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf)" style="margin-bottom: 8px;">
@@ -106,11 +93,25 @@
                         <i class="fa-solid fa-plus"></i> Tambah Pintasan
                     </button>
                 </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 15px 0;">
+
+                <!-- FITUR BARU: CATATAN CLOUD OTOMATIS -->
+                <div id="cloud-note-settings">
+                    <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">CATATAN CLOUD OTOMATIS</div>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="text" id="cloud-quick-note" class="form-input" placeholder="Ketik untuk simpan ke database..." style="margin-bottom: 0; flex: 1;">
+                        <button id="btn-clear-cloud" onclick="clearCloudNote()" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Hapus Isi">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div id="cloud-note-status" style="font-size: 10px; color: var(--fb-muted); margin-top: 5px; text-align: right; min-height: 15px;"></div>
+                </div>
+
             </div>
         </div>
     </nav>
 
-    <!-- TOMBOL DRAWER MENU (DESAIN PULL-TAB MODERN) -->
     <div style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 1001;">
         <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: var(--fb-card); border: 1px solid var(--fb-border); border-top: none; width: 65px; height: 22px; border-radius: 0 0 16px 16px; color: #a0a3a7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 5px rgba(0,0,0,0.04); transition: background 0.2s, color 0.2s;">
             <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
