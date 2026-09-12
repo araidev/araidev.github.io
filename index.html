@@ -27,7 +27,6 @@
 <body>
 
     <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 1002;">
-        <!-- KIRI: Kumpulan Tombol Pintasan -->
         <div style="display: flex; gap: 6px;">
             <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
                 <i class="fa-solid fa-shuffle"></i>
@@ -46,7 +45,6 @@
             <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
-        <!-- KANAN: Menu Profil / Admin -->
         <div class="nav-right">
             <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
             <div id="main-menu-popup" class="global-login">
@@ -96,22 +94,32 @@
 
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 15px 0;">
 
-                <!-- FITUR BARU: CATATAN CLOUD OTOMATIS -->
+                <!-- FITUR BARU: 2 CATATAN CLOUD OTOMATIS -->
                 <div id="cloud-note-settings">
                     <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">CATATAN CLOUD OTOMATIS</div>
-                    <div style="display: flex; gap: 5px; align-items: center;">
-                        <input type="text" id="cloud-quick-note" class="form-input" placeholder="Ketik untuk simpan ke database..." style="margin-bottom: 0; flex: 1;">
-                        
-                        <!-- Tombol Salin -->
-                        <button id="btn-copy-cloud" onclick="copyCloudNote()" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;" title="Salin Isi">
+                    
+                    <!-- Kolom 1 (Tombol Hapus Merah) -->
+                    <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
+                        <input type="text" id="cloud-quick-note-1" class="form-input" placeholder="" style="margin-bottom: 0; flex: 1; transition: background 0.2s;">
+                        <button onclick="copyCloudNote(1)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
                             <i class="fa-solid fa-copy"></i>
                         </button>
-
-                        <!-- Tombol Hapus -->
-                        <button id="btn-clear-cloud" onclick="clearCloudNote()" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;" title="Hapus Isi">
+                        <button onclick="clearCloudNote(1)" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
+
+                    <!-- Kolom 2 (Tombol Hapus Kuning) -->
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="text" id="cloud-quick-note-2" class="form-input" placeholder="" style="margin-bottom: 0; flex: 1; transition: background 0.2s;">
+                        <button onclick="copyCloudNote(2)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button onclick="clearCloudNote(2)" style="background: #f1c40f; color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    
                     <div id="cloud-note-status" style="font-size: 10px; color: var(--fb-muted); margin-top: 5px; text-align: right; min-height: 15px;"></div>
                 </div>
 
