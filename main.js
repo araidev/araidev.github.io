@@ -32,12 +32,10 @@ window.masukSistem = function() {
         localStorage.removeItem("xurel_remember_pass");
     }
     
-    // Panggil fungsi masukSistem orisinal bawaan firebase.js Anda
     masukSistem();
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Muat preferensi Ingat Saya saat halaman dimuat
     const savedEmail = localStorage.getItem("xurel_remember_email");
     const savedPass = localStorage.getItem("xurel_remember_pass");
     const rememberSwitch = document.getElementById("remember-me-switch");
@@ -48,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if(rememberSwitch) rememberSwitch.checked = true;
     }
 
-    // Render ulang pintasan di Toolbar
     renderShortcuts();
 });
 
@@ -146,7 +143,7 @@ window.saveShortcut = function() {
     const content = document.getElementById("sc-content").value.trim();
     const index = parseInt(document.getElementById("sc-edit-index").value);
 
-    if (!title || !content) return; // Silent return if empty
+    if (!title || !content) return;
 
     if (index > -1) {
         myShortcuts[index] = { title, content };
@@ -222,7 +219,7 @@ window.saveEmailConfig = function() {
 };
 
 // ==========================================
-// LOGIKA NEXT & PREV EMAIL (KOLOM MULTIFUNGSI)
+// LOGIKA NEXT & PREV EMAIL
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnNext = document.getElementById('btn-next-email');
@@ -252,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const parts = base.split('@');
         let newEmail = parts.length === 2 ? `${parts[0]}${index}@${parts[1]}` : `${base}${index}`;
         
-        // Menggunakan API Clipboard Diam-Diam
         silentCopyToClipboard(newEmail);
         
         if (ipInput) {
@@ -367,7 +363,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// override bawaan agar bisa menggunakan efek toggle class active
 window.toggleMainMenu = function() {
     const popup = document.getElementById("main-menu-popup");
     if(popup) {
@@ -397,19 +392,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// FITUR: CATATAN CLOUD OTOMATIS
+// FITUR: 2 CATATAN CLOUD OTOMATIS
 // ==========================================
-let cloudNoteTimeout;
+let cloudNoteTimeouts = { 1: null, 2: null };
 
-// Hapus secara diam-diam tanpa konfirmasi pop-up
-window.clearCloudNote = function() {
-    const cloudInput = document.getElementById('cloud-quick-note');
+function updateCloudInputColor(id, value) {
+    const input = document.getElementById(`cloud-quick-note-${id}`);
+    if (!input) return;
+    
+    if (!value || value.trim() === "") {
+        // Jika kosong: Kolom 1 merah muda, Kolom 2 kuning muda (agar teks tetap bisa dibaca)
+        if (id === 1) input.style.backgroundColor = "#ffebee";
+        if (id === 2) input.style.backgroundColor = "#fff9c4";
+    } else {
+        // Jika terisi kembalikan ke warna putih
+        input.style.backgroundColor = "#ffffff";
+    }
+}
+
+window.clearCloudNote = function(id) {
+    const cloudInput = document.getElementById(`cloud-quick-note-${id}`);
     const statusText = document.getElementById('cloud-note-status');
     
     cloudInput.value = "";
+    updateCloudInputColor(id, "");
     statusText.innerText = "Menghapus...";
     
-    db.ref('admin_settings/cloud_quick_note').remove()
+    db.ref(`admin_settings/cloud_quick_note_${id}`).remove()
         .then(() => {
             statusText.innerText = "Dihapus ✓";
             setTimeout(() => { statusText.innerText = ""; }, 2000);
@@ -420,9 +429,8 @@ window.clearCloudNote = function() {
         });
 };
 
-// Salin secara diam-diam
-window.copyCloudNote = function() {
-    const cloudInput = document.getElementById('cloud-quick-note');
+window.copyCloudNote = function(id) {
+    const cloudInput = document.getElementById(`cloud-quick-note-${id}`);
     const statusText = document.getElementById('cloud-note-status');
     
     if (cloudInput && cloudInput.value) {
@@ -433,37 +441,41 @@ window.copyCloudNote = function() {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const cloudInput = document.getElementById('cloud-quick-note');
-    const statusText = document.getElementById('cloud-note-status');
+    [1, 2].forEach(id => {
+        const cloudInput = document.getElementById(`cloud-quick-note-${id}`);
+        const statusText = document.getElementById('cloud-note-status');
 
-    if(cloudInput) {
-        // Sinkronisasi realtime dari Firebase
-        db.ref('admin_settings/cloud_quick_note').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                cloudInput.value = snapshot.val();
-            } else {
-                cloudInput.value = "";
-            }
-        });
+        if(cloudInput) {
+            // Sinkronisasi realtime dari Firebase
+            db.ref(`admin_settings/cloud_quick_note_${id}`).on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    cloudInput.value = snapshot.val();
+                } else {
+                    cloudInput.value = "";
+                }
+                updateCloudInputColor(id, cloudInput.value);
+            });
 
-        // Simpan otomatis saat mengetik dengan Debounce (Jeda)
-        cloudInput.addEventListener('input', function() {
-            statusText.innerText = "Mengetik...";
-            
-            clearTimeout(cloudNoteTimeout);
-            cloudNoteTimeout = setTimeout(() => {
-                statusText.innerText = "Menyimpan ke awan...";
+            // Simpan otomatis saat mengetik dengan Debounce
+            cloudInput.addEventListener('input', function() {
+                updateCloudInputColor(id, this.value);
+                statusText.innerText = "Mengetik...";
                 
-                db.ref('admin_settings/cloud_quick_note').set(this.value.trim())
-                    .then(() => {
-                        statusText.innerText = "Tersimpan ✓";
-                        setTimeout(() => { statusText.innerText = ""; }, 2000);
-                    })
-                    .catch(err => {
-                        console.error("Gagal menyimpan:", err);
-                        statusText.innerText = "Gagal menyimpan!";
-                    });
-            }, 800); // 800ms jeda setelah berhenti mengetik
-        });
-    }
+                clearTimeout(cloudNoteTimeouts[id]);
+                cloudNoteTimeouts[id] = setTimeout(() => {
+                    statusText.innerText = "Menyimpan...";
+                    
+                    db.ref(`admin_settings/cloud_quick_note_${id}`).set(this.value.trim())
+                        .then(() => {
+                            statusText.innerText = "Tersimpan ✓";
+                            setTimeout(() => { statusText.innerText = ""; }, 2000);
+                        })
+                        .catch(err => {
+                            console.error("Gagal menyimpan:", err);
+                            statusText.innerText = "Gagal menyimpan!";
+                        });
+                }, 800);
+            });
+        }
+    });
 });
