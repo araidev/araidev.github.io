@@ -23,7 +23,7 @@
 <body>
 
     <nav class="top-nav">
-        <!-- SUSUNAN BARU: Home -> Acak Data -> Dadu -> Shopee -> Catatan -> Pengingat -> Pintasan -->
+        <!-- SUSUNAN: Home -> Acak Data -> Dadu -> Shopee -> Catatan -> Pengingat -> Pintasan -->
         <div style="display: flex; gap: 6px;">
             <button id="tab-btn-home" class="tab-btn active-tab" onclick="switchTab('home')" title="Dashboard"><i class="fa-solid fa-house"></i></button>
             <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data"><i class="fa-solid fa-shuffle"></i></button>
@@ -151,7 +151,6 @@
         <!-- ================= 2: SHOPEE ================= -->
         <div id="view-shopee" class="view-section" style="margin-top: 15px;">
             <div class="section-card" style="padding: 15px; background: #f0f2f5;">
-                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Link Shopee</h3>
                 <button class="btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 6px;" onclick="openShopeeModal()"><i class="fas fa-plus"></i> TAMBAH LINK BARU</button>
                 <div id="shopee-container" style="display: flex; flex-direction: column; padding-bottom: 20px;"></div>
             </div>
@@ -160,7 +159,6 @@
         <!-- ================= 3: CATATAN ================= -->
         <div id="view-notes" class="view-section" style="margin-top: 15px;">
             <div class="section-card" style="padding: 15px;">
-                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Buku Catatan</h3>
                 <button class="btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 6px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
                 <div id="note-stats-container"></div>
                 <div id="notes-grid" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px;"></div>
@@ -170,7 +168,6 @@
         <!-- ================= 4: PENGINGAT (TOOLS/TRASH) ================= -->
         <div id="view-tools" class="view-section" style="margin-top: 15px;">
             <div class="section-card" style="padding: 15px; background: #f0f2f5;">
-                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Pengingat / Histori Hapus</h3>
                 <div id="tools-container" style="display: flex; flex-direction: column; padding-bottom: 20px;">
                     <!-- Dirender oleh tools.js -->
                 </div>
@@ -197,7 +194,7 @@
         </div>
     </div>
 
-    <!-- Form Edit Shopee Baru (Tanpa Mall/Star, Tambah Keterangan) -->
+    <!-- Form Edit Shopee -->
     <div id="modal-shopee-form" class="modal-overlay" onclick="closeModal('modal-shopee-form')">
         <div class="modal-box" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
             <h3 id="modal-shopee-title" style="margin-bottom:15px; font-size: 16px;">Edit Link Shopee</h3>
@@ -206,7 +203,6 @@
             <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
             <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
             
-            <!-- Kolom Opsional Baru -->
             <input type="text" id="shopee-desc" class="form-input" placeholder="">
 
             <div style="display: flex; gap: 10px; margin-top: 10px;">
