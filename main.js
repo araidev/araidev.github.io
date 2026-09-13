@@ -131,7 +131,16 @@ window.saveShortcut = function() {
     if (index > -1) { myShortcuts[index] = { title, content }; } else { if (myShortcuts.length < 2) myShortcuts.push({ title, content }); }
     localStorage.setItem("xurel_shortcuts", JSON.stringify(myShortcuts)); hideShortcutForm();
 };
-window.deleteShortcut = function(index) { if (confirm("Hapus pintasan ini?")) { myShortcuts.splice(index, 1); localStorage.setItem("xurel_shortcuts", JSON.stringify(myShortcuts)); renderShortcuts(); } };
+
+// MEMPERBARUI NOTIFIKASI HAPUS KE MODERN MODAL
+window.deleteShortcut = async function(index) { 
+    if (await showModal("Hapus Pintasan", "Yakin ingin menghapus pintasan kustom ini?", "danger")) { 
+        myShortcuts.splice(index, 1); 
+        localStorage.setItem("xurel_shortcuts", JSON.stringify(myShortcuts)); 
+        renderShortcuts(); 
+    } 
+};
+
 window.copyShortcut = function(index) { if (myShortcuts[index] && myShortcuts[index].content) silentCopyToClipboard(myShortcuts[index].content); };
 
 window.toggleTopDrawer = function() {
