@@ -70,7 +70,7 @@ export function saveShopee() {
     let rawTitle = document.getElementById('shopee-title').value.trim(); 
     const u = document.getElementById('shopee-url').value.trim();
     const p = document.getElementById('shopee-price').value; 
-    const d = document.getElementById('shopee-desc').value.trim(); // Kolom Baru (Keterangan Bebas)
+    const d = document.getElementById('shopee-desc').value.trim(); 
     
     if (!rawTitle) rawTitle = "---";
     const t = rawTitle.toUpperCase();
@@ -86,7 +86,7 @@ export function saveShopee() {
 }
 window.saveShopee = saveShopee;
 
-// HAPUS -> PINDAH KE PENGINGAT/SISTEM TONG SAMPAH
+// PINDAH KE PENGINGAT BILA DIHAPUS
 export async function deleteShopee(key) { 
     if(await showModal("Hapus Link", "Pindahkan kartu ini ke Pengingat?", "danger")) {
         const itemToTrash = shopeeDataCache[key];
