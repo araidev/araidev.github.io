@@ -55,17 +55,20 @@
                 </div>
 
                 <div id="logout-form" class="hidden">
-                    <p style="text-align: center; font-weight: bold; color: var(--fb-green); margin-bottom: 15px;">ADMIN TERVERIFIKASI</p>
-                    <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 15px;">Keluar (Logout)</button>
+                    <p style="text-align: center; font-weight: bold; color: var(--fb-green); margin-bottom: 10px;">ADMIN TERVERIFIKASI</p>
+                    <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 5px;">Keluar (Logout)</button>
                 </div>
-                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
+                
+                <!-- Garis pembatas dengan jarak yang diperkecil -->
+                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 8px 0 10px 0;">
 
                 <div id="shortcut-settings">
                     <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
-                        <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf)" style="margin-bottom: 8px;">
-                        <input type="text" id="sc-content" class="form-input" placeholder="Teks/Link untuk disalin" style="margin-bottom: 8px;">
+                        <!-- Placeholder dikosongkan sesuai permintaan -->
+                        <input type="text" id="sc-title" class="form-input" placeholder="" style="margin-bottom: 8px;">
+                        <input type="text" id="sc-content" class="form-input" placeholder="" style="margin-bottom: 8px;">
                         <div style="display: flex; gap: 5px;">
                             <button class="btn-primary" style="flex: 1; padding: 8px; font-size: 12px;" onclick="saveShortcut()">Simpan</button>
                             <button style="flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: none; background: #ccc; cursor: pointer; font-weight: bold;" onclick="hideShortcutForm()">Batal</button>
@@ -75,7 +78,8 @@
                         <i class="fa-solid fa-plus"></i> Tambah Pintasan
                     </button>
                 </div>
-                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 15px 0;">
+                
+                <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 10px 0;">
 
                 <div id="cloud-note-settings">
                     <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
@@ -95,7 +99,7 @@
         </div>
     </nav>
 
-    <!-- Drawer Khusus Home (Z-index diturunkan ke 999 agar di bawah menu profil) -->
+    <!-- Drawer Khusus Home -->
     <div id="drawer-container-global" style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999;">
         <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: var(--fb-card); border: 1px solid var(--fb-border); border-top: none; width: 65px; height: 22px; border-radius: 0 0 16px 16px; color: #a0a3a7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 5px rgba(0,0,0,0.04); transition: background 0.2s, color 0.2s;">
             <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
@@ -166,9 +170,7 @@
         <!-- ================= 4: PENGINGAT (TOOLS/TRASH) ================= -->
         <div id="view-tools" class="view-section" style="margin-top: 15px;">
             <div class="section-card" style="padding: 15px; background: #f0f2f5;">
-                <div id="tools-container" style="display: flex; flex-direction: column; padding-bottom: 20px;">
-                    <!-- Dirender oleh tools.js -->
-                </div>
+                <div id="tools-container" style="display: flex; flex-direction: column; padding-bottom: 20px;"></div>
             </div>
         </div>
 
@@ -192,7 +194,6 @@
         </div>
     </div>
 
-    <!-- Form Edit Shopee -->
     <div id="modal-shopee-form" class="modal-overlay" onclick="closeModal('modal-shopee-form')">
         <div class="modal-box" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
             <h3 id="modal-shopee-title" style="margin-bottom:15px; font-size: 16px;">Edit Link Shopee</h3>
@@ -200,7 +201,6 @@
             <input type="text" id="shopee-title" class="form-input" placeholder="Nama Produk">
             <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
             <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
-            
             <input type="text" id="shopee-desc" class="form-input" placeholder="">
 
             <div style="display: flex; gap: 10px; margin-top: 10px;">
