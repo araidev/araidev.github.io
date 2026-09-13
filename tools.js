@@ -31,12 +31,11 @@ function renderTrash() {
         return;
     }
 
-    // Urutkan berdasarkan waktu hapus terbaru
     keys.sort((a, b) => (trashCache[b].deletedAt || 0) - (trashCache[a].deletedAt || 0));
 
     keys.forEach(k => {
         const data = trashCache[k];
-        const isExpired = (now - data.deletedAt) > 86400000; // 24 Jam (ms)
+        const isExpired = (now - data.deletedAt) > 86400000; 
         if (isExpired) hasExpired = true;
 
         const bg = isExpired ? '#ffebee' : '#fff';
@@ -45,12 +44,10 @@ function renderTrash() {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = `display:flex; align-items:center; background:${bg}; ${border} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); flex-shrink:0;`;
 
-        // Susun teks keterangan sisa (desc & price)
         let pr = data.price ? `<span style="background:#e7f3ff; color:#1877f2; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">${data.price}</span>` : '';
         let dsc = data.desc ? `<span style="background:rgba(0,0,0,0.05); color:#65676b; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:700;">${data.desc}</span>` : '';
         let tagsHTML = (dsc || pr) ? `<div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">${dsc}${pr}</div>` : '';
 
-        // Tanggal Dihapus
         let delDate = new Date(data.deletedAt).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit'});
 
         wrapper.innerHTML = `
@@ -73,7 +70,6 @@ function renderTrash() {
         container.appendChild(wrapper);
     });
 
-    // Nyalakan/matikan titik notifikasi merah di toolbar
     if(btnPengingat) {
         if(hasExpired) btnPengingat.classList.add('red-dot');
         else btnPengingat.classList.remove('red-dot');
