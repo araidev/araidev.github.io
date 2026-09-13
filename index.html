@@ -11,48 +11,39 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.min.js"></script>
 
     <style>
-        body { padding-bottom: 80px; }
         .single-page-container { padding: 15px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
         .section-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .action-row { display: flex; gap: 10px; width: 100%; }
         .action-row button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .fab-left { position: fixed; bottom: 20px; left: 20px; z-index: 1000; width: 55px; height: 55px; border-radius: 50%; background: var(--fb-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; transition: 0.2s; }
-        .fab-left:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 
-    <nav class="top-nav" style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 1002;">
+    <nav class="top-nav">
+        <!-- SUSUNAN BARU: Home -> Acak Data -> Dadu -> Shopee -> Catatan -> Pengingat -> Pintasan -->
         <div style="display: flex; gap: 6px;">
-            <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data">
-                <i class="fa-solid fa-shuffle"></i>
-            </button>
-
-            <button id="toolbar-btn-a" class="silent-btn" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak">
-                <i class="fa-solid fa-dice"></i>
-            </button>
-
-            <button id="toolbar-btn-b" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            <button id="toolbar-btn-c" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            <button id="toolbar-btn-d" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-            <button id="toolbar-btn-e" class="silent-btn" style="display: none; background: var(--fb-green); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
-
+            <button id="tab-btn-home" class="tab-btn active-tab" onclick="switchTab('home')" title="Dashboard"><i class="fa-solid fa-house"></i></button>
+            <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data"><i class="fa-solid fa-shuffle"></i></button>
+            <button id="toolbar-btn-a" class="silent-btn" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak"><i class="fa-solid fa-dice"></i></button>
+            <button id="tab-btn-shopee" class="tab-btn" onclick="switchTab('shopee')" title="Shopee"><i class="fa-solid fa-store"></i></button>
+            <button id="tab-btn-notes" class="tab-btn" onclick="switchTab('notes')" title="Catatan"><i class="fa-solid fa-note-sticky"></i></button>
+            <button id="tab-btn-tools" class="tab-btn" onclick="switchTab('tools')" title="Pengingat"><i class="fa-solid fa-clock"></i></button>
+            
             <button id="toolbar-shortcut-0" class="silent-btn" onclick="copyShortcut(0)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
             <button id="toolbar-shortcut-1" class="silent-btn" onclick="copyShortcut(1)" style="display: none; background: var(--fb-muted); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;"></button>
         </div>
 
         <div class="nav-right">
             <button class="menu-btn" onclick="toggleMainMenu()" style="background: none; border: none; font-size: 22px; color: var(--fb-text); cursor: pointer;"><i class="fa-solid fa-circle-user"></i></button>
+            
             <div id="main-menu-popup" class="global-login">
                 <div id="login-form">
                     <div style="font-weight: bold; margin-bottom: 15px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">SISTEM ADMIN</div>
                     <input type="email" id="global-email" class="form-input" placeholder="Email">
                     <input type="password" id="global-pass" class="form-input" placeholder="Password">
-                    
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                         <label class="switch">
                             <input type="checkbox" id="remember-me-switch">
@@ -60,7 +51,6 @@
                         </label>
                         <span style="font-size: 12px; color: var(--fb-muted); font-weight: bold;">Ingat Saya</span>
                     </div>
-
                     <button class="btn-primary" onclick="masukSistem()" style="margin-bottom: 15px;">Masuk</button>
                 </div>
 
@@ -68,15 +58,11 @@
                     <p style="text-align: center; font-weight: bold; color: var(--fb-green); margin-bottom: 15px;">ADMIN TERVERIFIKASI</p>
                     <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 15px;">Keluar (Logout)</button>
                 </div>
-
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
 
                 <div id="shortcut-settings">
                     <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">PENGATURAN PINTASAN KUSTOM</div>
-                    
-                    <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
-                    </div>
-
+                    <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
                         <input type="text" id="sc-title" class="form-input" placeholder="Judul (Maks 2 Huruf)" style="margin-bottom: 8px;">
@@ -86,40 +72,24 @@
                             <button style="flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: none; background: #ccc; cursor: pointer; font-weight: bold;" onclick="hideShortcutForm()">Batal</button>
                         </div>
                     </div>
-
                     <button id="btn-add-shortcut" onclick="showShortcutForm(-1)" style="width: 100%; padding: 10px; border-radius: 6px; border: none; background: var(--fb-green); color: white; font-weight: bold; cursor: pointer;">
                         <i class="fa-solid fa-plus"></i> Tambah Pintasan
                     </button>
                 </div>
-
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 15px 0;">
 
-                <!-- FITUR BARU: 2 CATATAN CLOUD OTOMATIS -->
                 <div id="cloud-note-settings">
                     <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">CATATAN CLOUD OTOMATIS</div>
-                    
-                    <!-- Kolom 1 (Tombol Hapus Merah) -->
                     <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
                         <input type="text" id="cloud-quick-note-1" class="form-input" placeholder="" style="margin-bottom: 0; flex: 1; transition: background 0.2s;">
-                        <button onclick="copyCloudNote(1)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
-                            <i class="fa-solid fa-copy"></i>
-                        </button>
-                        <button onclick="clearCloudNote(1)" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <button onclick="copyCloudNote(1)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; outline: none;"><i class="fa-solid fa-copy"></i></button>
+                        <button onclick="clearCloudNote(1)" style="background: var(--fb-red); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; outline: none;"><i class="fa-solid fa-trash"></i></button>
                     </div>
-
-                    <!-- Kolom 2 (Tombol Hapus Kuning) -->
                     <div style="display: flex; gap: 5px; align-items: center;">
                         <input type="text" id="cloud-quick-note-2" class="form-input" placeholder="" style="margin-bottom: 0; flex: 1; transition: background 0.2s;">
-                        <button onclick="copyCloudNote(2)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
-                            <i class="fa-solid fa-copy"></i>
-                        </button>
-                        <button onclick="clearCloudNote(2)" style="background: #f1c40f; color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; transition: none;">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <button onclick="copyCloudNote(2)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; outline: none;"><i class="fa-solid fa-copy"></i></button>
+                        <button onclick="clearCloudNote(2)" style="background: #f1c40f; color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; outline: none;"><i class="fa-solid fa-trash"></i></button>
                     </div>
-                    
                     <div id="cloud-note-status" style="font-size: 10px; color: var(--fb-muted); margin-top: 5px; text-align: right; min-height: 15px;"></div>
                 </div>
 
@@ -127,95 +97,98 @@
         </div>
     </nav>
 
-    <div style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 1001;">
+    <!-- Drawer Khusus Home -->
+    <div id="drawer-container-global" style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 1001;">
         <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: var(--fb-card); border: 1px solid var(--fb-border); border-top: none; width: 65px; height: 22px; border-radius: 0 0 16px 16px; color: #a0a3a7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 5px rgba(0,0,0,0.04); transition: background 0.2s, color 0.2s;">
             <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
         </button>
     </div>
 
     <div class="single-page-container">
-        
-        <div id="top-drawer" class="top-drawer-content" style="margin-top: 15px;">
-            <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 5px;">
-                
-                <div class="section-card" style="padding: 10px; display: flex; gap: 8px; align-items: center;">
-                    <button id="btn-prev-email" style="background: var(--fb-muted); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;"><i class="fa-solid fa-chevron-left"></i></button>
-                    
-                    <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px;">
-                    
-                    <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">IP</button>
-                    <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i></button>
-                </div>
 
-                <div class="section-card action-row" style="padding: 10px;">
-                    <button id="btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
-                        <i class="fa-solid fa-shuffle"></i> Acak Data
-                    </button>
-                    <button id="btn-next-email" style="background: var(--fb-green); flex: 1;">
-                        Next <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                    <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
-                        <i class="fa-solid fa-pen"></i> Edit
-                    </button>
+        <!-- ================= 1: HOME ================= -->
+        <div id="view-home" class="view-section active-view">
+            <div id="top-drawer" class="top-drawer-content" style="margin-top: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 5px;">
+                    <div class="section-card" style="padding: 10px; display: flex; gap: 8px; align-items: center;">
+                        <button id="btn-prev-email" style="background: var(--fb-muted); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;"><i class="fa-solid fa-chevron-left"></i></button>
+                        <input type="text" id="ip-result" class="form-input" placeholder="IP Address / Count Email..." readonly style="margin: 0; flex: 1; text-align: center; font-weight: 900; color: var(--fb-text); font-size: 13px;">
+                        <button id="btn-cek-ip" onclick="checkMyIP()" style="background: var(--fb-blue); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white;">IP</button>
+                        <button id="btn-save-ip" onclick="saveMyIP()" style="background: var(--fb-green); padding: 12px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; display: none;"><i class="fa-solid fa-floppy-disk"></i></button>
+                    </div>
+                    <div class="section-card action-row" style="padding: 10px;">
+                        <button id="btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); flex: 1.5;">
+                            <i class="fa-solid fa-shuffle"></i> Acak Data
+                        </button>
+                        <button id="btn-next-email" style="background: var(--fb-green); flex: 1;">
+                            Next <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                        <button onclick="openEmailConfig()" style="background: var(--fb-muted); flex: 1;">
+                            <i class="fa-solid fa-pen"></i> Edit
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <div class="section-card" style="padding: 10px;">
-                    <button onclick="openShopeeList()" style="width: 100%; padding: 12px; background: var(--fb-red); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        <i class="fa-solid fa-store"></i> Buka Menu Shopee
-                    </button>
+            <div class="section-card sms-wrapper" style="padding: 0;">
+                <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
+                        <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
+                            <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
+                        </button>
+                    </div>
+                    <div class="bal-val" id="sms-balance">Rp 0</div>
                 </div>
-
+                <div style="padding: 15px;">
+                    <div id="sms-active-orders"></div>
+                    <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
+                    <div class="price-list" id="sms-prices"><div style="padding:30px; text-align:center; color:#888;">Memuat data...</div></div>
+                </div>
             </div>
         </div>
 
-        <div class="section-card sms-wrapper" style="padding: 0;">
-            <div class="content-card sms-top" style="padding: 15px; margin: 0; box-shadow: none; border-bottom: 1px solid #eee; border-radius: 8px 8px 0 0;">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="sms-server" class="sms-select" onchange="changeSmsServer()"></select>
-                    <button onclick="toggleSmsLock()" style="background:none; border:none; cursor:pointer; font-size:18px;">
-                        <i id="sms-lock-icon" class="fa-solid fa-unlock" style="color: var(--fb-muted);"></i>
-                    </button>
-                </div>
-                <div class="bal-val" id="sms-balance">Rp 0</div>
+        <!-- ================= 2: SHOPEE ================= -->
+        <div id="view-shopee" class="view-section" style="margin-top: 15px;">
+            <div class="section-card" style="padding: 15px; background: #f0f2f5;">
+                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Link Shopee</h3>
+                <button class="btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 6px;" onclick="openShopeeModal()"><i class="fas fa-plus"></i> TAMBAH LINK BARU</button>
+                <div id="shopee-container" style="display: flex; flex-direction: column; padding-bottom: 20px;"></div>
             </div>
-            <div style="padding: 15px;">
-                <div id="sms-active-orders"></div>
-                <h3 style="color: var(--fb-muted); font-size: 14px; margin-bottom: 10px; margin-top: 10px;">DAFTAR HARGA</h3>
-                <div class="price-list" id="sms-prices">
-                    <div style="padding:30px; text-align:center; color:#888;">Memuat data...</div>
+        </div>
+
+        <!-- ================= 3: CATATAN ================= -->
+        <div id="view-notes" class="view-section" style="margin-top: 15px;">
+            <div class="section-card" style="padding: 15px;">
+                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Buku Catatan</h3>
+                <button class="btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 6px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
+                <div id="note-stats-container"></div>
+                <div id="notes-grid" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- ================= 4: PENGINGAT (TOOLS/TRASH) ================= -->
+        <div id="view-tools" class="view-section" style="margin-top: 15px;">
+            <div class="section-card" style="padding: 15px; background: #f0f2f5;">
+                <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Pengingat / Histori Hapus</h3>
+                <div id="tools-container" style="display: flex; flex-direction: column; padding-bottom: 20px;">
+                    <!-- Dirender oleh tools.js -->
                 </div>
             </div>
         </div>
+
     </div>
 
-    <button id="fab-note" class="fab-left" onclick="openNoteList()"><i class="fa-solid fa-note-sticky"></i></button>
-
-    <div id="universal-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 id="u-modal-title" style="margin-bottom:10px;">Konfirmasi</h3>
-            <p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p>
-            <div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div>
-        </div>
-    </div>
-
-    <div id="modal-shopee-list" class="modal-overlay" onclick="closeModal('modal-shopee-list')">
-        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px; background: #f0f2f5;" onclick="event.stopPropagation()">
-            <h3 style="text-align: center; margin-bottom: 15px; color: var(--fb-text); font-weight: 900;">Link Shopee</h3>
-            <div id="shopee-container" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
-            <div style="display: flex; gap: 10px; margin-top: auto;">
-                <button class="m-btn" style="flex: 1; background: #fff; border: 1px solid var(--fb-border); color:var(--fb-muted); font-weight: bold; margin-left:0; padding: 12px;" onclick="closeModal('modal-shopee-list')">TUTUP</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px; font-weight: bold;" onclick="openShopeeModal()"><i class="fas fa-plus"></i> TAMBAH LINK</button>
-            </div>
-        </div>
-    </div>
+    <!-- ================= MODAL ================= -->
+    <div id="universal-modal" class="modal-overlay"><div class="modal-box"><h3 id="u-modal-title" style="margin-bottom:10px;"></h3><p id="u-modal-msg" style="color:var(--fb-muted); font-size:14px; margin-bottom:20px; line-height:1.5;"></p><div id="u-modal-actions" style="display:flex; justify-content:flex-end; gap:0;"></div></div></div>
 
     <div id="modal-email-config" class="modal-overlay" onclick="closeModal('modal-email-config')">
         <div class="modal-box" onclick="event.stopPropagation()">
             <h3 style="margin-bottom:15px;">Setting Counter Email</h3>
-            <input type="text" id="cfg-email" class="form-input" placeholder="Base Email (misal: aku@upil.com)">
+            <input type="text" id="cfg-email" class="form-input" placeholder="Base Email">
             <div style="display: flex; gap: 10px;">
-                <input type="number" id="cfg-start" class="form-input" placeholder="Start (misal: 1)">
-                <input type="number" id="cfg-end" class="form-input" placeholder="End (misal: 100)">
+                <input type="number" id="cfg-start" class="form-input" placeholder="Start">
+                <input type="number" id="cfg-end" class="form-input" placeholder="End">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0;" onclick="closeModal('modal-email-config')">BATAL</button>
@@ -224,6 +197,7 @@
         </div>
     </div>
 
+    <!-- Form Edit Shopee Baru (Tanpa Mall/Star, Tambah Keterangan) -->
     <div id="modal-shopee-form" class="modal-overlay" onclick="closeModal('modal-shopee-form')">
         <div class="modal-box" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
             <h3 id="modal-shopee-title" style="margin-bottom:15px; font-size: 16px;">Edit Link Shopee</h3>
@@ -231,25 +205,13 @@
             <input type="text" id="shopee-title" class="form-input" placeholder="Nama Produk">
             <textarea id="shopee-url" class="form-input" placeholder="URL Link" style="resize: vertical; height: 100px; font-family: inherit;"></textarea>
             <input type="text" id="shopee-price" class="form-input" placeholder="Harga (Misal: 150000)" oninput="formatRupiah(this)">
-            <select id="shopee-status" class="form-input">
-                <option value="">-- Tanpa Label --</option>
-                <option value="STAR">Star</option>
-                <option value="MALL">Mall</option>
-            </select>
+            
+            <!-- Kolom Opsional Baru -->
+            <input type="text" id="shopee-desc" class="form-input" placeholder="">
+
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 10px;" onclick="closeModal('modal-shopee-form')">BATAL</button>
                 <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 10px;" onclick="saveShopee()">SIMPAN</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-note-list" class="modal-overlay" onclick="closeModal('modal-note-list')">
-        <div class="modal-box" style="max-width: 500px; width: 90%; height: 80vh; display: flex; flex-direction: column; padding: 15px;" onclick="event.stopPropagation()">
-            <div id="note-stats-container"></div>
-            <div id="notes-grid" class="notes-grid" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;"></div>
-            <div style="display: flex; gap: 10px; margin-top: auto;">
-                <button class="m-btn" style="flex: 1; background: var(--fb-bg); color:var(--fb-muted); margin-left:0; padding: 12px;" onclick="closeModal('modal-note-list')">TUTUP</button>
-                <button class="m-btn btn-primary" style="flex: 2; margin-left: 0; padding: 12px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
             </div>
         </div>
     </div>
