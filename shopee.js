@@ -26,11 +26,11 @@ export function openShopeeModal(key = null) {
     
     const urlInput = document.getElementById('shopee-url');
     const priceInput = document.getElementById('shopee-price');
-    const statusSelect = document.getElementById('shopee-status');
+    const descInput = document.getElementById('shopee-desc');
     const modalTitle = document.getElementById('modal-shopee-title');
 
     priceInput.style.display = "block";
-    statusSelect.style.display = "block";
+    descInput.style.display = "block";
     urlInput.style.height = "60px"; 
     urlInput.style.textAlign = "left"; 
     urlInput.placeholder = "URL Link";
@@ -38,7 +38,7 @@ export function openShopeeModal(key = null) {
     if (key === 'ID_RANDOM_LOCKED') {
         modalTitle.innerText = "Edit Daftar Link Acak";
         priceInput.style.display = "none";
-        statusSelect.style.display = "none";
+        descInput.style.display = "none";
         urlInput.style.height = "300px"; 
         urlInput.placeholder = ""; 
     } else {
@@ -49,24 +49,20 @@ export function openShopeeModal(key = null) {
         document.getElementById('shopee-title').value = shopeeDataCache[key].title || "";
         document.getElementById('shopee-url').value = shopeeDataCache[key].url || "";
         document.getElementById('shopee-price').value = shopeeDataCache[key].price || "";
-        document.getElementById('shopee-status').value = shopeeDataCache[key].status || "";
+        document.getElementById('shopee-desc').value = shopeeDataCache[key].desc || "";
     } else {
         document.getElementById('shopee-title').value = "";
         document.getElementById('shopee-url').value = "";
         document.getElementById('shopee-price').value = "";
-        document.getElementById('shopee-status').value = "";
+        document.getElementById('shopee-desc').value = "";
     }
     
     document.getElementById('modal-shopee-form').classList.add('active');
-    
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
 }
 window.openShopeeModal = openShopeeModal;
 
-export function closeShopeeForm() {
-    closeModal('modal-shopee-form');
-}
+export function closeShopeeForm() { closeModal('modal-shopee-form'); }
 window.closeShopeeForm = closeShopeeForm;
 
 export function saveShopee() {
@@ -74,14 +70,12 @@ export function saveShopee() {
     let rawTitle = document.getElementById('shopee-title').value.trim(); 
     const u = document.getElementById('shopee-url').value.trim();
     const p = document.getElementById('shopee-price').value; 
-    const s = document.getElementById('shopee-status').value;
+    const d = document.getElementById('shopee-desc').value.trim(); // Kolom Baru (Keterangan Bebas)
     
-    if (!rawTitle) {
-        rawTitle = "---";
-    }
-    
+    if (!rawTitle) rawTitle = "---";
     const t = rawTitle.toUpperCase();
-    const data = { title: t, url: u, price: p, status: s, updatedAt: Date.now() };
+    
+    const data = { title: t, url: u, price: p, desc: d, updatedAt: Date.now() };
     
     if (key) {
         db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
@@ -92,18 +86,25 @@ export function saveShopee() {
 }
 window.saveShopee = saveShopee;
 
+// HAPUS -> PINDAH KE PENGINGAT/SISTEM TONG SAMPAH
 export async function deleteShopee(key) { 
-    if(await showModal("Hapus Link", "Yakin ingin menghapus link ini?", "danger")) {
-        db.ref('linkshopee/'+key).remove(); 
+    if(await showModal("Hapus Link", "Pindahkan kartu ini ke Pengingat?", "danger")) {
+        const itemToTrash = shopeeDataCache[key];
+        if (itemToTrash) {
+            itemToTrash.deletedAt = Date.now();
+            try {
+                await db.ref('shopee_trash/'+key).set(itemToTrash);
+                await db.ref('linkshopee/'+key).remove();
+            } catch(e) {
+                console.error(e);
+            }
+        }
     }
 }
 window.deleteShopee = deleteShopee;
 
 export function togglePinShopee(key, currentPinStatus) {
-    db.ref('linkshopee/' + key).update({
-        isPinned: !currentPinStatus,
-        updatedAt: Date.now() 
-    });
+    db.ref('linkshopee/' + key).update({ isPinned: !currentPinStatus, updatedAt: Date.now() });
 }
 window.togglePinShopee = togglePinShopee;
 
@@ -111,25 +112,18 @@ function renderShopee() {
     const container = document.getElementById('shopee-container'); 
     if(!container) return;
     
-    container.style.overscrollBehavior = 'contain';
     container.innerHTML = "";
     const isAdmin = !!userAdmin;
 
-    // --- 1. KARTU MENU ACAK (LOCKED) ---
     let randomCardData = shopeeDataCache['ID_RANDOM_LOCKED'];
-    
     if (randomCardData || isAdmin) {
         const wrapRandom = document.createElement('div');
         wrapRandom.style.cssText = 'display:flex; align-items:center; background:#fffbf0; border:1px solid #f1c40f; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;';
 
         if (randomCardData) {
-            let adminBtns = isAdmin ? `
-            <div style="display:flex; margin-left:10px;">
-                <button onclick="openShopeeModal('ID_RANDOM_LOCKED')" style="background:#fef5d9; border:none; color:#d4ac0d; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Edit"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button>
-            </div>` : '';
-
+            let adminBtns = isAdmin ? `<div style="display:flex; margin-left:10px;"><button onclick="openShopeeModal('ID_RANDOM_LOCKED')" style="background:#fef5d9; border:none; color:#d4ac0d; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Edit"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button></div>` : '';
             wrapRandom.innerHTML = `
-                <button onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background:#fff; border:1px solid #f1c40f; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#d4ac0d; cursor:pointer; margin-right:12px; flex-shrink:0;" title="Salin 1 Link Acak">
+                <button onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background:#fff; border:1px solid #f1c40f; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#d4ac0d; cursor:pointer; margin-right:12px; flex-shrink:0;">
                     <i class="fa-regular fa-copy"></i>
                 </button>
                 <div onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'open')" style="flex:1; cursor:pointer; overflow:hidden;">
@@ -139,16 +133,11 @@ function renderShopee() {
                 ${adminBtns}
             `;
         } else {
-            wrapRandom.innerHTML = `
-                <div style="flex:1; cursor:pointer; text-align:center; padding:5px;" onclick="openShopeeModal('ID_RANDOM_LOCKED')">
-                    <span style="color:#d4ac0d; font-weight:800;"><i class="fa-solid fa-plus"></i> Setup Kartu Link Acak</span>
-                </div>
-            `;
+            wrapRandom.innerHTML = `<div style="flex:1; cursor:pointer; text-align:center; padding:5px;" onclick="openShopeeModal('ID_RANDOM_LOCKED')"><span style="color:#d4ac0d; font-weight:800;"><i class="fa-solid fa-plus"></i> Setup Kartu Link Acak</span></div>`;
         }
         container.appendChild(wrapRandom);
     }
 
-    // --- 2. LINK REGULER ---
     let orderedShopee = Object.keys(shopeeDataCache)
         .filter(k => k !== 'ID_RANDOM_LOCKED')
         .map(k => ({ key: k, ...shopeeDataCache[k] }));
@@ -156,11 +145,8 @@ function renderShopee() {
     orderedShopee.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-
-        let timeA = a.updatedAt || 0;
-        let timeB = b.updatedAt || 0;
+        let timeA = a.updatedAt || 0; let timeB = b.updatedAt || 0;
         if (timeA !== timeB) return timeB - timeA; 
-
         return b.key.localeCompare(a.key);
     });
 
@@ -169,19 +155,19 @@ function renderShopee() {
         let borderStyle = data.isPinned ? 'border:1px solid #1877f2;' : 'border:1px solid #e4e6eb;';
         wrapper.style.cssText = `display:flex; align-items:center; background:#fff; ${borderStyle} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;`;
         
-        let st = data.status ? `<span style="background:#fce8e6; color:#e41e3f; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800; letter-spacing:0.5px;">${data.status}</span>` : ''; 
         let pr = data.price ? `<span style="background:#e7f3ff; color:#1877f2; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">${data.price}</span>` : '';
-        let tagsHTML = (st || pr) ? `<div style="display:flex; gap:6px; margin-top:5px;">${st}${pr}</div>` : '';
+        let dsc = data.desc ? `<span style="background:#f0f2f5; color:#65676b; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:700;">${data.desc}</span>` : '';
+        let tagsHTML = (dsc || pr) ? `<div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">${dsc}${pr}</div>` : '';
 
         let pinIconTitle = data.isPinned ? `<i class="fa-solid fa-thumbtack" style="color:#1877f2; margin-right:6px; font-size:12px; transform: rotate(45deg);"></i>` : '';
 
         let adminBtns = isAdmin ? `
             <div style="display:flex; gap:6px; margin-left:10px;">
-                <button onclick="togglePinShopee('${data.key}', ${!!data.isPinned})" style="background:${data.isPinned ? '#e7f3ff' : '#f0f2f5'}; border:none; color:${data.isPinned ? '#1877f2' : '#65676b'}; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="${data.isPinned ? 'Lepas Pin' : 'Pin ke Atas'}">
+                <button onclick="togglePinShopee('${data.key}', ${!!data.isPinned})" style="background:${data.isPinned ? '#e7f3ff' : '#f0f2f5'}; border:none; color:${data.isPinned ? '#1877f2' : '#65676b'}; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;">
                     <i class="fa-solid fa-thumbtack" style="font-size:12px; ${data.isPinned ? 'transform: rotate(45deg);' : ''}"></i>
                 </button>
-                <button onclick="openShopeeModal('${data.key}')" style="background:#f0f2f5; border:none; color:#65676b; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Edit"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button>
-                <button onclick="deleteShopee('${data.key}')" style="background:#fce8e6; border:none; color:#e41e3f; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Hapus"><i class="fa-solid fa-trash" style="font-size:12px;"></i></button>
+                <button onclick="openShopeeModal('${data.key}')" style="background:#f0f2f5; border:none; color:#65676b; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button>
+                <button onclick="deleteShopee('${data.key}')" style="background:#fce8e6; border:none; color:#e41e3f; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-trash" style="font-size:12px;"></i></button>
             </div>` : '';
 
         wrapper.innerHTML = `
@@ -198,140 +184,45 @@ function renderShopee() {
         `;
         container.appendChild(wrapper);
     });
-
-    // ====== LOGIKA UNTUK TOMBOL B, C, D, E DI TOOLBAR ======
-    const pinnedLinks = orderedShopee.filter(d => d.isPinned);
-    
-    // Ambil elemen tombol
-    const pinBtns = [
-        document.getElementById('toolbar-btn-b'),
-        document.getElementById('toolbar-btn-c'),
-        document.getElementById('toolbar-btn-d'),
-        document.getElementById('toolbar-btn-e')
-    ];
-
-    // Fungsi pintar untuk mengatur masing-masing tombol secara dinamis
-    pinBtns.forEach((btn, index) => {
-        if (!btn) return; 
-        
-        // Cek apakah ada data pin untuk urutan ini
-        const linkData = pinnedLinks[index];
-        
-        if (linkData) {
-            btn.style.display = 'flex';
-            // Mengambil 2 huruf pertama
-            btn.innerHTML = linkData.title.substring(0, 2).toUpperCase();
-            btn.title = `Salin: ${linkData.title}`;
-            // Override event klik untuk link yang sesuai
-            btn.onclick = (e) => copyShopeeLink(e, linkData.url, btn);
-        } else {
-            // Sembunyikan tombol jika tidak ada link yang di-pin
-            btn.style.display = 'none';
-        }
-    });
 }
 
 export async function openShopeeUrl(event, url) {
-    event.preventDefault(); 
-    event.stopPropagation();
-    
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-        showModal("Peringatan", "Data ini tidak memiliki link yang valid untuk dibuka.", "alert");
-        return;
-    }
-    
-    if (await showModal("Buka Link", "Apakah kamu ingin menuju link ini?", "info")) {
-        window.open(url, '_blank');
-    }
+    event.preventDefault(); event.stopPropagation();
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) { showModal("Peringatan", "Data ini tidak memiliki link yang valid.", "alert"); return; }
+    if (await showModal("Buka Link", "Apakah kamu ingin menuju link ini?", "info")) window.open(url, '_blank');
 }
 window.openShopeeUrl = openShopeeUrl;
 
 export function copyShopeeLink(event, url, btnElement) {
-    event.preventDefault(); 
-    event.stopPropagation();
-
-    if (!url) {
-        showModal("Peringatan", "Data kosong, tidak ada yang disalin.", "alert");
-        return;
-    }
-
+    event.preventDefault(); event.stopPropagation();
+    if (!url) return showModal("Peringatan", "Data kosong.", "alert");
     navigator.clipboard.writeText(url).then(() => {
-        const originalIcon = btnElement.innerHTML; 
-        btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:var(--fb-green);"></i>';
-        setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
+        const originalIcon = btnElement.innerHTML; btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:var(--fb-green);"></i>'; setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
     });
 }
 window.copyShopeeLink = copyShopeeLink;
 
 export async function actionRandomLink(event, key, action = 'open', btnElement = null) {
     event.preventDefault(); event.stopPropagation();
-    
     let cardData = shopeeDataCache[key];
     if(!cardData || !cardData.url) return;
-
     let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
-
-    if(links.length === 0) {
-        return showModal("Peringatan", "Belum ada link valid yang dimasukkan pada menu ini.", "alert");
-    }
-
+    if(links.length === 0) return showModal("Peringatan", "Belum ada link valid.", "alert");
     let randomLink = links[Math.floor(Math.random() * links.length)];
 
     if (action === 'copy' && btnElement) {
         navigator.clipboard.writeText(randomLink).then(() => {
-            const originalIcon = btnElement.innerHTML; 
-            btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:var(--fb-green);"></i>';
-            setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
+            const originalIcon = btnElement.innerHTML; btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:var(--fb-green);"></i>'; setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1500);
         });
     } else {
-        if (await showModal("Buka Link", "Apakah kamu ingin menuju link acak ini?", "info")) {
-            window.open(randomLink, '_blank');
-        }
+        if (await showModal("Buka Link", "Apakah kamu ingin menuju link acak ini?", "info")) window.open(randomLink, '_blank');
     }
 }
 window.actionRandomLink = actionRandomLink;
 
-export function openShopeeList() {
-    document.getElementById('modal-shopee-list').classList.add('active');
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-}
-window.openShopeeList = openShopeeList;
-
-export function closeShopeeListModal() {
-    closeModal('modal-shopee-list');
-}
-window.closeShopeeListModal = closeShopeeListModal;
-
-function initModalsBehavior() {
+document.addEventListener('DOMContentLoaded', () => {
     const shopeeTitleInput = document.getElementById('shopee-title');
-    if (shopeeTitleInput) {
-        shopeeTitleInput.addEventListener('input', function() {
-            this.value = this.value.toUpperCase();
-        });
-    }
-
+    if (shopeeTitleInput) shopeeTitleInput.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
     const formModal = document.getElementById('modal-shopee-form');
-    if (formModal) {
-        formModal.addEventListener('click', function(e) {
-            if (e.target === formModal) {
-                closeShopeeForm();
-            }
-        });
-    }
-
-    const listModal = document.getElementById('modal-shopee-list');
-    if (listModal) {
-        listModal.addEventListener('click', function(e) {
-            if (e.target === listModal) {
-                closeShopeeListModal();
-            }
-        });
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initModalsBehavior);
-} else {
-    initModalsBehavior();
-}
+    if (formModal) formModal.addEventListener('click', function(e) { if (e.target === formModal) closeShopeeForm(); });
+});
