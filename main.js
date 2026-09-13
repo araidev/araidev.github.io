@@ -4,7 +4,7 @@ import { generateName } from './randomName.js';
 import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, actionRandomLink, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 import { openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
-import { initTools } from './tools.js'; // Pengingat
+import { initTools } from './tools.js';
 
 window.showModal = showModal; window.closeModal = closeModal; window.toggleMainMenu = toggleMainMenu;
 window.keluarSistem = keluarSistem; window.generateName = generateName;
@@ -33,11 +33,11 @@ window.switchTab = function(tabName) {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    initTools(); // Memulai render histori hapus (Pengingat)
+    initTools(); 
 });
 
 // ==========================================
-// FITUR: INGAT SAYA & KONTROL LOGIN
+// KONTROL LOGIN & KLIK LUAR POPUP
 // ==========================================
 window.masukSistem = function() {
     const email = document.getElementById("global-email").value;
@@ -68,12 +68,13 @@ auth.onAuthStateChanged(user => {
     window.dispatchEvent(new CustomEvent('authStateChanged', { detail: user }));
 });
 
-// POPUP LOGIN AKAN MENUTUP JIKA KLIK DILUAR
+// Logika klik di luar popup login
 document.addEventListener('click', function(e) {
     const popup = document.getElementById('main-menu-popup');
     const btn = document.querySelector('.menu-btn');
     if(popup && popup.classList.contains('active') && !popup.contains(e.target) && !btn.contains(e.target)) {
         popup.classList.remove('active');
+        popup.style.display = "none";
     }
 });
 
@@ -86,7 +87,7 @@ window.toggleMainMenu = function() {
 };
 
 // ==========================================
-// PINTASAN KUSTOM & SILENT COPY
+// PINTASAN KUSTOM
 // ==========================================
 function silentCopyToClipboard(text) {
     if (!text) return;
