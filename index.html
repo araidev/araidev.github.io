@@ -61,7 +61,6 @@
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 5px 0 15px 0;">
 
                 <div id="shortcut-settings">
-                    <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">PENGATURAN PINTASAN KUSTOM</div>
                     <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
@@ -79,7 +78,6 @@
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 15px 0;">
 
                 <div id="cloud-note-settings">
-                    <div style="font-weight: bold; margin-bottom: 10px; color: var(--fb-muted); font-size: 11px; letter-spacing: 1px;">CATATAN CLOUD OTOMATIS</div>
                     <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
                         <input type="text" id="cloud-quick-note-1" class="form-input" placeholder="" style="margin-bottom: 0; flex: 1; transition: background 0.2s;">
                         <button onclick="copyCloudNote(1)" style="background: var(--fb-blue); color: white; border: none; border-radius: 6px; width: 40px; height: 40px; cursor: pointer; outline: none;"><i class="fa-solid fa-copy"></i></button>
@@ -97,8 +95,8 @@
         </div>
     </nav>
 
-    <!-- Drawer Khusus Home -->
-    <div id="drawer-container-global" style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 1001;">
+    <!-- Drawer Khusus Home (Z-index diturunkan ke 999 agar di bawah menu profil) -->
+    <div id="drawer-container-global" style="display: flex; justify-content: center; position: fixed; top: 60px; left: 0; width: 100%; z-index: 999;">
         <button id="drawer-toggle-btn" onclick="toggleTopDrawer()" style="background: var(--fb-card); border: 1px solid var(--fb-border); border-top: none; width: 65px; height: 22px; border-radius: 0 0 16px 16px; color: #a0a3a7; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 5px rgba(0,0,0,0.04); transition: background 0.2s, color 0.2s;">
             <i id="drawer-icon" class="fa-solid fa-chevron-down" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
         </button>
