@@ -6,7 +6,7 @@ let currentNoteRaw = "";
 let isEditingNote = false;
 
 // ==========================================
-// FITUR STATISTIK HARIAN & TOTAL
+// FITUR STATISTIK
 // ==========================================
 let currentStatsRef = null;
 let statsData = { total: 0, saved: 0, deleted: 0 }; 
@@ -17,16 +17,8 @@ function getTodayWIB() {
     return `${wibTime.getFullYear()}-${String(wibTime.getMonth() + 1).padStart(2, '0')}-${String(wibTime.getDate()).padStart(2, '0')}`;
 }
 
-function getStatsPath() {
-    return `notes_stats/public/${getTodayWIB()}`;
-}
-
-function incrementStat(type) {
-    try {
-        const path = getStatsPath();
-        db.ref(path).child(type).transaction((val) => (val || 0) + 1);
-    } catch (e) {}
-}
+function getStatsPath() { return `notes_stats/public/${getTodayWIB()}`; }
+function incrementStat(type) { try { db.ref(getStatsPath()).child(type).transaction((val) => (val || 0) + 1); } catch (e) {} }
 
 async function resetStatsManual() {
     if (await showModal("Reset Statistik", "Hapus data simpan & hapus hari ini menjadi 0?", "danger")) {
@@ -52,80 +44,37 @@ function updateStatsUI() {
     const statsContainer = document.getElementById('note-stats-container');
     if (!statsContainer) return;
 
-    statsContainer.style.cssText = `
-        background: #f8f9fa;
-        border: 1px solid #e4e6eb;
-        border-radius: 6px;
-        padding: 10px 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-        margin-bottom: 12px;
-    `;
+    statsContainer.style.cssText = `background: #f8f9fa; border: 1px solid #e4e6eb; border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 15px;`;
     
     statsContainer.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#1877f2; font-size:14px;">
-                <i class="fa-solid fa-folder"></i> <span>${statsData.total}</span>
-            </div>
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#1877f2; font-size:14px;"><i class="fa-solid fa-folder"></i> <span>${statsData.total}</span></div>
             <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Total</span>
         </div>
-        
         <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;">
-                <i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span>
-            </div>
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#2ecc71; font-size:14px;"><i class="fa-solid fa-floppy-disk"></i> <span>${statsData.saved}</span></div>
             <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Disimpan</span>
         </div>
-
         <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
         <div style="display:flex; flex-direction:column; align-items:center; color:#65676B;">
-            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;">
-                <i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span>
-            </div>
+            <div style="display:flex; align-items:center; gap:4px; font-weight:900; color:#e74c3c; font-size:14px;"><i class="fa-solid fa-trash"></i> <span>${statsData.deleted}</span></div>
             <span style="font-size:9px; font-weight:bold; opacity:0.7; text-transform:uppercase; margin-top:2px;">Dihapus</span>
         </div>
-
         <div style="width: 1px; height: 24px; background: #ccd0d5;"></div>
-
-        <button id="btn-reset-stat" style="
-            width: 28px; 
-            height: 28px; 
-            border: none; 
-            background: #e4e6eb; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer; 
-            transition: 0.2s;
-        " title="Reset Hari Ini">
+        <button id="btn-reset-stat" style="width: 28px; height: 28px; border: none; background: #e4e6eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;" title="Reset Hari Ini">
             <i class="fas fa-sync-alt" style="font-size: 11px; color: #65676B;"></i>
         </button>
     `;
 
     const btnReset = statsContainer.querySelector('#btn-reset-stat');
-    btnReset.onclick = (e) => { 
-        e.preventDefault(); 
-        e.stopPropagation(); 
-        resetStatsManual(); 
-    };
-    btnReset.onmouseover = () => { btnReset.style.background = '#d8dadf'; btnReset.querySelector('i').style.color = '#1877f2'; };
-    btnReset.onmouseout = () => { btnReset.style.background = '#e4e6eb'; btnReset.querySelector('i').style.color = '#65676B'; };
+    btnReset.onclick = (e) => { e.preventDefault(); e.stopPropagation(); resetStatsManual(); };
 }
 
 // ==========================================
-// CORE FUNCTIONS
+// CORE FUNCTIONS NOTES
 // ==========================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    syncNotes();
-    syncStats();
-});
+document.addEventListener('DOMContentLoaded', () => { syncNotes(); syncStats(); });
 
 function getNotesPath() { return 'notes/public'; }
 
@@ -147,53 +96,18 @@ function syncNotes() {
         const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        grid.style.display = 'flex';
-        grid.style.flexDirection = 'column';
-        grid.style.gap = '8px'; 
-        grid.style.overscrollBehavior = 'contain'; 
+        grid.style.display = 'flex'; grid.style.flexDirection = 'column'; grid.style.gap = '8px'; 
         grid.innerHTML = ''; 
         
         let items = [];
         snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
-        
-        // Warna-warni border kiri
         const borderColors = ['#1877F2', '#2ECC71', '#E74C3C', '#F1C40F', '#9B59B6', '#E67E22'];
 
         items.reverse().forEach((d, index) => {
-            const card = document.createElement('div'); 
-            card.className = 'note-card'; 
-            
+            const card = document.createElement('div'); card.className = 'note-card'; 
             const cardColor = borderColors[index % borderColors.length];
             
-            card.style.cssText = `
-                background: #ffffff;
-                border: 1px solid #cdd0d4; 
-                border-left: 5px solid ${cardColor};
-                border-radius: 6px;
-                padding: 10px;
-                display: flex;
-                flex-direction: column;
-                cursor: pointer;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-                height: 100px; 
-                flex-shrink: 0;
-            `;
-
-            card.onmouseover = () => {
-                card.style.transform = 'translateY(-2px)';
-                card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
-                card.style.borderTopColor = '#aeb1b5'; 
-                card.style.borderRightColor = '#aeb1b5';
-                card.style.borderBottomColor = '#aeb1b5';
-            };
-            card.onmouseout = () => {
-                card.style.transform = 'translateY(0)';
-                card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                card.style.borderTopColor = '#cdd0d4'; 
-                card.style.borderRightColor = '#cdd0d4';
-                card.style.borderBottomColor = '#cdd0d4';
-            };
+            card.style.cssText = `background: #ffffff; border: 1px solid #cdd0d4; border-left: 5px solid ${cardColor}; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); height: 100px; flex-shrink: 0;`;
 
             card.onclick = () => {
                 selectedNoteKey = d.key; currentNoteRaw = d.content;
@@ -201,9 +115,7 @@ function syncNotes() {
                 document.getElementById('view-title').innerText = d.title;
                 document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
                 document.getElementById('modal-note-view').classList.add('active');
-                
-                document.documentElement.style.overflow = 'hidden';
-                document.body.style.overflow = 'hidden'; 
+                document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; 
             };
 
             const titleStr = escapeHTML(d.title) || 'Untitled';
@@ -211,16 +123,10 @@ function syncNotes() {
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                    <div style="font-weight: 600; color: #1c1e21; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">
-                        ${titleStr}
-                    </div>
-                    <button class="btn-copy-card" style="border: none; background: transparent; cursor: pointer; color: #65676B; padding: 2px;" title="Copy Teks">
-                        <i class="far fa-copy"></i>
-                    </button>
+                    <div style="font-weight: 600; color: #1c1e21; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${titleStr}</div>
+                    <button class="btn-copy-card" style="border: none; background: transparent; cursor: pointer; color: #65676B; padding: 2px;"><i class="far fa-copy"></i></button>
                 </div>
-                <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
-                    ${previewStr}
-                </div>
+                <div style="color: #65676B; font-size: 11px; line-height: 1.4; flex-grow: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${previewStr}</div>
                 <div style="font-size: 9px; color: #8a8d91; text-align: right; border-top: 1px solid #e4e6eb; padding-top: 6px; margin-top: 6px;">
                     <i class="far fa-clock" style="margin-right: 3px;"></i>${formatDate(d.timestamp)}
                 </div>
@@ -231,34 +137,22 @@ function syncNotes() {
                 e.stopPropagation();
                 navigator.clipboard.writeText(d.content).then(() => {
                     const icon = copyBtn.querySelector('i');
-                    icon.className = 'fas fa-check';
-                    icon.style.color = '#2ecc71'; 
-                    setTimeout(() => {
-                        icon.className = 'far fa-copy';
-                        icon.style.color = '#65676B'; 
-                    }, 1500);
+                    icon.className = 'fas fa-check'; icon.style.color = '#2ecc71'; 
+                    setTimeout(() => { icon.className = 'far fa-copy'; icon.style.color = '#65676B'; }, 1500);
                 });
             };
-
             grid.appendChild(card);
         });
     });
 }
 
-export function openNoteList() {
-    document.getElementById('modal-note-list').classList.add('active');
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden'; 
-}
-
 export function openNoteModal() {
     isEditingNote = false; 
-    document.getElementById('note-title').value = ""; 
-    document.getElementById('note-content').value = "";
+    document.getElementById('note-title').value = ""; document.getElementById('note-content').value = "";
     document.getElementById('modal-note-form').classList.add('active');
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden'; 
+    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; 
 }
+window.openNoteModal = openNoteModal;
 
 export async function saveNote() {
     let t = document.getElementById('note-title').value.trim(); 
@@ -288,40 +182,35 @@ export async function saveNote() {
             t = nextNum.toString();
         }
         executeNoteSave(t, c, path);
-    } catch (e) { 
-        showModal("Gagal", "Gagal menghubungi database.", "alert"); 
-    }
+    } catch (e) { showModal("Gagal", "Gagal menghubungi database.", "alert"); }
 }
 
 function executeNoteSave(title, content, path) {
     const data = { title: title, content: content, timestamp: Date.now() };
     const req = (isEditingNote && selectedNoteKey) ? db.ref(`${path}/${selectedNoteKey}`).update(data) : db.ref(path).push(data);
-    req.then(() => {
-        closeModal('modal-note-form');
-        if (!isEditingNote) incrementStat('saved');
-    }).catch(() => showModal("Gagal", "Akses Ditolak.", "alert"));
+    req.then(() => { closeModal('modal-note-form'); if (!isEditingNote) incrementStat('saved'); }).catch(() => showModal("Gagal", "Akses Ditolak.", "alert"));
 }
 
 export function editNote() {
-    closeModal('modal-note-view'); 
-    isEditingNote = true;
+    closeModal('modal-note-view'); isEditingNote = true;
     document.getElementById('note-title').value = document.getElementById('view-title').innerText;
     document.getElementById('note-content').value = currentNoteRaw;
     document.getElementById('modal-note-form').classList.add('active');
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
 }
+window.editNote = editNote;
 
 export async function deleteNote() {
     if(await showModal("Hapus Catatan", "Yakin ingin menghapus catatan ini?", "danger")) {
         db.ref(`${getNotesPath()}/${selectedNoteKey}`).remove().then(() => {
-            incrementStat('deleted');
-            closeModal('modal-note-view');
+            incrementStat('deleted'); closeModal('modal-note-view');
         });
     }
 }
+window.deleteNote = deleteNote;
 
 export function copyNoteContent(btn) {
     navigator.clipboard.writeText(currentNoteRaw); const originalHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> Tersalin'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
 }
+window.copyNoteContent = copyNoteContent;
