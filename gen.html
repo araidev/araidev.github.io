@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPhoneGaga Profile Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f7f7fb;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h2 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        select {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background-color: #f5f5f5;
+            font-size: 14px;
+            outline: none;
+        }
+        .btn-generate {
+            background-color: #5c5cff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-generate:hover {
+            background-color: #4a4acc;
+        }
+        .section-title {
+            color: #5c5cff;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+        }
+        .form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            background: #fff;
+        }
+        .form-group label {
+            width: 130px;
+            font-size: 13px;
+            color: #555;
+        }
+        .input-wrapper {
+            display: flex;
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .input-wrapper input {
+            flex: 1;
+            border: none;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: monospace;
+            outline: none;
+            background: transparent;
+            min-width: 0;
+        }
+        .btn-copy {
+            background-color: #f0f0f0;
+            border: none;
+            border-left: 1px solid #ddd;
+            padding: 0 12px;
+            color: #333;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover {
+            background-color: #e0e0e0;
+        }
+        .btn-copy.copied {
+            background-color: #4caf50;
+            color: white;
+            border-left-color: #4caf50;
+        }
+        #status-msg {
+            text-align: center;
+            font-size: 12px;
+            color: #ff5c5c;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>VPhoneGaga Identity</h2>
+    
+    <div id="status-msg">Memuat data model HP...</div>
+
+    <div class="header-controls">
+        <select id="modelSelect">
+            <option value="" disabled selected>Pilih Model HP...</option>
+        </select>
+        <button class="btn-generate" onclick="generateProfile()">Generate</button>
+    </div>
+
+    <!-- MODEL INFO SECTION -->
+    <div class="section-title">Model info</div>
+    
+    <div class="form-group"><label>Board:</label><div class="input-wrapper"><input type="text" id="board" readonly><button class="btn-copy" onclick="copyText('board', this)">Salin</button></div></div>
+    <div class="form-group"><label>Board Platform:</label><div class="input-wrapper"><input type="text" id="boardPlatform" readonly><button class="btn-copy" onclick="copyText('boardPlatform', this)">Salin</button></div></div>
+    <div class="form-group"><label>Brand:</label><div class="input-wrapper"><input type="text" id="brand" readonly><button class="btn-copy" onclick="copyText('brand', this)">Salin</button></div></div>
+    <div class="form-group"><label>Cpu Manufacturer:</label><div class="input-wrapper"><input type="text" id="cpuManufacturer" readonly><button class="btn-copy" onclick="copyText('cpuManufacturer', this)">Salin</button></div></div>
+    <div class="form-group"><label>Cpu Model:</label><div class="input-wrapper"><input type="text" id="cpuModel" readonly><button class="btn-copy" onclick="copyText('cpuModel', this)">Salin</button></div></div>
+    <div class="form-group"><label>Device:</label><div class="input-wrapper"><input type="text" id="device" readonly><button class="btn-copy" onclick="copyText('device', this)">Salin</button></div></div>
+    <div class="form-group"><label>Displayid:</label><div class="input-wrapper"><input type="text" id="displayId" readonly><button class="btn-copy" onclick="copyText('displayId', this)">Salin</button></div></div>
+    <div class="form-group"><label>Fingerprint:</label><div class="input-wrapper"><input type="text" id="fingerprint" readonly><button class="btn-copy" onclick="copyText('fingerprint', this)">Salin</button></div></div>
+    <div class="form-group"><label>Hardware:</label><div class="input-wrapper"><input type="text" id="hardware" readonly><button class="btn-copy" onclick="copyText('hardware', this)">Salin</button></div></div>
+    <div class="form-group"><label>Manufacturer:</label><div class="input-wrapper"><input type="text" id="manufacturer" readonly><button class="btn-copy" onclick="copyText('manufacturer', this)">Salin</button></div></div>
+    <div class="form-group"><label>Model:</label><div class="input-wrapper"><input type="text" id="model" readonly><button class="btn-copy" onclick="copyText('model', this)">Salin</button></div></div>
+    <div class="form-group"><label>Name:</label><div class="input-wrapper"><input type="text" id="name" readonly><button class="btn-copy" onclick="copyText('name', this)">Salin</button></div></div>
+
+    <!-- GPU INFO SECTION -->
+    <div class="section-title">GPU info</div>
+    
+    <div class="form-group"><label>Hardware:</label><div class="input-wrapper"><input type="text" id="gpuHardware" readonly><button class="btn-copy" onclick="copyText('gpuHardware', this)">Salin</button></div></div>
+    <div class="form-group"><label>Renderer:</label><div class="input-wrapper"><input type="text" id="gpuRenderer" readonly><button class="btn-copy" onclick="copyText('gpuRenderer', this)">Salin</button></div></div>
+    <div class="form-group"><label>Vendor:</label><div class="input-wrapper"><input type="text" id="gpuVendor" readonly><button class="btn-copy" onclick="copyText('gpuVendor', this)">Salin</button></div></div>
+
+</div>
+
+<script>
+    let deviceDatabase = [];
+
+    // Mengambil data dari hpmodel.json saat halaman dimuat
+    window.onload = function() {
+        const statusMsg = document.getElementById('status-msg');
+        
+        fetch('hpmodel.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Gagal memuat JSON');
+                }
+                return response.json();
+            })
+            .then(data => {
+                deviceDatabase = data;
+                const select = document.getElementById('modelSelect');
+                
+                deviceDatabase.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = device.phoneName;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                statusMsg.style.display = 'block';
+                statusMsg.innerText = 'Gagal memuat hpmodel.json. Pastikan file berada di folder yang sama dan dijalankan melalui server (GitHub Pages).';
+            });
+    };
+
+    function generateProfile() {
+        const select = document.getElementById('modelSelect');
+        const selectedIndex = select.value;
+        
+        if(selectedIndex === "") {
+            alert("Silakan pilih model HP terlebih dahulu dari dropdown.");
+            return;
+        }
+
+        const data = deviceDatabase[selectedIndex];
+
+        document.getElementById('board').value = data.board || "";
+        document.getElementById('boardPlatform').value = data.boardPlatform || "";
+        document.getElementById('brand').value = data.brand || "";
+        document.getElementById('cpuManufacturer').value = data.cpuManufacturer || "";
+        document.getElementById('cpuModel').value = data.cpuModel || "";
+        document.getElementById('device').value = data.device || "";
+        document.getElementById('displayId').value = data.displayId || "";
+        document.getElementById('fingerprint').value = data.fingerprint || "";
+        document.getElementById('hardware').value = data.hardware || "";
+        document.getElementById('manufacturer').value = data.manufacturer || "";
+        document.getElementById('model').value = data.model || "";
+        document.getElementById('name').value = data.name || "";
+
+        document.getElementById('gpuHardware').value = data.gpuHardware || "";
+        document.getElementById('gpuRenderer').value = data.gpuRenderer || "";
+        document.getElementById('gpuVendor').value = data.gpuVendor || "";
+    }
+
+    function copyText(inputId, btnElement) {
+        const inputElement = document.getElementById(inputId);
+        const textToCopy = inputElement.value;
+
+        if(!textToCopy) return; 
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            btnElement.innerText = 'Tersalin!';
+            btnElement.classList.add('copied');
+            
+            setTimeout(() => {
+                btnElement.innerText = 'Salin';
+                btnElement.classList.remove('copied');
+            }, 1200);
+        }).catch(err => {
+            console.error('Gagal menyalin: ', err);
+            alert("Gagal menyalin teks.");
+        });
+    }
+</script>
+
+</body>
+</html>
