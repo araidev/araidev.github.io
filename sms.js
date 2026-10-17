@@ -566,6 +566,42 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     </div>`;
 }
 
+// ==========================================
+// 6.5. FUNGSI MENAMPILKAN NOTIF DONE SAAT BELI
+// ==========================================
+function showBuySuccessNotif() {
+    const elBal = document.getElementById('sms-balance');
+    if(!elBal) return;
+
+    let existingNotif = document.getElementById('sms-done-notif');
+    if(existingNotif) existingNotif.remove();
+
+    const notif = document.createElement('div');
+    notif.id = 'sms-done-notif';
+    notif.innerHTML = '<i class="fa-solid fa-circle-check"></i> Done';
+    
+    notif.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #25D366;
+        font-weight: 900;
+        font-size: 13px;
+        background: #e6f4ea;
+        padding: 4px 10px;
+        border-radius: 12px;
+        margin-left: 10px;
+        transition: opacity 0.5s ease;
+    `;
+
+    elBal.parentNode.appendChild(notif);
+
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        setTimeout(() => notif.remove(), 500);
+    }, 3000);
+}
+
 export async function executeBuySms(pid, price, name, operator, countryRank = "") {
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -604,6 +640,10 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         
         pollSms(); updateSmsBal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Panggil notifikasi DONE di sini
+        showBuySuccessNotif();
+
     } else {
         showModal("Gagal", j.error?.message || "Stok Sedang Kosong.", "alert");
     }
