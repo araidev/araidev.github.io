@@ -574,7 +574,12 @@ function showBuySuccessNotif() {
     if(!elBal) return;
 
     let existingNotif = document.getElementById('sms-done-notif');
-    if(existingNotif) existingNotif.remove();
+    if(existingNotif) {
+        existingNotif.remove();
+    }
+
+    // Sembunyikan saldo sementara
+    elBal.style.display = 'none';
 
     const notif = document.createElement('div');
     notif.id = 'sms-done-notif';
@@ -586,19 +591,27 @@ function showBuySuccessNotif() {
         gap: 5px;
         color: #25D366;
         font-weight: 900;
-        font-size: 13px;
+        font-size: 14px;
         background: #e6f4ea;
         padding: 4px 10px;
         border-radius: 12px;
-        margin-left: 10px;
         transition: opacity 0.5s ease;
     `;
 
-    elBal.parentNode.appendChild(notif);
+    // Sisipkan notifikasi di posisi yang sama persis dengan elemen saldo
+    elBal.parentNode.insertBefore(notif, elBal);
 
     setTimeout(() => {
-        notif.style.opacity = '0';
-        setTimeout(() => notif.remove(), 500);
+        // Cek kembali untuk memastikan tidak menghapus notif baru jika user klik berkali-kali
+        if(document.getElementById('sms-done-notif') === notif) {
+            notif.style.opacity = '0';
+            setTimeout(() => {
+                if(document.getElementById('sms-done-notif') === notif) {
+                    notif.remove();
+                    elBal.style.display = ''; // Munculkan saldo kembali
+                }
+            }, 500);
+        }
     }, 3000);
 }
 
@@ -615,7 +628,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     let payload;
     if (activeProviderKey === "smsvirtual") {
         payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
-    // --> OtpCepat ditambahkan ke logika format payload ini
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa" || activeProviderKey === "otpcepat") {
         payload = { product_id: String(pid), price: price, operator: operator };
     } else if (activeProviderKey === "smscode") {
@@ -641,7 +653,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         pollSms(); updateSmsBal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        // Panggil notifikasi DONE di sini
+        // Panggil notifikasi DONE yang akan menimpa saldo di sini
         showBuySuccessNotif();
 
     } else {
