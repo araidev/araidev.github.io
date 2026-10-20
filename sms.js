@@ -629,7 +629,7 @@ function showOtpSuccessNotif() {
 
     const notif = document.createElement('div');
     notif.id = 'sms-otp-notif';
-    notif.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> OTP Masuk'; 
+    notif.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> Baru'; 
     
     notif.style.cssText = `
         display: inline-flex;
