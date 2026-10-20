@@ -385,7 +385,6 @@ async function loadSmsPrices() {
     let currentMinPrice = PROVIDERS[activeProviderKey].minPrice;
     let currentMaxPrice = PROVIDERS[activeProviderKey].maxPrice;
     
-    // --> OtpCepat ditambahkan ke filter langsung mata uang IDR
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data
             .filter(i => i.price >= currentMinPrice && i.price <= currentMaxPrice)
@@ -526,7 +525,6 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
-    // --> Tambahkan warna Oranye khusus untuk OtpCepat
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
                  activeProviderKey === "hwa" ? "#25D366" : 
                  activeProviderKey === "otpcepat" ? "#fd9644" : 
@@ -602,11 +600,58 @@ function showBuySuccessNotif() {
     elBal.parentNode.insertBefore(notif, elBal);
 
     setTimeout(() => {
-        // Cek kembali untuk memastikan tidak menghapus notif baru jika user klik berkali-kali
         if(document.getElementById('sms-done-notif') === notif) {
             notif.style.opacity = '0';
             setTimeout(() => {
                 if(document.getElementById('sms-done-notif') === notif) {
+                    notif.remove();
+                    elBal.style.display = ''; // Munculkan saldo kembali
+                }
+            }, 500);
+        }
+    }, 3000);
+}
+
+// ==========================================
+// 6.6. FUNGSI MENAMPILKAN NOTIF BIRU SAAT OTP MASUK
+// ==========================================
+function showOtpSuccessNotif() {
+    const elBal = document.getElementById('sms-balance');
+    if(!elBal) return;
+
+    let existingNotif = document.getElementById('sms-otp-notif');
+    if(existingNotif) {
+        existingNotif.remove();
+    }
+
+    // Sembunyikan saldo sementara
+    elBal.style.display = 'none';
+
+    const notif = document.createElement('div');
+    notif.id = 'sms-otp-notif';
+    notif.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> OTP Masuk'; 
+    
+    notif.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #007bff; /* Warna Biru */
+        font-weight: 900;
+        font-size: 14px;
+        background: #cce5ff; /* Background Biru Muda */
+        padding: 4px 10px;
+        border-radius: 12px;
+        transition: opacity 0.5s ease;
+    `;
+
+    // Sisipkan notifikasi di posisi saldo
+    elBal.parentNode.insertBefore(notif, elBal);
+
+    setTimeout(() => {
+        if(document.getElementById('sms-otp-notif') === notif) {
+            notif.style.opacity = '0';
+            setTimeout(() => {
+                if(document.getElementById('sms-otp-notif') === notif) {
                     notif.remove();
                     elBal.style.display = ''; // Munculkan saldo kembali
                 }
@@ -733,9 +778,13 @@ function renderSmsOrders() {
         
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        if (o.otp_code && !notifiedOtps.includes(String(o.id))) {
+        // Gabungkan ID Pesanan dan Kode OTP agar resend tetap terbaca sebagai OTP baru
+        let otpKey = `${o.id}_${o.otp_code}`; 
+        
+        if (o.otp_code && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
-            notifiedOtps.push(String(o.id));
+            showOtpSuccessNotif(); // Memanggil notif warna biru
+            notifiedOtps.push(otpKey);
             
             if (notifiedOtps.length > 50) notifiedOtps.shift();
             
