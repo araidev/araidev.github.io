@@ -73,6 +73,9 @@
         }
         .gen-btn:hover { background: var(--primary-hover); }
 
+        /* State tombol saat data wilayah belum dimuat */
+        .gen-btn.loading { background: var(--danger); pointer-events: none; opacity: 0.9; }
+
         /* CARD LIST */
         .card-list { display: flex; flex-direction: column; gap: 14px; }
         .link-card {
@@ -80,7 +83,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.02); min-height: 74px; transition: background 0.3s, border-color 0.3s;
         }
 
-        /* Copy Button (Kiri Penuh) */
+        /* Copy Button */
         .copy-zone {
             width: 60px; display: flex; justify-content: center; align-items: center; cursor: pointer; 
             font-size: 20px; flex-shrink: 0; align-self: stretch; border: none; outline: none; transition: background 0.2s, color 0.2s;
@@ -95,6 +98,7 @@
         .badge { padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.85em; }
         .badge-price { background: rgba(37, 99, 235, 0.15); color: var(--primary); }
         .badge-status { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-order { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
         /* Admin Buttons */
         .admin-actions { display: none; gap: 8px; margin-left: 10px; align-items: center; }
@@ -107,7 +111,7 @@
         .btn-pin.active { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: var(--warning); }
         .btn-del:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 
-        /* FLOATING BUTTON (Warna Primary agar kontras di Dark Mode) */
+        /* FLOATING BUTTON */
         .fab {
             position: fixed; bottom: 30px; right: 30px; width: 56px; height: 56px; background: var(--primary); color: white;
             border-radius: 50%; border: none; font-size: 20px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
@@ -151,10 +155,6 @@
 
     <script>
         const CONFIG = {
-            // ==============================================================
-            // FILTER WILAYAH
-            // Ubah true menjadi false jika ingin semua wilayah (Global)
-            // ==============================================================
             FILTER_HANYA_JAWA: true,
 
             FIREBASE: {
@@ -171,7 +171,6 @@
             HP_PREFIX: ['0811','0812','0813','0821','0822','0852','0815','0816','0857','0858','0817','0818','0819','0859','0877','0878','0895','0896','0897','0898'],
             BIG_CITIES: ["JAKARTA", "SURABAYA", "BANDUNG", "MEDAN", "SEMARANG", "MAKASSAR", "PALEMBANG", "DENPASAR", "BOGOR", "DEPOK", "TANGERANG", "BEKASI", "SIDOARJO", "MALANG", "SURAKARTA", "YOGYAKARTA"],
             HEROES: ["Soekarno", "Hatta", "Sudirman", "Diponegoro", "Pattimura", "Imam Bonjol", "Teuku Umar", "Cut Nyak Dien", "Kartini", "Ki Hajar Dewantara", "Ahmad Yani", "Bung Tomo", "Sisingamangaraja", "Hasanuddin", "Antasari", "Agus Salim", "Hayam Wuruk", "Gajah Mada", "Raden Fatah", "Mulawarman", "Purnawarman", "Hasyim Asyari", "Wahid Hasyim", "Ahmad Dahlan", "Samanhudi", "Nuku", "Sultan Ageng Tirtayasa", "Sultan Syahrir", "Tan Malaka", "Mohammad Natsir", "Tjokroaminoto", "Sam Ratulangi", "Soetomo", "Cipto Mangunkusumo", "Dewi Sartika", "Nyi Ageng Serang", "Rasuna Said", "Fatmawati", "Yos Sudarso", "R.E. Martadinata", "Suprapto", "M.T. Haryono", "S. Parman", "D.I. Panjaitan", "Sutoyo Siswomiharjo", "Pierre Tendean", "Katamso", "Halim Perdanakusuma", "Iswahyudi", "Abdul Muis", "Ir. Juanda", "Slamet Riyadi", "Urip Sumohardjo", "Teuku Cik Ditiro", "Mahmud Badaruddin", "Raden Intan", "Sultan Thaha", "Iskandar Muda", "Teuku Nyak Arif", "Frans Kaisiepo", "Silas Papare", "Marthen Indey", "Johannes Dimara", "Opo Daeng Risaju", "Maria Walanda Maramis", "W.R. Supratman", "Ismail Marzuki", "Chairil Anwar", "Raden Saleh", "Affandi", "Zainal Mustofa", "Mas Mansyur", "Tirtayasa", "Nuruddin Ar-Raniry", "Hamzah Fansuri", "Syaikh Abdurrauf", "Syaikh Yusuf", "Syaikh Nawawi", "Ranggawarsita", "Suriyadi", "Dirgantara", "Soepeno", "Sutomo", "Suharto", "Gatot Subroto", "Veteran", "Pemuda", "Perintis Kemerdekaan", "Bahari", "Angkasa", "Bumi", "Nusantara"],
-            // 100 Daftar Patokan Realistis
             PATOKAN: [
                 "Dekat Pos Kamling", "Pagar Hitam", "Cat Putih Pagar Hijau", "Depan Masjid", "Samping Indomaret", 
                 "Sebelah Warung Madura", "Depan SD", "Samping Bengkel Motor", "Ada Pohon Mangga di depan", "Pagar Biru", 
@@ -215,8 +214,9 @@
         <div class="generator-card">
             <div class="generator-bar">
                 <input type="text" id="output-data" class="gen-input" placeholder="Data acak akan muncul di sini..." readonly>
-                <button id="btn-generate" class="gen-btn" onclick="generateData()">
-                    <i class="fa-solid fa-shuffle"></i> Acak Data
+                <!-- Default State: Merah & Loading -->
+                <button id="btn-generate" class="gen-btn loading" onclick="generateData()">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Memuat Data...
                 </button>
             </div>
         </div>
@@ -246,6 +246,7 @@
             <input type="hidden" id="form-key">
             <div class="form-group"><label>Judul Kartu</label><input type="text" id="form-name" class="form-input" style="text-transform: uppercase;"></div>
             <div class="form-group"><label>URL / Link</label><textarea id="form-url" class="form-input" style="resize: vertical; height: 70px;"></textarea></div>
+            <div class="form-group"><label>Urutan (Opsional)</label><input type="number" id="form-order" class="form-input" placeholder="Misal: 1"></div>
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1;"><label>Harga (Opsional)</label><input type="text" id="form-price" class="form-input" onkeyup="formatRupiah(this)"></div>
                 <div class="form-group" style="flex: 1;"><label>Status (Opsional)</label><input type="text" id="form-status" class="form-input" style="text-transform: uppercase;"></div>
@@ -303,7 +304,6 @@
         let dbNames = [];
         let isAdmin = false;
         const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
-        const todayWIB = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Jakarta'});
 
         function toTitleCase(str) {
             if (!str) return "";
@@ -348,7 +348,7 @@
             }
         });
 
-        // BONGKAR JSON WILAYAH DARI GITHUB
+        // BONGKAR JSON WILAYAH DARI GITHUB & UPDATE TOMBOL GENERATE
         fetch(CONFIG.JSON_URL).then(r => {
             if (!r.ok) throw new Error("JSON tidak ditemukan"); return r.json();
         }).then(data => {
@@ -364,10 +364,18 @@
                 }
             }
             dbWilayah = flatData;
+            aktifkanTombolGenerate();
         }).catch(e => {
             console.error("Gagal memuat kota.json:", e);
             dbWilayah = [{ provinsi: "Jawa Timur", kota: "Surabaya", kecamatan: "Krembangan", desa: "Kemayoran", kodepos: "60111" }];
+            aktifkanTombolGenerate();
         });
+
+        function aktifkanTombolGenerate() {
+            const btn = document.getElementById('btn-generate');
+            btn.classList.remove('loading');
+            btn.innerHTML = '<i class="fa-solid fa-shuffle"></i> Acak Data';
+        }
 
         // ==========================================
         // FUNGSI ADMIN LOGIN/LOGOUT
@@ -441,16 +449,12 @@
             const prx = CONFIG.HP_PREFIX[Math.floor(Math.random() * CONFIG.HP_PREFIX.length)];
             const hp = prx + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
 
-            // =============================================
-            // LOGIK FILTER BERDASARKAN VARIABEL CONFIG
-            // =============================================
             let baseWilayah = dbWilayah;
 
             if (CONFIG.FILTER_HANYA_JAWA === true) {
                 const jawaProvinces = ['JAWA TIMUR', 'JAWA TENGAH', 'JAWA BARAT', 'DKI JAKARTA', 'BANTEN', 'DI YOGYAKARTA', 'YOGYAKARTA'];
                 baseWilayah = dbWilayah.filter(w => jawaProvinces.some(j => (w.provinsi || "").toUpperCase().includes(j)));
                 
-                // Fallback jika tidak ada hasil yang valid
                 if (baseWilayah.length === 0) baseWilayah = dbWilayah;
             }
 
@@ -464,7 +468,6 @@
             }
             
             const dataW = wTarget[Math.floor(Math.random() * wTarget.length)];
-            // =============================================
 
             let jalanRaw = "";
             if(Math.random() < 0.5) {
@@ -474,7 +477,6 @@
                 jalanRaw = dataW.jalan ? dataW.jalan : `Desa ${dataW.desa || dataW.kecamatan}`;
             }
 
-            // Tambahkan Patokan (Probabilitas 40%)
             let patokan = "";
             if (Math.random() < 0.4) {
                 patokan = ` (${CONFIG.PATOKAN[Math.floor(Math.random() * CONFIG.PATOKAN.length)]})`;
@@ -484,7 +486,6 @@
             const prov = toTitleCase(dataW.provinsi || "");
             const kota = toTitleCase(dataW.kota || "").replace(/,\s*Kabupaten/gi, "").replace(/Kota Adm\.\s*/gi, "").replace(/Kota\s+/gi, "").replace(/Kabupaten\s+/gi, "Kab. ");
             const kec = toTitleCase(dataW.kecamatan || "");
-            // Gabungkan patokan ke nama jalan
             const jalan = toTitleCase(jalanRaw).replace(/Jl\./gi, "Jl.").replace(/No\./gi, "No.") + patokan; 
 
             const hasil = `${nama}, ${hp}, ${prov}, ${kota}, ${dataW.kodepos || "60111"}, ${jalan}, Kec. ${kec}`;
@@ -510,10 +511,20 @@
             const randomCard = dbShopee['ID_RANDOM_LOCKED'];
             let regs = Object.keys(dbShopee).filter(k => k !== 'ID_RANDOM_LOCKED').map(k => ({ key: k, ...dbShopee[k] }));
             
+            // LOGIKA PENGURUTAN BARU (Urutan -> Pinned -> Timestamp)
             regs.sort((a, b) => {
-                if(a.pinnedAt && !b.pinnedAt) return -1;
-                if(!a.pinnedAt && b.pinnedAt) return 1;
-                if(a.pinnedAt && b.pinnedAt) return Number(b.pinnedAt) - Number(a.pinnedAt);
+                const orderA = (a.order !== undefined && a.order !== null && a.order !== '') ? Number(a.order) : Infinity;
+                const orderB = (b.order !== undefined && b.order !== null && b.order !== '') ? Number(b.order) : Infinity;
+                
+                // 1. Prioritas Pertama: Nilai Urutan (1, 2, 3...)
+                if (orderA !== orderB) return orderA - orderB;
+
+                // 2. Prioritas Kedua: Status Pinned
+                if (a.pinnedAt && !b.pinnedAt) return -1;
+                if (!a.pinnedAt && b.pinnedAt) return 1;
+                if (a.pinnedAt && b.pinnedAt) return Number(b.pinnedAt) - Number(a.pinnedAt);
+                
+                // 3. Prioritas Ketiga: Waktu Pembaruan/Pembuatan
                 const timeA = Number(a.updatedAt || a.createdAt || 0);
                 const timeB = Number(b.updatedAt || b.createdAt || 0);
                 return timeB - timeA;
@@ -526,15 +537,18 @@
                 el.className = 'link-card';
                 el.style.border = `2px solid ${accent}`;
 
-                if(randomCard) {
-                    const title = randomCard.title ? randomCard.title.toUpperCase() : "LINK ACAK";
+                // Upaya pemulihan dari LocalStorage bila database kosong tapi ada di local
+                let titleRandom = (randomCard && randomCard.title) ? randomCard.title.toUpperCase() : localStorage.getItem('local_random_title');
+                if(!titleRandom) titleRandom = "LINK ACAK";
+
+                if(randomCard || localStorage.getItem('local_random_url')) {
                     el.innerHTML = `
                         <button class="copy-zone" style="background: ${accent}; color: white; border-right: 2px solid ${accent};" onclick="copyRandom(event, this)">
                             <i class="fa-regular fa-copy"></i>
                         </button>
                         <div class="content-zone" onclick="openRandom()">
                             <div class="text-info">
-                                <div class="card-title"><i class="fa-solid fa-bolt" style="color:${accent}; margin-right:5px;"></i> ${title}</div>
+                                <div class="card-title"><i class="fa-solid fa-bolt" style="color:${accent}; margin-right:5px;"></i> ${titleRandom}</div>
                                 <div class="card-subtitle">Sistem Daftar Link Acak</div>
                             </div>
                         </div>
@@ -559,6 +573,7 @@
                 
                 const title = d.title ? d.title.toUpperCase() : "UNTITLED";
                 let badges = '';
+                if(d.order) badges += `<span class="badge badge-order">#${d.order}</span>`;
                 if(d.status) badges += `<span class="badge badge-status">${d.status.toUpperCase()}</span>`;
                 if(d.price) badges += `<span class="badge badge-price">${d.price}</span>`;
                 if(!badges) badges = `<span style="font-size:10px; opacity:0;">.</span>`;
@@ -596,9 +611,11 @@
 
         function copyRandom(e, btn) {
             e.stopPropagation();
-            const data = dbShopee['ID_RANDOM_LOCKED'];
-            if(!data || !data.url) return;
-            const links = data.url.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('http'));
+            let data = dbShopee['ID_RANDOM_LOCKED'];
+            let textUrl = (data && data.url) ? data.url : localStorage.getItem('local_random_url');
+            
+            if(!textUrl) return;
+            const links = textUrl.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('http'));
             if(links.length > 0) {
                 const acakLink = links[Math.floor(Math.random() * links.length)];
                 copyCardLink(e, acakLink, btn);
@@ -606,9 +623,11 @@
         }
 
         function openRandom() {
-            const data = dbShopee['ID_RANDOM_LOCKED'];
-            if(!data || !data.url) return customAlert("Info", "Belum ada link acak yang diatur.", "info");
-            const links = data.url.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('http'));
+            let data = dbShopee['ID_RANDOM_LOCKED'];
+            let textUrl = (data && data.url) ? data.url : localStorage.getItem('local_random_url');
+
+            if(!textUrl) return customAlert("Info", "Belum ada link acak yang diatur.", "info");
+            const links = textUrl.split('\n').map(l=>l.trim()).filter(l=>l.startsWith('http'));
             if(links.length > 0) window.open(links[Math.floor(Math.random() * links.length)], '_blank');
         }
 
@@ -621,8 +640,8 @@
             }
             if(id === 'modal-random-form') {
                 const data = dbShopee['ID_RANDOM_LOCKED'] || {};
-                document.getElementById('random-name').value = data.title || '';
-                document.getElementById('random-url').value = data.url || '';
+                document.getElementById('random-name').value = data.title || localStorage.getItem('local_random_title') || '';
+                document.getElementById('random-url').value = data.url || localStorage.getItem('local_random_url') || '';
             }
         }
         
@@ -633,9 +652,11 @@
 
         function saveCard() {
             const key = document.getElementById('form-key').value;
+            const orderVal = document.getElementById('form-order').value;
             const data = {
                 title: document.getElementById('form-name').value,
                 url: document.getElementById('form-url').value,
+                order: orderVal ? parseInt(orderVal) : null,
                 price: document.getElementById('form-price').value,
                 status: document.getElementById('form-status').value,
                 updatedAt: Date.now()
@@ -647,11 +668,25 @@
         }
 
         function saveRandomCard() {
+            const rTitle = document.getElementById('random-name').value;
+            const rUrl = document.getElementById('random-url').value;
+
+            // Simpan ke Firebase Database
             db.ref('linkshopee/ID_RANDOM_LOCKED').set({
-                title: document.getElementById('random-name').value,
-                url: document.getElementById('random-url').value,
+                title: rTitle,
+                url: rUrl,
                 updatedAt: Date.now()
             });
+
+            // Simpan ke Penyimpanan Internal Browser (LocalStorage)
+            if(rUrl.trim() !== '') {
+                localStorage.setItem('local_random_title', rTitle);
+                localStorage.setItem('local_random_url', rUrl);
+            } else {
+                localStorage.removeItem('local_random_title');
+                localStorage.removeItem('local_random_url');
+            }
+
             closeModal('modal-random-form');
         }
 
@@ -661,6 +696,7 @@
             document.getElementById('form-key').value = key;
             document.getElementById('form-name').value = data.title || '';
             document.getElementById('form-url').value = data.url || '';
+            document.getElementById('form-order').value = data.order || '';
             document.getElementById('form-price').value = data.price || '';
             document.getElementById('form-status').value = data.status || '';
             document.getElementById('form-title').innerText = 'Edit Link';
