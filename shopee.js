@@ -27,12 +27,10 @@ export function openShopeeModal(key = null) {
     const urlInput = document.getElementById('shopee-url');
     const priceInput = document.getElementById('shopee-price');
     const descInput = document.getElementById('shopee-desc');
-    const orderInput = document.getElementById('shopee-order'); // Input Urutan
     const modalTitle = document.getElementById('modal-shopee-title');
 
     priceInput.style.display = "block";
     descInput.style.display = "block";
-    if (orderInput) orderInput.style.display = "block"; // Tampilkan input urutan
     urlInput.style.height = "60px"; 
     urlInput.style.textAlign = "left"; 
     urlInput.placeholder = "URL Link";
@@ -41,7 +39,6 @@ export function openShopeeModal(key = null) {
         modalTitle.innerText = "Edit Daftar Link Acak";
         priceInput.style.display = "none";
         descInput.style.display = "none";
-        if (orderInput) orderInput.style.display = "none"; // Sembunyikan untuk link acak
         urlInput.style.height = "300px"; 
         urlInput.placeholder = ""; 
     } else {
@@ -53,13 +50,11 @@ export function openShopeeModal(key = null) {
         document.getElementById('shopee-url').value = shopeeDataCache[key].url || "";
         document.getElementById('shopee-price').value = shopeeDataCache[key].price || "";
         document.getElementById('shopee-desc').value = shopeeDataCache[key].desc || "";
-        if (orderInput) orderInput.value = shopeeDataCache[key].order || "";
     } else {
         document.getElementById('shopee-title').value = "";
         document.getElementById('shopee-url').value = "";
         document.getElementById('shopee-price').value = "";
         document.getElementById('shopee-desc').value = "";
-        if (orderInput) orderInput.value = "";
     }
     
     document.getElementById('modal-shopee-form').classList.add('active');
@@ -76,31 +71,11 @@ export function saveShopee() {
     const u = document.getElementById('shopee-url').value.trim();
     const p = document.getElementById('shopee-price').value; 
     const d = document.getElementById('shopee-desc').value.trim(); 
-    const oInput = document.getElementById('shopee-order'); 
-    const orderVal = oInput ? oInput.value : ''; // Ambil nilai urutan
     
     if (!rawTitle) rawTitle = "---";
     const t = rawTitle.toUpperCase();
-
-    // Simpan ke Local Storage khusus untuk Link Acak
-    if (key === 'ID_RANDOM_LOCKED') {
-        if (u.trim() !== '') {
-            localStorage.setItem('local_shopee_random_title', t);
-            localStorage.setItem('local_shopee_random_url', u);
-        } else {
-            localStorage.removeItem('local_shopee_random_title');
-            localStorage.removeItem('local_shopee_random_url');
-        }
-    }
     
-    const data = { 
-        title: t, 
-        url: u, 
-        order: orderVal ? parseInt(orderVal) : null, // Konversi ke angka
-        price: p, 
-        desc: d, 
-        updatedAt: Date.now() 
-    };
+    const data = { title: t, url: u, price: p, desc: d, updatedAt: Date.now() };
     
     if (key) {
         db.ref('linkshopee/'+key).update(data).then(() => closeModal('modal-shopee-form'));
@@ -141,23 +116,18 @@ function renderShopee() {
     const isAdmin = !!userAdmin;
 
     let randomCardData = shopeeDataCache['ID_RANDOM_LOCKED'];
-    let localRandomUrl = localStorage.getItem('local_shopee_random_url');
-    let localRandomTitle = localStorage.getItem('local_shopee_random_title');
-
-    // Tampilkan jika ada di Firebase ATAU di LocalStorage ATAU user adalah admin
-    if (randomCardData || localRandomUrl || isAdmin) {
+    if (randomCardData || isAdmin) {
         const wrapRandom = document.createElement('div');
         wrapRandom.style.cssText = 'display:flex; align-items:center; background:#fffbf0; border:1px solid #f1c40f; border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;';
 
-        if (randomCardData || localRandomUrl) {
-            let displayTitle = (randomCardData && randomCardData.title) ? randomCardData.title : (localRandomTitle || "LINK ACAK");
+        if (randomCardData) {
             let adminBtns = isAdmin ? `<div style="display:flex; margin-left:10px;"><button onclick="openShopeeModal('ID_RANDOM_LOCKED')" style="background:#fef5d9; border:none; color:#d4ac0d; cursor:pointer; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;" title="Edit"><i class="fa-solid fa-pen" style="font-size:12px;"></i></button></div>` : '';
             wrapRandom.innerHTML = `
                 <button onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background:#fff; border:1px solid #f1c40f; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#d4ac0d; cursor:pointer; margin-right:12px; flex-shrink:0;">
                     <i class="fa-regular fa-copy"></i>
                 </button>
                 <div onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'open')" style="flex:1; cursor:pointer; overflow:hidden;">
-                    <div style="font-weight:800; color:#1c1e21; font-size:14px; display:flex; align-items:center;"><i class="fa-solid fa-lock" style="color:#f1c40f; margin-right:6px; font-size:12px;"></i> ${displayTitle}</div>
+                    <div style="font-weight:800; color:#1c1e21; font-size:14px; display:flex; align-items:center;"><i class="fa-solid fa-lock" style="color:#f1c40f; margin-right:6px; font-size:12px;"></i> ${randomCardData.title}</div>
                     <div style="font-size:11px; color:#8a8d91; margin-top:3px;">Sistem Daftar Link Acak</div>
                 </div>
                 ${adminBtns}
@@ -172,22 +142,11 @@ function renderShopee() {
         .filter(k => k !== 'ID_RANDOM_LOCKED')
         .map(k => ({ key: k, ...shopeeDataCache[k] }));
         
-    // LOGIKA PENGURUTAN: Urutan -> Pinned -> Tanggal
     orderedShopee.sort((a, b) => {
-        const orderA = (a.order !== undefined && a.order !== null && a.order !== '') ? Number(a.order) : Infinity;
-        const orderB = (b.order !== undefined && b.order !== null && b.order !== '') ? Number(b.order) : Infinity;
-        
-        // 1. Prioritas Pertama: Nilai Urutan (1, 2, 3...)
-        if (orderA !== orderB) return orderA - orderB;
-
-        // 2. Prioritas Kedua: Status Pinned
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-
-        // 3. Prioritas Ketiga: Waktu Update
         let timeA = a.updatedAt || 0; let timeB = b.updatedAt || 0;
         if (timeA !== timeB) return timeB - timeA; 
-        
         return b.key.localeCompare(a.key);
     });
 
@@ -196,11 +155,9 @@ function renderShopee() {
         let borderStyle = data.isPinned ? 'border:1px solid #1877f2;' : 'border:1px solid #e4e6eb;';
         wrapper.style.cssText = `display:flex; align-items:center; background:#fff; ${borderStyle} border-radius:10px; padding:12px; margin-bottom:10px; box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:all 0.2s; flex-shrink:0;`;
         
-        // Label/Badge Urutan
-        let ord = data.order ? `<span style="background:#e8f5e9; color:#2e7d32; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">#${data.order}</span>` : '';
         let pr = data.price ? `<span style="background:#e7f3ff; color:#1877f2; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:800;">${data.price}</span>` : '';
         let dsc = data.desc ? `<span style="background:#f0f2f5; color:#65676b; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:700;">${data.desc}</span>` : '';
-        let tagsHTML = (ord || dsc || pr) ? `<div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">${ord}${dsc}${pr}</div>` : '';
+        let tagsHTML = (dsc || pr) ? `<div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">${dsc}${pr}</div>` : '';
 
         let pinIconTitle = data.isPinned ? `<i class="fa-solid fa-thumbtack" style="color:#1877f2; margin-right:6px; font-size:12px; transform: rotate(45deg);"></i>` : '';
 
@@ -247,14 +204,9 @@ window.copyShopeeLink = copyShopeeLink;
 
 export async function actionRandomLink(event, key, action = 'open', btnElement = null) {
     event.preventDefault(); event.stopPropagation();
-    
-    // Gunakan Firebase atau Fallback ke LocalStorage
     let cardData = shopeeDataCache[key];
-    let textUrl = (cardData && cardData.url) ? cardData.url : localStorage.getItem('local_shopee_random_url');
-    
-    if(!textUrl) return showModal("Peringatan", "Belum ada link valid.", "alert");
-    
-    let links = textUrl.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
+    if(!cardData || !cardData.url) return;
+    let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
     if(links.length === 0) return showModal("Peringatan", "Belum ada link valid.", "alert");
     let randomLink = links[Math.floor(Math.random() * links.length)];
 
@@ -273,4 +225,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (shopeeTitleInput) shopeeTitleInput.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
     const formModal = document.getElementById('modal-shopee-form');
     if (formModal) formModal.addEventListener('click', function(e) { if (e.target === formModal) closeShopeeForm(); });
-});,
+});
