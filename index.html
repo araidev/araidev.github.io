@@ -27,7 +27,10 @@
         <div style="display: flex; gap: 6px;">
             <button id="tab-btn-home" class="tab-btn active-tab" onclick="switchTab('home')" title="Dashboard"><i class="fa-solid fa-house"></i></button>
             <button id="toolbar-btn-gen" class="silent-btn" onclick="generateName()" style="background: var(--fb-blue); color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Acak Data"><i class="fa-solid fa-shuffle"></i></button>
+            
+            <!-- Tombol Dadu Kuning -->
             <button id="toolbar-btn-a" class="silent-btn" onclick="actionRandomLink(event, 'ID_RANDOM_LOCKED', 'copy', this)" style="background: #f1c40f; color: white; border: none; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Salin Link Acak"><i class="fa-solid fa-dice"></i></button>
+            
             <button id="tab-btn-shopee" class="tab-btn" onclick="switchTab('shopee')" title="Shopee"><i class="fa-solid fa-store"></i></button>
             <button id="tab-btn-notes" class="tab-btn" onclick="switchTab('notes')" title="Catatan"><i class="fa-solid fa-note-sticky"></i></button>
             <button id="tab-btn-tools" class="tab-btn" onclick="switchTab('tools')" title="Pengingat"><i class="fa-solid fa-clock"></i></button>
@@ -59,14 +62,12 @@
                     <button class="btn-danger" onclick="keluarSistem()" style="margin-bottom: 5px;">Keluar (Logout)</button>
                 </div>
                 
-                <!-- Garis pembatas dengan jarak yang diperkecil -->
                 <hr style="border: 0; border-top: 1px solid var(--fb-border); margin: 8px 0 10px 0;">
 
                 <div id="shortcut-settings">
                     <div id="shortcut-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
                     <div id="shortcut-form-container" style="display: none; background: var(--fb-bg); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
                         <input type="hidden" id="sc-edit-index" value="-1">
-                        <!-- Placeholder dikosongkan sesuai permintaan -->
                         <input type="text" id="sc-title" class="form-input" placeholder="" style="margin-bottom: 8px;">
                         <input type="text" id="sc-content" class="form-input" placeholder="" style="margin-bottom: 8px;">
                         <div style="display: flex; gap: 5px;">
