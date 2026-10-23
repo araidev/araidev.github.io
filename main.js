@@ -1,7 +1,8 @@
 import { showModal, closeModal, toggleMainMenu } from './ui.js';
 import { db, masukSistem, keluarSistem, auth } from './firebase.js';
 import { generateName } from './randomName.js';
-import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, togglePinShopee } from './shopee.js'; // actionRandomLink dihapus dari import karena kita buat versi barunya di bawah
+// actionRandomLink tidak lagi di-import dari sini karena sudah dibuat versi Offline-First di bawah
+import { formatRupiah, openShopeeModal, saveShopee, deleteShopee, copyShopeeLink, togglePinShopee } from './shopee.js';
 import { changeSmsServer, executeBuySms, copyPhoneNumber, actSms } from './sms.js';
 import { openNoteModal, saveNote, editNote, deleteNote, copyNoteContent } from './notes.js';
 import { initTools } from './tools.js';
@@ -254,59 +255,62 @@ document.addEventListener('DOMContentLoaded', () => {
 // OFFLINE-FIRST (LOCALSTORAGE) UNTUK LINK ACAK (TOMBOL DADU)
 // ==========================================
 
-window.actionRandomLink = function(event, id, action, btnElement) {
-    event.preventDefault();
-
-    // Mengambil langsung dari memori perangkat
+window.actionRandomLink = async function(event, key, action = 'open', btnElement = null) {
+    event.preventDefault(); event.stopPropagation();
+    
+    // Ambil satu link acak yang sudah disiapkan di memori perangkat
     const cachedLink = localStorage.getItem('xurel_random_link_cache');
 
     if (!cachedLink) {
-        // Gunakan showModal bawaan Anda agar desainnya serasi
         showModal("Harap Tunggu", "Data link masih disiapkan di latar belakang. Silakan coba sebentar lagi.", "alert");
+        // Panggil fungsi sinkronisasi untuk memancing data jika macet
+        syncRandomLinkBackground();
         return;
     }
 
-    if (action === 'copy') {
-        // Menggunakan fungsi silentCopyToClipboard yang sudah ada di main.js Anda
+    if (action === 'copy' && btnElement) {
+        // Copy Instan (0 ms)
         silentCopyToClipboard(cachedLink);
         
-        // Efek visual sukses (Ikon berubah jadi centang sementara)
+        // Animasi Sukses
         const originalIcon = btnElement.innerHTML;
-        btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btnElement.innerHTML = '<i class="fa-solid fa-check" style="color:white;"></i>';
+        setTimeout(() => { btnElement.innerHTML = originalIcon; }, 1200);
+
+        // Siapkan link acak yang berbeda di belakang layar untuk klik selanjutnya
+        syncRandomLinkBackground();
         
-        setTimeout(() => {
-            btnElement.innerHTML = originalIcon;
-        }, 1200);
+    } else if (action === 'open') {
+        if (await showModal("Buka Link", "Apakah kamu ingin menuju link acak ini?", "info")) {
+            window.open(cachedLink, '_blank');
+            syncRandomLinkBackground();
+        }
     }
 };
 
-function syncRandomLinkBackground() {
-    // ⚠️ PENTING: Ganti 'shopee' dengan NAMA PATH (Node) di database Firebase 
-    // tempat Anda menyimpan data-data link shopee Anda!
-    const dbRef = db.ref('shopee'); 
-    
-    dbRef.on('value', (snapshot) => {
+window.syncRandomLinkBackground = function() {
+    // Sesuai dengan struktur shopee.js: path 'linkshopee' dan ID 'ID_RANDOM_LOCKED'
+    db.ref('linkshopee/ID_RANDOM_LOCKED').once('value').then((snapshot) => {
         if (snapshot.exists()) {
-            const data = snapshot.val();
-            let linkList = [];
-            
-            // Loop data untuk mengekstrak URL (Asumsi properti di database bernama 'url')
-            for (let key in data) {
-                if (data[key].url) { 
-                    linkList.push(data[key].url);
+            const cardData = snapshot.val();
+            if (cardData && cardData.url) {
+                // Pecah teks URL berdasarkan baris baru (Enter)
+                let links = cardData.url.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
+                
+                // Pilih satu secara acak lalu simpan ke localStorage
+                if (links.length > 0) {
+                    let randomLink = links[Math.floor(Math.random() * links.length)];
+                    localStorage.setItem('xurel_random_link_cache', randomLink);
                 }
             }
-            
-            // Pilih satu link secara acak dan simpan secara lokal (cache)
-            if (linkList.length > 0) {
-                const randomLink = linkList[Math.floor(Math.random() * linkList.length)];
-                localStorage.setItem('xurel_random_link_cache', randomLink);
-            }
         }
-    });
-}
+    }).catch(err => console.error("Gagal sync link acak:", err));
+};
 
-// Jalankan sistem sync saat halaman berhasil dimuat
+// Jalankan sistem cache saat halaman berhasil dimuat
 document.addEventListener('DOMContentLoaded', () => {
-    syncRandomLinkBackground();
+    // Beri jeda sedikit agar Firebase auth sempat mendeteksi
+    setTimeout(() => {
+        syncRandomLinkBackground();
+    }, 1000);
 });
