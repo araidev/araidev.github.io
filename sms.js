@@ -9,7 +9,7 @@ const PROVIDERS = {
     //"hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 },
     //"smsvirtual": { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 675, maxPrice: 1000 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1300 } // <-- OtpCepat Ditambahkan
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1300 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -27,6 +27,7 @@ let isPolling = false;
 let globalOrders = {}; 
 
 let favoritePrices = [];
+let favoriteOps = []; // Penyimpanan untuk provider/operator yang dipin
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
 
@@ -47,12 +48,23 @@ function attachGlobalOrderListener() {
 }
 
 function attachPrivateListeners(uid) {
-    const favKey = `sms_fav_prices_${activeProviderKey}`;
+    const favPriceKey = `sms_fav_prices_${activeProviderKey}`;
+    const favOpKey = `sms_fav_ops_${activeProviderKey}`;
+
     if (window.favRef) window.favRef.off();
-    window.favRef = db.ref(`users/${uid}/${favKey}`);
+    window.favRef = db.ref(`users/${uid}/${favPriceKey}`);
     window.favRef.on('value', snap => {
         favoritePrices = snap.val() || [];
         if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
+    });
+
+    if (window.favOpRef) window.favOpRef.off();
+    window.favOpRef = db.ref(`users/${uid}/${favOpKey}`);
+    window.favOpRef.on('value', snap => {
+        favoriteOps = snap.val() || [];
+        const currentPriceInput = document.getElementById('current-price-context');
+        if (currentPriceInput) openProviderMenu(currentPriceInput.value);
+        else if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
     });
 }
 
@@ -61,6 +73,7 @@ auth.onAuthStateChanged(user => {
         attachPrivateListeners(user.uid);
     } else {
         favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
+        favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
         if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
     }
 });
@@ -80,14 +93,16 @@ function playSimpleSound(type) {
         gain.connect(audioCtx.destination);
 
         if (type === 'otp') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
-            osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
-            gain.gain.setValueAtTime(0, audioCtx.currentTime); 
-            gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5); 
+            // Suara Arcade Coin (Tinggi & Kencang)
+            const t = audioCtx.currentTime;
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1567.98, t); 
+            osc.frequency.setValueAtTime(2093.00, t + 0.1); 
+            gain.gain.setValueAtTime(0, t); 
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.05); 
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+            osc.start(t);
+            osc.stop(t + 0.4); 
         } else if (type === 'recycled') {
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(400, audioCtx.currentTime); 
@@ -165,9 +180,6 @@ async function initSms() {
         selectHp.parentNode.insertBefore(provSelect, selectHp);
     }
 
-    // =============================================================
-    // INJEKSI TOMBOL REFRESH DI SEBELAH KIRI SALDO
-    // =============================================================
     const elBal = document.getElementById('sms-balance');
     if (elBal && !document.getElementById('btn-refresh-sms')) {
         const balContainer = document.createElement('div');
@@ -197,7 +209,6 @@ async function initSms() {
         balContainer.appendChild(refreshBtn);
         balContainer.appendChild(elBal); 
     }
-    // =============================================================
 
     const container = document.getElementById('sms-active-orders');
     if (container && !document.getElementById('wrapper-active-orders')) {
@@ -254,7 +265,15 @@ export async function changeSmsProvider() {
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
     await loadServersList();
+    
+    // Trigger reset list pin saat pindah provider jika lokal
+    if (!auth || !auth.currentUser) {
+        favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
+        favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
+    }
+
     attachGlobalOrderListener(); 
+    if (auth && auth.currentUser) attachPrivateListeners(auth.currentUser.uid);
     refreshSms();
 }
 window.changeSmsProvider = changeSmsProvider;
@@ -298,9 +317,6 @@ export function refreshSms() {
 }
 window.refreshSms = refreshSms;
 
-// ==========================================
-// 4B. SISTEM PENGUNCI LAYAR (GEMBOK)
-// ==========================================
 export function toggleSmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     localStorage.setItem('sms_ui_locked', !isLocked);
@@ -369,6 +385,26 @@ export function toggleFavoritePrice(priceStr) {
     renderPriceGroups();
 }
 window.toggleFavoritePrice = toggleFavoritePrice;
+
+export function toggleFavoriteOp(opName) {
+    if (favoriteOps.includes(opName)) {
+        favoriteOps = favoriteOps.filter(x => x !== opName);
+    } else {
+        favoriteOps.push(opName);
+    }
+
+    if (auth && auth.currentUser) {
+        db.ref(`users/${auth.currentUser.uid}/sms_fav_ops_${activeProviderKey}`).set(favoriteOps);
+    } else {
+        localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
+    }
+    
+    const currentPriceInput = document.getElementById('current-price-context');
+    if (currentPriceInput) {
+        openProviderMenu(currentPriceInput.value);
+    }
+}
+window.toggleFavoriteOp = toggleFavoriteOp;
 
 async function loadSmsPrices() {
     const box = document.getElementById('sms-prices');
@@ -442,7 +478,13 @@ export function renderPriceGroups() {
     
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
-        let starStyle = isFav ? "color: #f1c40f;" : "color: #bdc3c7;";
+        
+        let pinHTML = isFav 
+            ? `<div style="display:flex; align-items:center; gap:8px;">
+                 <i class="fa-solid fa-star" style="color: #f1c40f; font-size:16px;"></i>
+                 <i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer;" title="Hapus Favorit"></i>
+               </div>`
+            : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>`;
         
         let ops = cachedPriceGroups[price];
         
@@ -453,7 +495,7 @@ export function renderPriceGroups() {
                             ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
                             <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px;">BELI</span>
                         </div>
-                        <i class="fa-solid fa-star" onclick="toggleFavoritePrice('${price}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
+                        ${pinHTML}
                     </div>`;
         }
 
@@ -464,7 +506,7 @@ export function renderPriceGroups() {
                             ${ops.length} Provider
                         </span>
                     </div>
-                    <i class="fa-solid fa-star" onclick="toggleFavoritePrice('${price}')" style="${starStyle} font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>
+                    ${pinHTML}
                 </div>`;
     }).join('');
 }
@@ -489,8 +531,12 @@ export function openProviderMenu(price) {
         let nameA = a.opName.toUpperCase();
         let nameB = b.opName.toUpperCase();
         
+        let isFavA = favoriteOps.includes(nameA);
+        let isFavB = favoriteOps.includes(nameB);
+        if (isFavA && !isFavB) return -1;
+        if (!isFavA && isFavB) return 1;
+
         let rankA = 99; let rankB = 99;
-        
         for (let key in orderWeight) { if (nameA.includes(key)) { rankA = orderWeight[key]; break; } }
         for (let key in orderWeight) { if (nameB.includes(key)) { rankB = orderWeight[key]; break; } }
         
@@ -501,11 +547,20 @@ export function openProviderMenu(price) {
     let html = `<input type="hidden" id="current-price-context" value="${price}">`;
                 
     html += ops.map(item => {
+        let isFavOp = favoriteOps.includes(item.opName.toUpperCase());
+        
+        let pinHTML = isFavOp 
+            ? `<div style="display:flex; align-items:center; gap:8px; padding-left:10px;">
+                 <i class="fa-solid fa-star" style="color: #f1c40f; font-size:14px;"></i>
+                 <i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer;" title="Hapus Pin Provider"></i>
+               </div>`
+            : `<i class="fa-regular fa-circle" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: #bdc3c7; font-size:16px; cursor:pointer; padding-left:10px;" title="Pin Provider Ini"></i>`;
+
         return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
                     <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 13px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
                         ${item.opName.toUpperCase()}
                     </div>
-                    <i class="fa-solid fa-chevron-right" style="color:var(--fb-muted); font-size: 11px;"></i>
+                    ${pinHTML}
                 </div>`;
     }).join('');
     
@@ -576,7 +631,6 @@ function showBuySuccessNotif() {
         existingNotif.remove();
     }
 
-    // Sembunyikan saldo sementara
     elBal.style.display = 'none';
 
     const notif = document.createElement('div');
@@ -596,7 +650,6 @@ function showBuySuccessNotif() {
         transition: opacity 0.5s ease;
     `;
 
-    // Sisipkan notifikasi di posisi yang sama persis dengan elemen saldo
     elBal.parentNode.insertBefore(notif, elBal);
 
     setTimeout(() => {
@@ -605,7 +658,7 @@ function showBuySuccessNotif() {
             setTimeout(() => {
                 if(document.getElementById('sms-done-notif') === notif) {
                     notif.remove();
-                    elBal.style.display = ''; // Munculkan saldo kembali
+                    elBal.style.display = ''; 
                 }
             }, 500);
         }
@@ -624,7 +677,6 @@ function showOtpSuccessNotif() {
         existingNotif.remove();
     }
 
-    // Sembunyikan saldo sementara
     elBal.style.display = 'none';
 
     const notif = document.createElement('div');
@@ -635,16 +687,15 @@ function showOtpSuccessNotif() {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        color: #007bff; /* Warna Biru */
+        color: #007bff;
         font-weight: 900;
         font-size: 14px;
-        background: #cce5ff; /* Background Biru Muda */
+        background: #cce5ff; 
         padding: 4px 10px;
         border-radius: 12px;
         transition: opacity 0.5s ease;
     `;
 
-    // Sisipkan notifikasi di posisi saldo
     elBal.parentNode.insertBefore(notif, elBal);
 
     setTimeout(() => {
@@ -653,7 +704,7 @@ function showOtpSuccessNotif() {
             setTimeout(() => {
                 if(document.getElementById('sms-otp-notif') === notif) {
                     notif.remove();
-                    elBal.style.display = ''; // Munculkan saldo kembali
+                    elBal.style.display = ''; 
                 }
             }, 500);
         }
@@ -698,7 +749,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         pollSms(); updateSmsBal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        // Panggil notifikasi DONE yang akan menimpa saldo di sini
         showBuySuccessNotif();
 
     } else {
@@ -768,26 +818,20 @@ function renderSmsOrders() {
         }
         
         const price = o.price || 0;
-        
         const opName = cleanOpName(o.operator);
-        
         let isHidden = !!o.hidden; 
         
         let orderTime = o.created_at || Date.now();
-        const expire = orderTime + 1200000; // 20 Menit
-        
+        const expire = orderTime + 1200000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // Gabungkan ID Pesanan dan Kode OTP agar resend tetap terbaca sebagai OTP baru
         let otpKey = `${o.id}_${o.otp_code}`; 
         
         if (o.otp_code && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
-            showOtpSuccessNotif(); // Memanggil notif warna biru
+            showOtpSuccessNotif(); 
             notifiedOtps.push(otpKey);
-            
             if (notifiedOtps.length > 50) notifiedOtps.shift();
-            
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
@@ -819,7 +863,7 @@ function updateSmsTimers() {
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
             el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
 
-            let orderTime = end - 1200000; // 20 Menit
+            let orderTime = end - 1200000; 
             let passed2Mins = (now - orderTime) >= 120000; 
 
             if (passed2Mins) {
