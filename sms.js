@@ -266,7 +266,6 @@ export async function changeSmsProvider() {
     
     await loadServersList();
     
-    // Trigger reset list pin saat pindah provider jika lokal
     if (!auth || !auth.currentUser) {
         favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
         favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
@@ -479,34 +478,34 @@ export function renderPriceGroups() {
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
         
-        let pinHTML = isFav 
-            ? `<div style="display:flex; align-items:center; gap:8px;">
-                 <i class="fa-solid fa-star" style="color: #f1c40f; font-size:16px;"></i>
-                 <i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer;" title="Hapus Favorit"></i>
-               </div>`
-            : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer;" title="Jadikan Favorit"></i>`;
+        let pinBadgeHTML = isFav ? `<span style="color: #fff; font-size: 9px; font-weight: 900; background: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FAVORIT</span>` : '';
+        let pinIconHTML = isFav 
+            ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;" title="Hapus Favorit"></i>`
+            : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;" title="Jadikan Favorit"></i>`;
         
         let ops = cachedPriceGroups[price];
         
         if (activeProviderKey !== "smscode" && ops.length === 1) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:14px; display:flex; align-items:center; gap:8px;">
+                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:14px; display:flex; align-items:center;">
                             ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px;">BELI</span>
+                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">BELI</span>
+                            ${pinBadgeHTML}
                         </div>
-                        ${pinHTML}
+                        ${pinIconHTML}
                     </div>`;
         }
 
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center; gap:8px;">
+                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                        <span style="color: var(--fb-muted); font-size: 10px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif;">
+                        <span style="color: var(--fb-muted); font-size: 10px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif; margin-left: 8px;">
                             ${ops.length} Provider
                         </span>
+                        ${pinBadgeHTML}
                     </div>
-                    ${pinHTML}
+                    ${pinIconHTML}
                 </div>`;
     }).join('');
 }
@@ -549,18 +548,17 @@ export function openProviderMenu(price) {
     html += ops.map(item => {
         let isFavOp = favoriteOps.includes(item.opName.toUpperCase());
         
-        let pinHTML = isFavOp 
-            ? `<div style="display:flex; align-items:center; gap:8px; padding-left:10px;">
-                 <i class="fa-solid fa-star" style="color: #f1c40f; font-size:14px;"></i>
-                 <i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer;" title="Hapus Pin Provider"></i>
-               </div>`
+        let pinBadgeHTML = isFavOp ? `<span style="color: #fff; font-size: 9px; font-weight: 900; background: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FAVORIT</span>` : '';
+        let pinIconHTML = isFavOp 
+            ? `<i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer; padding-left:10px;" title="Hapus Pin Provider"></i>`
             : `<i class="fa-regular fa-circle" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: #bdc3c7; font-size:16px; cursor:pointer; padding-left:10px;" title="Pin Provider Ini"></i>`;
 
         return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 13px;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
+                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 13px; display:flex; align-items:center;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
                         ${item.opName.toUpperCase()}
+                        ${pinBadgeHTML}
                     </div>
-                    ${pinHTML}
+                    ${pinIconHTML}
                 </div>`;
     }).join('');
     
@@ -904,6 +902,13 @@ export async function actSms(action, id) {
             showModal("Gagal Replace", jCancel.error?.message || "Gagal membatalkan dari server.", "alert");
         }
         return; 
+    }
+
+    if (action === 'resend') {
+        // Hapus kode OTP dari memori lokal dan Firebase secara instan untuk mereset UI (loading berjalan & tombol done mati)
+        if (globalOrders[id]) delete globalOrders[id].otp_code;
+        db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}/otp_code`).remove();
+        renderSmsOrders();
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
