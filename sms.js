@@ -478,7 +478,7 @@ export function renderPriceGroups() {
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
         
-        let pinBadgeHTML = isFav ? `<span style="color: #fff; font-size: 9px; font-weight: 900; background: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FAVORIT</span>` : '';
+        let pinBadgeHTML = isFav ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">FAVORIT</span>` : '';
         let pinIconHTML = isFav 
             ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;" title="Hapus Favorit"></i>`
             : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;" title="Jadikan Favorit"></i>`;
@@ -548,7 +548,7 @@ export function openProviderMenu(price) {
     html += ops.map(item => {
         let isFavOp = favoriteOps.includes(item.opName.toUpperCase());
         
-        let pinBadgeHTML = isFavOp ? `<span style="color: #fff; font-size: 9px; font-weight: 900; background: #f1c40f; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FAVORIT</span>` : '';
+        let pinBadgeHTML = isFavOp ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">AKTIF</span>` : '';
         let pinIconHTML = isFavOp 
             ? `<i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer; padding-left:10px;" title="Hapus Pin Provider"></i>`
             : `<i class="fa-regular fa-circle" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: #bdc3c7; font-size:16px; cursor:pointer; padding-left:10px;" title="Pin Provider Ini"></i>`;
