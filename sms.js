@@ -27,9 +27,18 @@ let isPolling = false;
 let globalOrders = {}; 
 
 let favoritePrices = [];
-let favoriteOps = []; // Penyimpanan untuk provider/operator yang dipin
+let favoriteOps = []; 
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
+
+// STATE NAVIGASI HISTORY OTP
+window.orderOtpIndex = window.orderOtpIndex || {};
+window.navigateOtp = function(id, direction) {
+    if (window.orderOtpIndex[id] !== undefined) {
+        window.orderOtpIndex[id] += direction;
+        renderSmsOrders();
+    }
+};
 
 // ==========================================
 // 1B. SINKRONISASI MURNI FIREBASE (LISTENER)
@@ -604,8 +613,10 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
             <span class="phone-text-span" style="${phoneColorStyle}">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>
         </div>
         <div style="text-align: center; margin: 10px 0 15px 0; padding: 15px 0; background: #fafafa; border-radius: 8px;">
-            <div style="font-size:10px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:5px;">KODE OTP</div>
-            <div class="otp-container" style="min-height:35px; display:flex; align-items:center; justify-content:center; font-weight: 900;">${otpDisplay}</div>
+            <div style="font-size:10px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:10px;">KODE OTP</div>
+            <div class="otp-container" style="min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight: 900; width: 100%;">
+                ${otpDisplay}
+            </div>
         </div>
         <div class="btn-grid-4">
             <button class="sms-btn btn-done" onclick="actSms('finish', '${oId}')" ${doneStyle} style="font-weight: 900;">✓ DONE</button>
@@ -822,9 +833,9 @@ function renderSmsOrders() {
         const expire = orderTime + 1200000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        let otpKey = `${o.id}_${o.otp_code}`; 
-        
-        if (o.otp_code && !notifiedOtps.includes(otpKey)) {
+        // Notifikasi Cerdas berbasis waktu (Bisa mendeteksi SMS kode sama tapi beda waktu)
+        let otpKey = `${o.id}_${o.otp_received_at || 'null'}`; 
+        if (o.otp_code && o.otp_received_at && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
             showOtpSuccessNotif(); 
             notifiedOtps.push(otpKey);
@@ -832,19 +843,75 @@ function renderSmsOrders() {
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
-        // PERBAIKAN: Pengecekan OTP Code yang akurat
-        let hasValidOtp = !!(o.otp_code && String(o.otp_code).trim() !== "");
+        // ========================================================
+        // LOGIKA HISTORY & SLIDER OTP PANAH KIRI KANAN
+        // ========================================================
+        let currentOtp = (o.otp_code && String(o.otp_code).trim() !== "") ? String(o.otp_code) : null;
         
-        let otpDisplay = hasValidOtp 
-            ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${String(o.otp_code).replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` 
-            : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        // Ambil history dari local storage
+        let histKey = 'sms_otp_hist_' + o.id;
+        let hist = JSON.parse(localStorage.getItem(histKey) || "[]"); // format: [{code, time}]
+        
+        if (currentOtp && o.otp_received_at) {
+            // Push jika history kosong atau waktu masuknya beda dari yang terakhir
+            if (hist.length === 0 || hist[hist.length - 1].time !== o.otp_received_at) {
+                hist.push({ code: currentOtp, time: o.otp_received_at });
+                localStorage.setItem(histKey, JSON.stringify(hist));
+            }
+        }
+
+        let items = hist.map(h => h.code);
+        if (!currentOtp) {
+            items.push("LOADING");
+        }
+
+        // Koreksi & Atur Index Aktif
+        if (window.orderOtpIndex[o.id] === undefined) {
+            window.orderOtpIndex[o.id] = items.length - 1; // Default ke paling kanan (Terbaru)
+        }
+        let currentIndex = window.orderOtpIndex[o.id];
+        if (currentIndex >= items.length) currentIndex = items.length - 1;
+        if (currentIndex < 0) currentIndex = 0;
+        window.orderOtpIndex[o.id] = currentIndex;
+
+        let canGoLeft = currentIndex > 0;
+        let canGoRight = currentIndex < items.length - 1;
+        let displayItem = items[currentIndex];
+
+        let otpContentHTML = "";
+        if (displayItem === "LOADING") {
+            otpContentHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+        } else {
+            otpContentHTML = `<span onclick="copyOtpCode('${displayItem}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${displayItem.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>`;
+        }
+
+        let leftArrowColor = canGoLeft ? 'var(--fb-blue)' : '#e0e0e0';
+        let rightArrowColor = canGoRight ? 'var(--fb-blue)' : '#e0e0e0';
+        let leftArrowCursor = canGoLeft ? 'pointer' : 'default';
+        let rightArrowCursor = canGoRight ? 'pointer' : 'default';
+        
+        // Render UI Panah Navigasi
+        let otpDisplay = `
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:0 15px;">
+                <i class="fa-solid fa-circle-chevron-left" onclick="${canGoLeft ? `window.navigateOtp('${o.id}', -1)` : ''}" style="font-size:26px; color:${leftArrowColor}; cursor:${leftArrowCursor}; transition: 0.2s;"></i>
+                <div style="flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center;">
+                    ${otpContentHTML}
+                </div>
+                <i class="fa-solid fa-circle-chevron-right" onclick="${canGoRight ? `window.navigateOtp('${o.id}', 1)` : ''}" style="font-size:26px; color:${rightArrowColor}; cursor:${rightArrowCursor}; transition: 0.2s;"></i>
+            </div>
+            ${items.length > 1 ? `<div style="font-size:10px; font-weight:900; color:var(--fb-muted); margin-top:10px; letter-spacing:1px; text-transform:uppercase;">OTP <span style="color:var(--fb-blue);">${currentIndex + 1}</span> DARI <span style="color:var(--fb-blue);">${items.length}</span></div>` : ''}
+        `;
+        // ========================================================
             
-        const resendState = hasValidOtp ? '' : 'disabled';
-        const cancelState = passed2Mins && !hasValidOtp ? '' : 'disabled';
-        const replaceState = passed2Mins && !hasValidOtp ? '' : 'disabled';
+        // Tombol HANYA akan aktif jika kita sedang di indeks paling kanan (dan isinya bukan LOADING)
+        let isOnLatestAndValid = (currentIndex === items.length - 1) && !!currentOtp;
+
+        const resendState = isOnLatestAndValid ? '' : 'disabled';
+        const cancelState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
+        const replaceState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
         
         const displayPrice = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, hasValidOtp, o.is_recycled, expire, opName, isHidden);
+        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, isOnLatestAndValid, o.is_recycled, expire, opName, isHidden);
 
         if (isHidden) hiddenHTML += htmlStr;
         else activeHTML += htmlStr;
@@ -908,17 +975,28 @@ export async function actSms(action, id) {
         return; 
     }
 
-    // PERBAIKAN: Optimistic update / Force UI Update untuk resend
+    // Navigasi UI otomatis saat RESEND ditekan
     if (action === 'resend') {
         if (globalOrders[id]) {
             globalOrders[id].otp_code = null;
             globalOrders[id].otp_received_at = null;
-            renderSmsOrders(); // Langsung render animasi loader lokal seketika
+            
+            // Geser index aktif ke ruang kosong (LOADING) yang baru
+            let histKey = 'sms_otp_hist_' + id;
+            let hist = JSON.parse(localStorage.getItem(histKey) || "[]");
+            window.orderOtpIndex[id] = hist.length; 
+            
+            renderSmsOrders(); 
         }
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
     if (j.success) {
+        // Hapus histori lokal jika order di-cancel atau selesai
+        if (action === 'finish' || action === 'cancel') {
+            localStorage.removeItem('sms_otp_hist_' + id);
+            delete window.orderOtpIndex[id];
+        }
         pollSms(); updateSmsBal();
     } else {
         showModal("Gagal", j.error?.message || "Aksi ditolak server.", "alert");
