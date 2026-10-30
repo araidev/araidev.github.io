@@ -588,7 +588,7 @@ function renderSmsOrders() {
         // SINKRONISASI HISTORY OTP & VIRTUAL RESEND KE FIREBASE
         // ========================================================
         let currentOtp = (o.otp_code && String(o.otp_code).trim() !== "") ? String(o.otp_code) : null;
-        let hist = o.otp_history || []; // array of {code, time} dari Firebase
+        let hist = o.otp_history || []; 
         
         let needsDbUpdate = false;
         let dbUpdates = {};
@@ -597,15 +597,13 @@ function renderSmsOrders() {
         if (currentOtp && o.otp_received_at) {
             let lastHist = hist.length > 0 ? hist[hist.length - 1] : null;
             if (!lastHist || lastHist.time !== o.otp_received_at) {
-                // Ada OTP baru masuk, masukkan ke array history!
                 let newHist = [...hist, { code: currentOtp, time: o.otp_received_at }];
                 dbUpdates.otp_history = newHist;
                 
-                // Matikan status loading (waiting) di Firebase
                 if (o.waiting_for_new_otp) dbUpdates.waiting_for_new_otp = false;
                 
                 needsDbUpdate = true;
-                hist = newHist; // Update array lokal untuk proses render saat ini
+                hist = newHist; 
             }
         }
 
@@ -617,7 +615,7 @@ function renderSmsOrders() {
         // 3. Susun daftar item yang akan dirender di Layar
         let items = hist.map(h => h.code);
         
-        // Jika sedang menunggu OTP baru dari hasil Resend (atau belum ada OTP sama sekali)
+        // Jika UI meminta tunggu OTP baru ATAU belum ada OTP masuk sama sekali
         if (o.waiting_for_new_otp || items.length === 0) {
             items.push("LOADING");
         }
@@ -652,7 +650,6 @@ function renderSmsOrders() {
             ${items.length > 1 ? `<div style="font-size:10px; font-weight:900; color:var(--fb-muted); margin-top:10px;">OTP <span style="color:var(--fb-blue);">${currentIndex + 1}</span> DARI <span style="color:var(--fb-blue);">${items.length}</span></div>` : ''}
         `;
             
-        // Tombol HANYA aktif jika User sedang melihat slot OTP paling kanan, DAN slot itu bukan 'LOADING'
         let isOnLatestAndValid = (currentIndex === items.length - 1) && (displayItem !== "LOADING");
 
         const resendState = isOnLatestAndValid ? '' : 'disabled';
@@ -692,6 +689,9 @@ function updateSmsTimers() {
     });
 }
 
+// =============================================
+// TINDAKAN API & OPTIMISTIC UI
+// =============================================
 export async function actSms(action, id) {
     if (!await showModal("Konfirmasi", "Lanjutkan aksi ini?", "confirm")) return;
 
@@ -708,19 +708,26 @@ export async function actSms(action, id) {
         return; 
     }
 
-    // =============================================
-    // RESEND VIA FIREBASE (SYNC SEMUA PERANGKAT)
-    // =============================================
+    // LOGIKA RESEND CANGGIH: OPTIMISTIC UPDATE & HYBRID API
     if (action === 'resend') {
         if (globalOrders[id]) {
-            // Update Firebase: Semua layar otomatis masuk mode Loading!
+            // 1. UPDATE LOKAL & RENDER INSTAN (Tanpa nunggu jaringan, layar langsung jadi animasi Loading)
+            globalOrders[id].waiting_for_new_otp = true;
+            delete window.orderOtpIndex[id]; 
+            renderSmsOrders(); 
+
+            // 2. UPDATE FIREBASE (Agar semua layar perangkat lain ikutan Loading)
             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
                 waiting_for_new_otp: true
             });
-            // Hapus index agar layar auto-focus ke animasi Loading
-            delete window.orderOtpIndex[id]; 
         }
-        return; // Selesai. Tanpa memanggil API / Worker sama sekali.
+        
+        // 3. JIKA HEROSMS / SMSCODE: STOP di sini, API pusat mereka mengirim ulang secara otomatis.
+        if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
+            return; 
+        }
+        
+        // 4. JIKA OTP CEPAT: Lanjutkan kode ke bawah untuk hit endpoint /order-action worker
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
@@ -730,6 +737,14 @@ export async function actSms(action, id) {
         }
         pollSms(); updateSmsBal();
     } else {
+        // Jika OTP Cepat gagal Resend ke pusat, matikan mode loading
+        if (action === 'resend') {
+             if (globalOrders[id]) globalOrders[id].waiting_for_new_otp = null;
+             renderSmsOrders();
+             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
+                waiting_for_new_otp: null
+            });
+        }
         showModal("Gagal", j.error?.message || "Aksi ditolak server.", "alert");
     }
 }
