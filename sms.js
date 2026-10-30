@@ -502,6 +502,54 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     </div>`;
 }
 
+// ==========================================
+// 6.5 NOTIFIKASI
+// ==========================================
+function showBuySuccessNotif() {
+    const elBal = document.getElementById('sms-balance');
+    if(!elBal) return;
+    let existingNotif = document.getElementById('sms-done-notif');
+    if(existingNotif) existingNotif.remove();
+
+    elBal.style.display = 'none';
+    const notif = document.createElement('div');
+    notif.id = 'sms-done-notif';
+    notif.innerHTML = '<i class="fa-solid fa-circle-check"></i> Done';
+    notif.style.cssText = `display:inline-flex;align-items:center;gap:5px;color:#25D366;font-weight:900;font-size:14px;background:#e6f4ea;padding:4px 10px;border-radius:12px;transition:opacity 0.5s ease;`;
+
+    elBal.parentNode.insertBefore(notif, elBal);
+    setTimeout(() => {
+        if(document.getElementById('sms-done-notif') === notif) {
+            notif.style.opacity = '0';
+            setTimeout(() => { if(document.getElementById('sms-done-notif') === notif) { notif.remove(); elBal.style.display = ''; } }, 500);
+        }
+    }, 3000);
+}
+
+function showOtpSuccessNotif() {
+    const elBal = document.getElementById('sms-balance');
+    if(!elBal) return;
+    let existingNotif = document.getElementById('sms-otp-notif');
+    if(existingNotif) existingNotif.remove();
+
+    elBal.style.display = 'none';
+    const notif = document.createElement('div');
+    notif.id = 'sms-otp-notif';
+    notif.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> Baru'; 
+    notif.style.cssText = `display:inline-flex;align-items:center;gap:5px;color:#007bff;font-weight:900;font-size:14px;background:#cce5ff;padding:4px 10px;border-radius:12px;transition:opacity 0.5s ease;`;
+
+    elBal.parentNode.insertBefore(notif, elBal);
+    setTimeout(() => {
+        if(document.getElementById('sms-otp-notif') === notif) {
+            notif.style.opacity = '0';
+            setTimeout(() => { if(document.getElementById('sms-otp-notif') === notif) { notif.remove(); elBal.style.display = ''; } }, 500);
+        }
+    }, 3000);
+}
+
+// ==========================================
+// 7. RENDER LOGIC UTAMA SINKRONISASI FIREBASE
+// ==========================================
 export async function executeBuySms(pid, price, name, operator, countryRank = "") {
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${pText.replace(/<[^>]*>?/gm, '')}?`, "confirm")) return;
@@ -517,6 +565,9 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         const savedOp = activeProviderKey === "smscode" ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
+        if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
+        showBuySuccessNotif(); 
+
         pollSms(); updateSmsBal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -525,9 +576,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
 }
 window.executeBuySms = executeBuySms;
 
-// ==========================================
-// 7. RENDER LOGIC UTAMA SINKRONISASI FIREBASE
-// ==========================================
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
@@ -579,6 +627,7 @@ function renderSmsOrders() {
         let otpKey = `${o.id}_${o.otp_received_at || 'null'}`; 
         if (o.otp_code && o.otp_received_at && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
+            showOtpSuccessNotif(); 
             notifiedOtps.push(otpKey);
             if (notifiedOtps.length > 50) notifiedOtps.shift();
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
@@ -711,23 +760,21 @@ export async function actSms(action, id) {
     // LOGIKA RESEND CANGGIH: OPTIMISTIC UPDATE & HYBRID API
     if (action === 'resend') {
         if (globalOrders[id]) {
-            // 1. UPDATE LOKAL & RENDER INSTAN (Tanpa nunggu jaringan, layar langsung jadi animasi Loading)
+            // 1. UPDATE LOKAL & RENDER INSTAN 
             globalOrders[id].waiting_for_new_otp = true;
             delete window.orderOtpIndex[id]; 
             renderSmsOrders(); 
 
-            // 2. UPDATE FIREBASE (Agar semua layar perangkat lain ikutan Loading)
+            // 2. UPDATE FIREBASE 
             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
                 waiting_for_new_otp: true
             });
         }
         
-        // 3. JIKA HEROSMS / SMSCODE: STOP di sini, API pusat mereka mengirim ulang secara otomatis.
+        // 3. JIKA HEROSMS / SMSCODE: STOP di sini
         if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
             return; 
         }
-        
-        // 4. JIKA OTP CEPAT: Lanjutkan kode ke bawah untuk hit endpoint /order-action worker
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
@@ -737,7 +784,6 @@ export async function actSms(action, id) {
         }
         pollSms(); updateSmsBal();
     } else {
-        // Jika OTP Cepat gagal Resend ke pusat, matikan mode loading
         if (action === 'resend') {
              if (globalOrders[id]) globalOrders[id].waiting_for_new_otp = null;
              renderSmsOrders();
