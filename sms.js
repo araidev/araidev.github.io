@@ -31,7 +31,9 @@ let favoriteOps = [];
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
 
-// STATE NAVIGASI HISTORY OTP
+// ==========================================
+// STATE NAVIGASI HISTORY OTP (PANAH LOKAL)
+// ==========================================
 window.orderOtpIndex = window.orderOtpIndex || {};
 window.navigateOtp = function(id, direction) {
     if (window.orderOtpIndex[id] !== undefined) {
@@ -88,7 +90,7 @@ auth.onAuthStateChanged(user => {
 });
 
 // ==========================================
-// 2. SETUP AUDIO (OTP & RECYCLED)
+// 2. SETUP AUDIO
 // ==========================================
 let audioCtx;
 function playSimpleSound(type) {
@@ -119,7 +121,7 @@ function playSimpleSound(type) {
             osc.start();
             osc.stop(audioCtx.currentTime + 0.3); 
         }
-    } catch (e) { console.log("Audio tidak didukung", e); }
+    } catch (e) {}
 }
 
 function tryInitSms() {
@@ -131,9 +133,6 @@ if (document.readyState === "loading") {
     tryInitSms();
 }
 
-// ==========================================
-// 3. KURS OTOMATIS & FORMAT HARGA
-// ==========================================
 async function updateUsdRate() {
     const today = new Date().toDateString();
     const cachedRate = localStorage.getItem('usd_to_idr_rate');
@@ -143,7 +142,6 @@ async function updateUsdRate() {
         currentUsdRate = parseFloat(cachedRate);
         return;
     }
-
     try {
         const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
         const data = await res.json();
@@ -156,9 +154,7 @@ async function updateUsdRate() {
 }
 
 function formatDisplayPrice(price, currency) {
-    if (currency === "USD") {
-        return `$${price}`; 
-    }
+    if (currency === "USD") return `$${price}`; 
     return `Rp ${parseInt(price || 0).toLocaleString('id-ID')}`; 
 }
 
@@ -250,9 +246,7 @@ async function initSms() {
     }
 
     applySmsLock();
-    
     await loadServersList();
-    
     attachGlobalOrderListener(); 
     refreshSms();
 
@@ -324,27 +318,12 @@ export function refreshSms() {
 }
 window.refreshSms = refreshSms;
 
-export function toggleSmsLock() {
-    let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
-    localStorage.setItem('sms_ui_locked', !isLocked);
-    applySmsLock();
-}
-window.toggleSmsLock = toggleSmsLock;
-
 export function applySmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     let prov = document.getElementById('sms-provider');
     let srv = document.getElementById('sms-server');
-    
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
-
-    let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
-    if (lockIcon) {
-        if (!lockIcon.id) lockIcon.id = 'global-sms-lock-icon'; 
-        lockIcon.className = isLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open";
-        lockIcon.style.color = isLocked ? "var(--fb-red)" : "var(--fb-muted)";
-    }
 }
 window.applySmsLock = applySmsLock;
 
@@ -361,7 +340,6 @@ async function apiCall(endpoint, method = "GET", body = null) {
         try { return JSON.parse(text); } 
         catch(e) { return { success: res.ok, status: res.ok ? "success" : "failed", error: { message: text || "Format server tidak sesuai" } }; }
     } catch(err) {
-        if (err.name === 'AbortError') return { success: false, error: { message: "Koneksi Timeout" } };
         return { success: false, error: { message: "Jaringan terputus / Server Sibuk" } };
     }
 }
@@ -375,145 +353,84 @@ async function updateSmsBal() {
 }
 
 // ==========================================
-// 5. RENDER HARGA CERDAS & FAVORIT
+// 5. HARGA & LISTING
 // ==========================================
 export function toggleFavoritePrice(priceStr) {
-    if (favoritePrices.includes(priceStr)) {
-        favoritePrices = favoritePrices.filter(x => x !== priceStr);
-    } else {
-        favoritePrices.push(priceStr);
-    }
-    
-    if (auth && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/sms_fav_prices_${activeProviderKey}`).set(favoritePrices);
-    } else {
-        localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
-    }
+    if (favoritePrices.includes(priceStr)) favoritePrices = favoritePrices.filter(x => x !== priceStr);
+    else favoritePrices.push(priceStr);
+    localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
     renderPriceGroups();
 }
 window.toggleFavoritePrice = toggleFavoritePrice;
 
 export function toggleFavoriteOp(opName) {
-    if (favoriteOps.includes(opName)) {
-        favoriteOps = favoriteOps.filter(x => x !== opName);
-    } else {
-        favoriteOps.push(opName);
-    }
-
-    if (auth && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/sms_fav_ops_${activeProviderKey}`).set(favoriteOps);
-    } else {
-        localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
-    }
-    
-    const currentPriceInput = document.getElementById('current-price-context');
-    if (currentPriceInput) {
-        openProviderMenu(currentPriceInput.value);
-    }
+    if (favoriteOps.includes(opName)) favoriteOps = favoriteOps.filter(x => x !== opName);
+    else favoriteOps.push(opName);
+    localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
+    const context = document.getElementById('current-price-context');
+    if (context) openProviderMenu(context.value);
 }
 window.toggleFavoriteOp = toggleFavoriteOp;
 
 async function loadSmsPrices() {
     const box = document.getElementById('sms-prices');
     if(!box) return;
-
     const json = await apiCall('/get-prices');
     if (!json.success || !json.data || json.data.length === 0) {
         box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok Kosong / Gagal Memuat</div>`;
         return;
     }
-
     let normalizedPrices = [];
-    
-    let currentMinPrice = PROVIDERS[activeProviderKey].minPrice;
-    let currentMaxPrice = PROVIDERS[activeProviderKey].maxPrice;
+    let cMin = PROVIDERS[activeProviderKey].minPrice;
+    let cMax = PROVIDERS[activeProviderKey].maxPrice;
     
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
-        json.data
-            .filter(i => i.price >= currentMinPrice && i.price <= currentMaxPrice)
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
-            
+        json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
-        json.data
-            .filter(i => {
-                let idrPrice = parseFloat(i.price) * currentUsdRate;
-                return idrPrice >= currentMinPrice && idrPrice <= currentMaxPrice;
-            })
-            .forEach(i => {
-                 normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
-                 if (i.operatorStock) {
-                     let opList = Array.isArray(i.operatorStock) ? i.operatorStock : Object.keys(i.operatorStock);
-                     opList.forEach(op => {
-                         normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: cleanOpName(op) });
-                     });
-                 }
-            });
-            
-    } else if (activeProviderKey === "smsvirtual") {
-        json.data
-            .filter(i => {
-                let idrPrice = parseFloat(i.price) * currentUsdRate;
-                return idrPrice >= currentMinPrice && idrPrice <= currentMaxPrice;
-            })
-            .forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.operator || 'any', opName: cleanOpName(i.operatorName), country: i.country }));
-            
+        json.data.filter(i => { let idr = parseFloat(i.price) * currentUsdRate; return idr >= cMin && idr <= cMax; }).forEach(i => {
+             normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
+             if (i.operatorStock) {
+                 let opList = Array.isArray(i.operatorStock) ? i.operatorStock : Object.keys(i.operatorStock);
+                 opList.forEach(op => { normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: cleanOpName(op) }); });
+             }
+        });
     }
 
     cachedPriceGroups = {};
     normalizedPrices.forEach(p => {
         let pStr = String(p.price);
         if (!cachedPriceGroups[pStr]) cachedPriceGroups[pStr] = [];
-        if (!cachedPriceGroups[pStr].some(existing => existing.opName === p.opName)) {
-            cachedPriceGroups[pStr].push(p);
-        }
+        if (!cachedPriceGroups[pStr].some(existing => existing.opName === p.opName)) cachedPriceGroups[pStr].push(p);
     });
-
     renderPriceGroups();
 }
 
 export function renderPriceGroups() {
     const box = document.getElementById('sms-prices');
     if (!box) return;
-    
     let sortedPrices = Object.keys(cachedPriceGroups).sort((a,b) => {
-        let isFavA = favoritePrices.includes(a);
-        let isFavB = favoritePrices.includes(b);
-        if (isFavA && !isFavB) return -1;
-        if (!isFavA && isFavB) return 1;
-        return parseFloat(a) - parseFloat(b);
+        let isFavA = favoritePrices.includes(a); let isFavB = favoritePrices.includes(b);
+        if (isFavA && !isFavB) return -1; if (!isFavA && isFavB) return 1; return parseFloat(a) - parseFloat(b);
     });
-    
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
-        
         let pinBadgeHTML = isFav ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">FAVORIT</span>` : '';
-        let pinIconHTML = isFav 
-            ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;" title="Hapus Favorit"></i>`
-            : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;" title="Jadikan Favorit"></i>`;
-        
+        let pinIconHTML = isFav ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;"></i>` : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;"></i>`;
         let ops = cachedPriceGroups[price];
-        
         if (activeProviderKey !== "smscode" && ops.length === 1) {
             let item = ops[0];
-            return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:14px; display:flex; align-items:center;">
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
+                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
                             ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">BELI</span>
-                            ${pinBadgeHTML}
-                        </div>
-                        ${pinIconHTML}
+                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">BELI</span> ${pinBadgeHTML}
+                        </div>${pinIconHTML}
                     </div>`;
         }
-
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); font-family:monospace; font-size:15px; display:flex; align-items:center;">
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
+                    <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                        <span style="color: var(--fb-muted); font-size: 10px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-family: sans-serif; margin-left: 8px;">
-                            ${ops.length} Provider
-                        </span>
-                        ${pinBadgeHTML}
-                    </div>
-                    ${pinIconHTML}
+                        <span style="color: var(--fb-muted); font-size: 10px; font-weight: 900; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">${ops.length} Provider</span> ${pinBadgeHTML}
+                    </div>${pinIconHTML}
                 </div>`;
     }).join('');
 }
@@ -522,85 +439,43 @@ window.renderPriceGroups = renderPriceGroups;
 export function openProviderMenu(price) {
     const box = document.getElementById('sms-prices');
     if (!box || !cachedPriceGroups[price]) return;
-    
     let ops = cachedPriceGroups[price];
-    
-    const orderWeight = { 
-        "ANY": 1, "ACAK": 1, 
-        "INDOSAT": 2, 
-        "TELKOMSEL": 3, 
-        "THREE": 4, "TRI": 4, 
-        "AXIS": 5, 
-        "SMARTFREN": 6 
-    };
-    
     ops.sort((a, b) => {
-        let nameA = a.opName.toUpperCase();
-        let nameB = b.opName.toUpperCase();
-        
-        let isFavA = favoriteOps.includes(nameA);
-        let isFavB = favoriteOps.includes(nameB);
-        if (isFavA && !isFavB) return -1;
-        if (!isFavA && isFavB) return 1;
-
-        let rankA = 99; let rankB = 99;
-        for (let key in orderWeight) { if (nameA.includes(key)) { rankA = orderWeight[key]; break; } }
-        for (let key in orderWeight) { if (nameB.includes(key)) { rankB = orderWeight[key]; break; } }
-        
-        if (rankA !== rankB) return rankA - rankB;
-        return nameA.localeCompare(nameB);
+        let isFavA = favoriteOps.includes(a.opName.toUpperCase()); let isFavB = favoriteOps.includes(b.opName.toUpperCase());
+        if (isFavA && !isFavB) return -1; if (!isFavA && isFavB) return 1; return a.opName.localeCompare(b.opName);
     });
-
     let html = `<input type="hidden" id="current-price-context" value="${price}">`;
-                
     html += ops.map(item => {
         let isFavOp = favoriteOps.includes(item.opName.toUpperCase());
-        
         let pinBadgeHTML = isFavOp ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">AKTIF</span>` : '';
-        let pinIconHTML = isFavOp 
-            ? `<i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer; padding-left:10px;" title="Hapus Pin Provider"></i>`
-            : `<i class="fa-regular fa-circle" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: #bdc3c7; font-size:16px; cursor:pointer; padding-left:10px;" title="Pin Provider Ini"></i>`;
-
-        return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); font-size: 13px; display:flex; align-items:center;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
-                        ${item.opName.toUpperCase()}
-                        ${pinBadgeHTML}
-                    </div>
-                    ${pinIconHTML}
+        let pinIconHTML = isFavOp ? `<i class="fa-solid fa-circle-check" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: var(--fb-green); font-size:16px; cursor:pointer; padding-left:10px;"></i>` : `<i class="fa-regular fa-circle" onclick="event.stopPropagation(); toggleFavoriteOp('${item.opName.toUpperCase()}')" style="color: #bdc3c7; font-size:16px; cursor:pointer; padding-left:10px;"></i>`;
+        return `<div class="price-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px 15px; background: #fff; border: 1px solid #eee; border-radius: 8px;">
+                    <div style="flex: 1; cursor: pointer; font-weight:900; color:var(--fb-text); display:flex; align-items:center;" onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')">
+                        ${item.opName.toUpperCase()} ${pinBadgeHTML}
+                    </div>${pinIconHTML}
                 </div>`;
     }).join('');
-    
-    html += `
-        <div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-size: 13px; font-weight: 900; text-align: center; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;">
-            <i class="fa-solid fa-arrow-left" style="margin-right:8px;"></i> KEMBALI
-        </div>
-    `;
-    
+    html += `<div onclick="renderPriceGroups()" style="cursor:pointer; padding: 12px; background: var(--fb-blue); color: #fff; border-radius: 8px; font-weight: 900; text-align: center; margin-top: 20px;"><i class="fa-solid fa-arrow-left"></i> KEMBALI</div>`;
     box.innerHTML = html;
 }
 window.openProviderMenu = openProviderMenu;
 
 // ==========================================
-// 6. SISTEM PEMBELIAN & RENDER KARTU
+// 6. SISTEM RENDER KARTU (TERMASUK LAYOUT OTP)
 // ==========================================
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
-    
-    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : 
-                 activeProviderKey === "hwa" ? "#25D366" : 
-                 activeProviderKey === "otpcepat" ? "#fd9644" : 
-                 activeProviderKey === "smsvirtual" ? "#007bff" : "#95a5a6"; 
+    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "smscode" ? "#95a5a6" : "#007bff"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:9px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
-
     const toggleTitle = isHidden ? 'SHOW' : 'HIDE';
     const toggleColor = isHidden ? 'var(--fb-blue)' : 'var(--fb-muted)';
 
     return `<div class="order-card" id="order-${activeProviderKey}-${oId}" style="border: 2px solid ${bColor};">
         <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px dashed var(--fb-border); padding-bottom:15px; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
-                <span class="hide-btn-text" onclick="localHideSmsCard('${oId}')" style="cursor:pointer; font-size:10px; font-weight:900; color:${toggleColor}; background:#e9ecef; padding:4px 8px; border-radius:4px; letter-spacing:0.5px;">${toggleTitle}</span>
+                <span class="hide-btn-text" onclick="localHideSmsCard('${oId}')" style="cursor:pointer; font-size:10px; font-weight:900; color:${toggleColor}; background:#e9ecef; padding:4px 8px; border-radius:4px;">${toggleTitle}</span>
                 <span style="font-size:15px; font-weight:900; color:var(--fb-text); text-transform:uppercase;">${operatorName.toUpperCase()}</span>
                 <span style="font-size:13px; font-weight:900; color:var(--fb-red); font-family:monospace;">${priceDisplay}</span>
             </div>
@@ -613,7 +488,7 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
             <span class="phone-text-span" style="${phoneColorStyle}">${phone}</span><i id="copy-icon-${oId}" class="fa-regular fa-copy" style="color: var(--fb-muted);"></i>
         </div>
         <div style="text-align: center; margin: 10px 0 15px 0; padding: 15px 0; background: #fafafa; border-radius: 8px;">
-            <div style="font-size:10px; color:var(--fb-muted); font-weight:900; letter-spacing:1px; margin-bottom:10px;">KODE OTP</div>
+            <div style="font-size:10px; color:var(--fb-muted); font-weight:900; margin-bottom:10px;">KODE OTP</div>
             <div class="otp-container" style="min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight: 900; width: 100%;">
                 ${otpDisplay}
             </div>
@@ -627,138 +502,23 @@ function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, repl
     </div>`;
 }
 
-// ==========================================
-// 6.5. FUNGSI MENAMPILKAN NOTIF DONE SAAT BELI
-// ==========================================
-function showBuySuccessNotif() {
-    const elBal = document.getElementById('sms-balance');
-    if(!elBal) return;
-
-    let existingNotif = document.getElementById('sms-done-notif');
-    if(existingNotif) {
-        existingNotif.remove();
-    }
-
-    elBal.style.display = 'none';
-
-    const notif = document.createElement('div');
-    notif.id = 'sms-done-notif';
-    notif.innerHTML = '<i class="fa-solid fa-circle-check"></i> Done';
-    
-    notif.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        color: #25D366;
-        font-weight: 900;
-        font-size: 14px;
-        background: #e6f4ea;
-        padding: 4px 10px;
-        border-radius: 12px;
-        transition: opacity 0.5s ease;
-    `;
-
-    elBal.parentNode.insertBefore(notif, elBal);
-
-    setTimeout(() => {
-        if(document.getElementById('sms-done-notif') === notif) {
-            notif.style.opacity = '0';
-            setTimeout(() => {
-                if(document.getElementById('sms-done-notif') === notif) {
-                    notif.remove();
-                    elBal.style.display = ''; 
-                }
-            }, 500);
-        }
-    }, 3000);
-}
-
-// ==========================================
-// 6.6. FUNGSI MENAMPILKAN NOTIF BIRU SAAT OTP MASUK
-// ==========================================
-function showOtpSuccessNotif() {
-    const elBal = document.getElementById('sms-balance');
-    if(!elBal) return;
-
-    let existingNotif = document.getElementById('sms-otp-notif');
-    if(existingNotif) {
-        existingNotif.remove();
-    }
-
-    elBal.style.display = 'none';
-
-    const notif = document.createElement('div');
-    notif.id = 'sms-otp-notif';
-    notif.innerHTML = '<i class="fa-solid fa-envelope-open-text"></i> Baru'; 
-    
-    notif.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        color: #007bff;
-        font-weight: 900;
-        font-size: 14px;
-        background: #cce5ff; 
-        padding: 4px 10px;
-        border-radius: 12px;
-        transition: opacity 0.5s ease;
-    `;
-
-    elBal.parentNode.insertBefore(notif, elBal);
-
-    setTimeout(() => {
-        if(document.getElementById('sms-otp-notif') === notif) {
-            notif.style.opacity = '0';
-            setTimeout(() => {
-                if(document.getElementById('sms-otp-notif') === notif) {
-                    notif.remove();
-                    elBal.style.display = ''; 
-                }
-            }, 500);
-        }
-    }, 3000);
-}
-
 export async function executeBuySms(pid, price, name, operator, countryRank = "") {
-    try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch (e) {}
-
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-    const plainPText = pText.replace(/<[^>]*>?/gm, ''); 
-    if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${plainPText}?`, "confirm")) return;
+    if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${pText.replace(/<[^>]*>?/gm, '')}?`, "confirm")) return;
 
-    let payload;
-    if (activeProviderKey === "smsvirtual") {
-        payload = { product_id: parseInt(pid), price: Number(price), operator: operator, country: parseInt(countryRank) || 1 };
-    } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa" || activeProviderKey === "otpcepat") {
-        payload = { product_id: String(pid), price: price, operator: operator };
-    } else if (activeProviderKey === "smscode") {
-        payload = { 
-            type: "product", 
-            product_id: parseInt(pid),
-            price: Number(price),
-            operator: name 
-        };
-    }
+    let payload = (activeProviderKey === "smscode") ? 
+        { type: "product", product_id: parseInt(pid), price: Number(price), operator: name } : 
+        { product_id: String(pid), price: price, operator: operator };
 
     const j = await apiCall('/create-order', 'POST', payload);
     if(j.success && j.data) {
-        
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
-        
         const savedOp = activeProviderKey === "smscode" ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
-
-        if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
         
         pollSms(); updateSmsBal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        showBuySuccessNotif();
-
     } else {
         showModal("Gagal", j.error?.message || "Stok Sedang Kosong.", "alert");
     }
@@ -766,40 +526,33 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
 window.executeBuySms = executeBuySms;
 
 // ==========================================
-// 7. POLLING & MANAJEMEN UI CERDAS
+// 7. RENDER LOGIC UTAMA SINKRONISASI FIREBASE
 // ==========================================
 async function pollSms() {
     if (isPolling) return;
     isPolling = true;
-    try {
-        await apiCall('/get-active', 'GET');
-    } catch (e) {} finally { isPolling = false; }
+    try { await apiCall('/get-active', 'GET'); } catch (e) {} finally { isPolling = false; }
 }
 
 export function localHideSmsCard(id) {
     const strId = String(id);
-    const currentHiddenStatus = globalOrders[strId] ? globalOrders[strId].hidden : false;
-    db.ref(`OTP/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!currentHiddenStatus);
+    const hiddenStatus = globalOrders[strId] ? globalOrders[strId].hidden : false;
+    db.ref(`OTP/${activeProviderKey}/${currentServerName}/${strId}/hidden`).set(!hiddenStatus);
 }
 window.localHideSmsCard = localHideSmsCard;
 
 export function copyPhoneNumber(txt, iconId) {
-    if(txt.includes('Mencari')) return;
     navigator.clipboard.writeText(txt);
     const icon = document.getElementById(iconId);
-    if(icon) {
-        icon.className = "fa-solid fa-circle-check"; icon.style.color = "var(--fb-green)";
-        setTimeout(() => { icon.className = "fa-regular fa-copy"; icon.style.color = "var(--fb-muted)"; }, 1500);
-    }
+    if(icon) { icon.className = "fa-solid fa-circle-check"; icon.style.color = "var(--fb-green)"; setTimeout(() => { icon.className = "fa-regular fa-copy"; icon.style.color = "var(--fb-muted)"; }, 1500); }
 }
 window.copyPhoneNumber = copyPhoneNumber;
 
 export function copyOtpCode(otp, element) {
-    if (!otp) return;
     navigator.clipboard.writeText(otp);
     if (element.querySelector('.otp-copied-icon')) return;
     const originalHTML = element.innerHTML;
-    element.innerHTML = originalHTML + '<i class="fa-solid fa-circle-check otp-copied-icon" style="color: var(--fb-green); font-size: 24px; margin-left: 12px; letter-spacing: normal;"></i>';
+    element.innerHTML = originalHTML + '<i class="fa-solid fa-circle-check otp-copied-icon" style="color: var(--fb-green); font-size: 24px; margin-left: 12px;"></i>';
     setTimeout(() => { element.innerHTML = originalHTML; }, 1500);
 }
 window.copyOtpCode = copyOtpCode;
@@ -809,66 +562,68 @@ function renderSmsOrders() {
     const wrapHidden = document.getElementById('inner-hidden-orders');
     if(!wrapActive || !wrapHidden) return;
     
-    let activeHTML = '';
-    let hiddenHTML = '';
-
-    let ordersList = Object.keys(globalOrders).map(id => {
-        return { id: id, ...globalOrders[id] };
-    });
-
-    ordersList.sort((a,b) => b.created_at - a.created_at);
+    let activeHTML = ''; let hiddenHTML = '';
+    let ordersList = Object.keys(globalOrders).map(id => ({ id: id, ...globalOrders[id] })).sort((a,b) => b.created_at - a.created_at);
 
     ordersList.forEach(o => {
         let phone = o.phone || o.phone_number || '...';
-        
-        if (phone.startsWith('62')) {
-            phone = '0' + phone.substring(2);
-        }
+        if (phone.startsWith('62')) phone = '0' + phone.substring(2);
         
         const price = o.price || 0;
         const opName = cleanOpName(o.operator);
-        let isHidden = !!o.hidden; 
-        
         let orderTime = o.created_at || Date.now();
         const expire = orderTime + 1200000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // Notifikasi Cerdas berbasis waktu (Bisa mendeteksi SMS kode sama tapi beda waktu)
+        // Notifikasi Cerdas Lokal
         let otpKey = `${o.id}_${o.otp_received_at || 'null'}`; 
         if (o.otp_code && o.otp_received_at && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
-            showOtpSuccessNotif(); 
             notifiedOtps.push(otpKey);
             if (notifiedOtps.length > 50) notifiedOtps.shift();
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
         // ========================================================
-        // LOGIKA HISTORY & SLIDER OTP PANAH KIRI KANAN
+        // SINKRONISASI HISTORY OTP & VIRTUAL RESEND KE FIREBASE
         // ========================================================
         let currentOtp = (o.otp_code && String(o.otp_code).trim() !== "") ? String(o.otp_code) : null;
+        let hist = o.otp_history || []; // array of {code, time} dari Firebase
         
-        // Ambil history dari local storage
-        let histKey = 'sms_otp_hist_' + o.id;
-        let hist = JSON.parse(localStorage.getItem(histKey) || "[]"); // format: [{code, time}]
-        
+        let needsDbUpdate = false;
+        let dbUpdates = {};
+
+        // 1. Deteksi dan Push OTP Baru ke Firebase
         if (currentOtp && o.otp_received_at) {
-            // Push jika history kosong atau waktu masuknya beda dari yang terakhir
-            if (hist.length === 0 || hist[hist.length - 1].time !== o.otp_received_at) {
-                hist.push({ code: currentOtp, time: o.otp_received_at });
-                localStorage.setItem(histKey, JSON.stringify(hist));
+            let lastHist = hist.length > 0 ? hist[hist.length - 1] : null;
+            if (!lastHist || lastHist.time !== o.otp_received_at) {
+                // Ada OTP baru masuk, masukkan ke array history!
+                let newHist = [...hist, { code: currentOtp, time: o.otp_received_at }];
+                dbUpdates.otp_history = newHist;
+                
+                // Matikan status loading (waiting) di Firebase
+                if (o.waiting_for_new_otp) dbUpdates.waiting_for_new_otp = false;
+                
+                needsDbUpdate = true;
+                hist = newHist; // Update array lokal untuk proses render saat ini
             }
         }
 
+        // 2. Kirim update ke Firebase jika ada perubahan
+        if (needsDbUpdate) {
+            db.ref(`OTP/${activeProviderKey}/${currentServerName}/${o.id}`).update(dbUpdates);
+        }
+
+        // 3. Susun daftar item yang akan dirender di Layar
         let items = hist.map(h => h.code);
-        if (!currentOtp) {
+        
+        // Jika sedang menunggu OTP baru dari hasil Resend (atau belum ada OTP sama sekali)
+        if (o.waiting_for_new_otp || items.length === 0) {
             items.push("LOADING");
         }
 
-        // Koreksi & Atur Index Aktif
-        if (window.orderOtpIndex[o.id] === undefined) {
-            window.orderOtpIndex[o.id] = items.length - 1; // Default ke paling kanan (Terbaru)
-        }
+        // 4. Atur Navigasi Index Lokal
+        if (window.orderOtpIndex[o.id] === undefined) window.orderOtpIndex[o.id] = items.length - 1;
         let currentIndex = window.orderOtpIndex[o.id];
         if (currentIndex >= items.length) currentIndex = items.length - 1;
         if (currentIndex < 0) currentIndex = 0;
@@ -878,42 +633,36 @@ function renderSmsOrders() {
         let canGoRight = currentIndex < items.length - 1;
         let displayItem = items[currentIndex];
 
-        let otpContentHTML = "";
-        if (displayItem === "LOADING") {
-            otpContentHTML = `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-        } else {
-            otpContentHTML = `<span onclick="copyOtpCode('${displayItem}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${displayItem.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>`;
-        }
+        // 5. Render UI Slider & Teks OTP
+        let otpContentHTML = (displayItem === "LOADING") 
+            ? `<div class="loader-bars"><span></span><span></span><span></span></div>`
+            : `<span onclick="copyOtpCode('${displayItem}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;">${displayItem.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>`;
 
         let leftArrowColor = canGoLeft ? 'var(--fb-blue)' : '#e0e0e0';
         let rightArrowColor = canGoRight ? 'var(--fb-blue)' : '#e0e0e0';
-        let leftArrowCursor = canGoLeft ? 'pointer' : 'default';
-        let rightArrowCursor = canGoRight ? 'pointer' : 'default';
         
-        // Render UI Panah Navigasi
         let otpDisplay = `
             <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:0 15px;">
-                <i class="fa-solid fa-circle-chevron-left" onclick="${canGoLeft ? `window.navigateOtp('${o.id}', -1)` : ''}" style="font-size:26px; color:${leftArrowColor}; cursor:${leftArrowCursor}; transition: 0.2s;"></i>
+                <i class="fa-solid fa-circle-chevron-left" onclick="${canGoLeft ? `window.navigateOtp('${o.id}', -1)` : ''}" style="font-size:26px; color:${leftArrowColor}; cursor:${canGoLeft ? 'pointer' : 'default'}; transition: 0.2s;"></i>
                 <div style="flex:1; text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center;">
                     ${otpContentHTML}
                 </div>
-                <i class="fa-solid fa-circle-chevron-right" onclick="${canGoRight ? `window.navigateOtp('${o.id}', 1)` : ''}" style="font-size:26px; color:${rightArrowColor}; cursor:${rightArrowCursor}; transition: 0.2s;"></i>
+                <i class="fa-solid fa-circle-chevron-right" onclick="${canGoRight ? `window.navigateOtp('${o.id}', 1)` : ''}" style="font-size:26px; color:${rightArrowColor}; cursor:${canGoRight ? 'pointer' : 'default'}; transition: 0.2s;"></i>
             </div>
-            ${items.length > 1 ? `<div style="font-size:10px; font-weight:900; color:var(--fb-muted); margin-top:10px; letter-spacing:1px; text-transform:uppercase;">OTP <span style="color:var(--fb-blue);">${currentIndex + 1}</span> DARI <span style="color:var(--fb-blue);">${items.length}</span></div>` : ''}
+            ${items.length > 1 ? `<div style="font-size:10px; font-weight:900; color:var(--fb-muted); margin-top:10px;">OTP <span style="color:var(--fb-blue);">${currentIndex + 1}</span> DARI <span style="color:var(--fb-blue);">${items.length}</span></div>` : ''}
         `;
-        // ========================================================
             
-        // Tombol HANYA akan aktif jika kita sedang di indeks paling kanan (dan isinya bukan LOADING)
-        let isOnLatestAndValid = (currentIndex === items.length - 1) && !!currentOtp;
+        // Tombol HANYA aktif jika User sedang melihat slot OTP paling kanan, DAN slot itu bukan 'LOADING'
+        let isOnLatestAndValid = (currentIndex === items.length - 1) && (displayItem !== "LOADING");
 
         const resendState = isOnLatestAndValid ? '' : 'disabled';
         const cancelState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
         const replaceState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
         
         const displayPrice = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, isOnLatestAndValid, o.is_recycled, expire, opName, isHidden);
+        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, isOnLatestAndValid, o.is_recycled, expire, opName, !!o.hidden);
 
-        if (isHidden) hiddenHTML += htmlStr;
+        if (o.hidden) hiddenHTML += htmlStr;
         else activeHTML += htmlStr;
     });
 
@@ -924,32 +673,18 @@ function renderSmsOrders() {
 function updateSmsTimers() {
     const now = Date.now();
     document.querySelectorAll('.sms-timer').forEach(el => {
-        let end = parseInt(el.dataset.expire); 
-        let oId = el.dataset.id;
-        
+        let end = parseInt(el.dataset.expire); let oId = el.dataset.id;
         if(end && !isNaN(end)) {
             const diff = Math.max(0, Math.floor((end - now)/1000));
             el.innerText = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
             el.style.color = diff < 600 ? "var(--fb-red)" : "var(--fb-blue)"; 
 
-            let orderTime = end - 1200000; 
-            let passed2Mins = (now - orderTime) >= 120000; 
-
-            if (passed2Mins) {
-                let hasValidOtp = globalOrders[oId] && !!(globalOrders[oId].otp_code && String(globalOrders[oId].otp_code).trim() !== "");
-                
-                if (!hasValidOtp) {
-                    let card = document.getElementById(`order-${activeProviderKey}-${oId}`);
-                    if (card) {
-                        let btnCancel = card.querySelector('.btn-cancel');
-                        let btnReplace = card.querySelector('.btn-replace');
-                        
-                        if (btnCancel && btnCancel.hasAttribute('disabled')) {
-                            btnCancel.removeAttribute('disabled');
-                        }
-                        if (btnReplace && btnReplace.hasAttribute('disabled')) {
-                            btnReplace.removeAttribute('disabled');
-                        }
+            if ((now - (end - 1200000)) >= 120000) {
+                let card = document.getElementById(`order-${activeProviderKey}-${oId}`);
+                if (card && card.querySelector('.btn-cancel[disabled]')) {
+                    if (card.querySelector('.loader-bars')) {
+                        card.querySelector('.btn-cancel').removeAttribute('disabled');
+                        card.querySelector('.btn-replace').removeAttribute('disabled');
                     }
                 }
             }
@@ -968,33 +703,29 @@ export async function actSms(action, id) {
             const oldOp = localStorage.getItem(`op_${activeProviderKey}_${id}`) || "any";
             
             if (oldPid && oldPrice) await executeBuySms(oldPid, oldPrice, oldOp, oldOp, "");
-            else showModal("Info", "Nomor berhasil dibatalkan, silakan pilih produk ulang.", "alert");
-        } else {
-            showModal("Gagal Replace", jCancel.error?.message || "Gagal membatalkan dari server.", "alert");
+            else showModal("Info", "Nomor dibatalkan, silakan pilih ulang.", "alert");
         }
         return; 
     }
 
-    // Navigasi UI otomatis saat RESEND ditekan
+    // =============================================
+    // RESEND VIA FIREBASE (SYNC SEMUA PERANGKAT)
+    // =============================================
     if (action === 'resend') {
         if (globalOrders[id]) {
-            globalOrders[id].otp_code = null;
-            globalOrders[id].otp_received_at = null;
-            
-            // Geser index aktif ke ruang kosong (LOADING) yang baru
-            let histKey = 'sms_otp_hist_' + id;
-            let hist = JSON.parse(localStorage.getItem(histKey) || "[]");
-            window.orderOtpIndex[id] = hist.length; 
-            
-            renderSmsOrders(); 
+            // Update Firebase: Semua layar otomatis masuk mode Loading!
+            db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
+                waiting_for_new_otp: true
+            });
+            // Hapus index agar layar auto-focus ke animasi Loading
+            delete window.orderOtpIndex[id]; 
         }
+        return; // Selesai. Tanpa memanggil API / Worker sama sekali.
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
     if (j.success) {
-        // Hapus histori lokal jika order di-cancel atau selesai
         if (action === 'finish' || action === 'cancel') {
-            localStorage.removeItem('sms_otp_hist_' + id);
             delete window.orderOtpIndex[id];
         }
         pollSms(); updateSmsBal();
