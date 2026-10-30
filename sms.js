@@ -93,7 +93,6 @@ function playSimpleSound(type) {
         gain.connect(audioCtx.destination);
 
         if (type === 'otp') {
-            // Suara Arcade Coin (Tinggi & Kencang)
             const t = audioCtx.currentTime;
             osc.type = 'square';
             osc.frequency.setValueAtTime(1567.98, t); 
@@ -902,13 +901,6 @@ export async function actSms(action, id) {
             showModal("Gagal Replace", jCancel.error?.message || "Gagal membatalkan dari server.", "alert");
         }
         return; 
-    }
-
-    if (action === 'resend') {
-        // Hapus kode OTP dari memori lokal dan Firebase secara instan untuk mereset UI (loading berjalan & tombol done mati)
-        if (globalOrders[id]) delete globalOrders[id].otp_code;
-        db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}/otp_code`).remove();
-        renderSmsOrders();
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
