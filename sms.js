@@ -832,14 +832,19 @@ function renderSmsOrders() {
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
-        let otpDisplay = o.otp_code ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${o.otp_code.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
-        const resendState = o.otp_code ? '' : 'disabled';
+        // PERBAIKAN: Pengecekan OTP Code yang akurat
+        let hasValidOtp = !!(o.otp_code && String(o.otp_code).trim() !== "");
         
-        const cancelState = passed2Mins && !o.otp_code ? '' : 'disabled';
-        const replaceState = passed2Mins && !o.otp_code ? '' : 'disabled';
+        let otpDisplay = hasValidOtp 
+            ? `<span onclick="copyOtpCode('${o.otp_code}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;" title="Klik untuk menyalin">${String(o.otp_code).replace(/(\d{3})(?=\d)/g, '$1 ')}</span>` 
+            : `<div class="loader-bars"><span></span><span></span><span></span></div>`;
+            
+        const resendState = hasValidOtp ? '' : 'disabled';
+        const cancelState = passed2Mins && !hasValidOtp ? '' : 'disabled';
+        const replaceState = passed2Mins && !hasValidOtp ? '' : 'disabled';
         
         const displayPrice = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, !!o.otp_code, o.is_recycled, expire, opName, isHidden);
+        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, hasValidOtp, o.is_recycled, expire, opName, isHidden);
 
         if (isHidden) hiddenHTML += htmlStr;
         else activeHTML += htmlStr;
@@ -864,9 +869,9 @@ function updateSmsTimers() {
             let passed2Mins = (now - orderTime) >= 120000; 
 
             if (passed2Mins) {
-                let hasOtp = globalOrders[oId] && globalOrders[oId].otp_code;
+                let hasValidOtp = globalOrders[oId] && !!(globalOrders[oId].otp_code && String(globalOrders[oId].otp_code).trim() !== "");
                 
-                if (!hasOtp) {
+                if (!hasValidOtp) {
                     let card = document.getElementById(`order-${activeProviderKey}-${oId}`);
                     if (card) {
                         let btnCancel = card.querySelector('.btn-cancel');
@@ -901,6 +906,15 @@ export async function actSms(action, id) {
             showModal("Gagal Replace", jCancel.error?.message || "Gagal membatalkan dari server.", "alert");
         }
         return; 
+    }
+
+    // PERBAIKAN: Optimistic update / Force UI Update untuk resend
+    if (action === 'resend') {
+        if (globalOrders[id]) {
+            globalOrders[id].otp_code = null;
+            globalOrders[id].otp_received_at = null;
+            renderSmsOrders(); // Langsung render animasi loader lokal seketika
+        }
     }
 
     const j = await apiCall('/order-action', 'POST', { id, action });
