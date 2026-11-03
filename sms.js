@@ -26,7 +26,7 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
-// --- PERUBAHAN: Hanya Local Storage ---
+// --- FAVORIT MURNI LOCAL STORAGE ---
 let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
 let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]"); 
 
@@ -175,10 +175,7 @@ async function initSms() {
         refreshBtn.title = 'Refresh Saldo & Harga';
         
         refreshBtn.onclick = () => {
-            const icon = refreshBtn.querySelector('i');
-            icon.classList.add('fa-spin');
             refreshSms();
-            setTimeout(() => icon.classList.remove('fa-spin'), 1000);
         };
 
         balContainer.appendChild(refreshBtn);
@@ -239,7 +236,7 @@ export async function changeSmsProvider() {
     
     await loadServersList();
     
-    // --- PERUBAHAN: Selalu muat dari Local Storage ---
+    // Muat ulang favorit sesuai provider aktif
     favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
     favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
 
@@ -277,7 +274,14 @@ export function changeSmsServer() {
 }
 window.changeSmsServer = changeSmsServer;
 
+// --- PERBAIKAN: ANIMASI REFRESH ---
 export function refreshSms() {
+    const refreshIcons = document.querySelectorAll('.fa-arrows-rotate, .fa-sync');
+    refreshIcons.forEach(icon => {
+        icon.classList.add('fa-spin');
+        setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+    });
+
     const box = document.getElementById('sms-prices');
     if(box) box.innerHTML = '<div style="padding:30px; text-align:center; color:#888;">Mengambil Data...</div>';
     
@@ -287,12 +291,28 @@ export function refreshSms() {
 }
 window.refreshSms = refreshSms;
 
+// --- PERBAIKAN: FUNGSI GEMBOK (LOCK) ---
+export function toggleSmsLock() {
+    let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
+    localStorage.setItem('sms_ui_locked', !isLocked);
+    applySmsLock();
+}
+window.toggleSmsLock = toggleSmsLock;
+
 export function applySmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     let prov = document.getElementById('sms-provider');
     let srv = document.getElementById('sms-server');
+    
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
+
+    let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
+    if (lockIcon) {
+        if (!lockIcon.id) lockIcon.id = 'global-sms-lock-icon'; 
+        lockIcon.className = isLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open";
+        lockIcon.style.color = isLocked ? "var(--fb-red)" : "var(--fb-muted)";
+    }
 }
 window.applySmsLock = applySmsLock;
 
@@ -327,7 +347,6 @@ async function updateSmsBal() {
 export function toggleFavoritePrice(priceStr) {
     if (favoritePrices.includes(priceStr)) favoritePrices = favoritePrices.filter(x => x !== priceStr);
     else favoritePrices.push(priceStr);
-    // --- PERUBAHAN: Hanya simpan di Local Storage ---
     localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
     renderPriceGroups();
 }
@@ -336,7 +355,6 @@ window.toggleFavoritePrice = toggleFavoritePrice;
 export function toggleFavoriteOp(opName) {
     if (favoriteOps.includes(opName)) favoriteOps = favoriteOps.filter(x => x !== opName);
     else favoriteOps.push(opName);
-    // --- PERUBAHAN: Hanya simpan di Local Storage ---
     localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
     const context = document.getElementById('current-price-context');
     if (context) openProviderMenu(context.value);
@@ -536,6 +554,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         const savedOp = activeProviderKey === "smscode" ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
+        // --- NOTIFIKASI BELI (DONE) ---
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
         showBuySuccessNotif(); 
 
@@ -594,7 +613,7 @@ function renderSmsOrders() {
         const expire = orderTime + 1200000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // Notifikasi Cerdas Lokal
+        // --- NOTIFIKASI CERDAS LOKAL (OTP BARU) ---
         let otpKey = `${o.id}_${o.otp_received_at || 'null'}`; 
         if (o.otp_code && o.otp_received_at && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
