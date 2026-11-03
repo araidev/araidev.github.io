@@ -26,8 +26,10 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
-let favoritePrices = [];
-let favoriteOps = []; 
+// --- PERUBAHAN: Hanya Local Storage ---
+let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
+let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]"); 
+
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
 
@@ -57,37 +59,6 @@ function attachGlobalOrderListener() {
         renderSmsOrders(); 
     });
 }
-
-function attachPrivateListeners(uid) {
-    const favPriceKey = `sms_fav_prices_${activeProviderKey}`;
-    const favOpKey = `sms_fav_ops_${activeProviderKey}`;
-
-    if (window.favRef) window.favRef.off();
-    window.favRef = db.ref(`users/${uid}/${favPriceKey}`);
-    window.favRef.on('value', snap => {
-        favoritePrices = snap.val() || [];
-        if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
-    });
-
-    if (window.favOpRef) window.favOpRef.off();
-    window.favOpRef = db.ref(`users/${uid}/${favOpKey}`);
-    window.favOpRef.on('value', snap => {
-        favoriteOps = snap.val() || [];
-        const currentPriceInput = document.getElementById('current-price-context');
-        if (currentPriceInput) openProviderMenu(currentPriceInput.value);
-        else if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
-    });
-}
-
-auth.onAuthStateChanged(user => {
-    if (user) {
-        attachPrivateListeners(user.uid);
-    } else {
-        favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
-        favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
-        if (Object.keys(cachedPriceGroups).length > 0) renderPriceGroups();
-    }
-});
 
 // ==========================================
 // 2. SETUP AUDIO
@@ -268,13 +239,11 @@ export async function changeSmsProvider() {
     
     await loadServersList();
     
-    if (!auth || !auth.currentUser) {
-        favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
-        favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
-    }
+    // --- PERUBAHAN: Selalu muat dari Local Storage ---
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
 
     attachGlobalOrderListener(); 
-    if (auth && auth.currentUser) attachPrivateListeners(auth.currentUser.uid);
     refreshSms();
 }
 window.changeSmsProvider = changeSmsProvider;
@@ -358,6 +327,7 @@ async function updateSmsBal() {
 export function toggleFavoritePrice(priceStr) {
     if (favoritePrices.includes(priceStr)) favoritePrices = favoritePrices.filter(x => x !== priceStr);
     else favoritePrices.push(priceStr);
+    // --- PERUBAHAN: Hanya simpan di Local Storage ---
     localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
     renderPriceGroups();
 }
@@ -366,6 +336,7 @@ window.toggleFavoritePrice = toggleFavoritePrice;
 export function toggleFavoriteOp(opName) {
     if (favoriteOps.includes(opName)) favoriteOps = favoriteOps.filter(x => x !== opName);
     else favoriteOps.push(opName);
+    // --- PERUBAHAN: Hanya simpan di Local Storage ---
     localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
     const context = document.getElementById('current-price-context');
     if (context) openProviderMenu(context.value);
@@ -653,6 +624,9 @@ function renderSmsOrders() {
                 
                 needsDbUpdate = true;
                 hist = newHist; 
+
+                // --- PERUBAHAN: Paksa Layar Geser ke Kanan saat OTP Baru Masuk ---
+                window.orderOtpIndex[o.id] = hist.length - 1;
             }
         }
 
