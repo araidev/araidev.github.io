@@ -274,7 +274,6 @@ export async function changeSmsProvider() {
     updateCountryDropdown();
     await loadServersList();
     
-    // Muat ulang favorit sesuai provider dan negara yang aktif
     favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
     favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
 
@@ -312,7 +311,7 @@ export function changeSmsServer() {
 }
 window.changeSmsServer = changeSmsServer;
 
-// --- PERBAIKAN: ANIMASI REFRESH ---
+// --- ANIMASI REFRESH ---
 export function refreshSms() {
     const refreshIcons = document.querySelectorAll('.fa-arrows-rotate, .fa-sync');
     refreshIcons.forEach(icon => {
@@ -329,7 +328,7 @@ export function refreshSms() {
 }
 window.refreshSms = refreshSms;
 
-// --- PERBAIKAN: FUNGSI GEMBOK (LOCK) ---
+// --- FUNGSI GEMBOK (LOCK) ---
 export function toggleSmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     localStorage.setItem('sms_ui_locked', !isLocked);
@@ -356,22 +355,29 @@ export function applySmsLock() {
 }
 window.applySmsLock = applySmsLock;
 
+// --- PERBAIKAN: CORS FIX VIA URL PARAMETER ---
 async function apiCall(endpoint, method = "GET", body = null) {
-    // MENYISIPKAN NEGARA KE HEADER
     const options = { 
         method, 
         headers: { 
             "Content-Type": "application/json", 
-            "X-Server-Name": currentServerName,
-            "X-Country": activeCountry
+            "X-Server-Name": currentServerName 
         } 
     };
-    if (body) options.body = JSON.stringify(body);
+    
+    if (body) {
+        body.country = activeCountry;
+        options.body = JSON.stringify(body);
+    }
+
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const finalEndpoint = `${endpoint}${separator}country=${activeCountry}`;
+
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); 
         options.signal = controller.signal;
-        const res = await fetch(`${BASE_URL}${endpoint}`, options);
+        const res = await fetch(`${BASE_URL}${finalEndpoint}`, options);
         clearTimeout(timeoutId); 
         const text = await res.text(); 
         try { return JSON.parse(text); } 
@@ -818,4 +824,4 @@ export async function actSms(action, id) {
         showModal("Gagal", j.error?.message || "Aksi ditolak server.", "alert");
     }
 }
-window.actSms = actSms;a
+window.actSms = actSms;
