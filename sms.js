@@ -6,8 +6,6 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    //"hwa":     { name: "HWA", url: "https://hwa.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 3500 },
-    //"smsvirtual": { name: "SVC", url: "https://svco.aam-zip.workers.dev", currency: "USD", minPrice: 1000, maxPrice: 1500 },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 675, maxPrice: 1000 },
     "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1300 } 
 };
@@ -18,6 +16,7 @@ let BASE_URL = PROVIDERS[activeProviderKey].url;
 
 let currentServerName = ""; 
 let currentUsdRate = 16000; 
+let activeCountry = localStorage.getItem('xurel_country') || "ID"; 
 
 let smsInitialized = false; 
 let pollingInterval = null;
@@ -26,9 +25,9 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
-// --- FAVORIT MURNI LOCAL STORAGE ---
-let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
-let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]"); 
+// --- FAVORIT MURNI LOCAL STORAGE (DENGAN KONTEKS NEGARA) ---
+let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
+let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]"); 
 
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
@@ -135,6 +134,41 @@ function cleanOpName(name) {
 }
 
 // ==========================================
+// KONTROL NEGARA KHUSUS
+// ==========================================
+export function updateCountryDropdown() {
+    const countrySelect = document.getElementById('sms-country');
+    if (!countrySelect) return;
+    
+    let html = '';
+    if (activeProviderKey === 'smscode') {
+        html += `<option value="ID">🇮🇩 ID</option>`;
+        html += `<option value="PH">🇵🇭 PH</option>`;
+    } else {
+        html += `<option value="ID">🇮🇩 ID</option>`;
+        if (activeCountry !== 'ID') {
+            activeCountry = 'ID';
+            localStorage.setItem('xurel_country', activeCountry);
+        }
+    }
+    countrySelect.innerHTML = html;
+    countrySelect.value = activeCountry;
+}
+window.updateCountryDropdown = updateCountryDropdown;
+
+export function changeSmsCountry() {
+    activeCountry = document.getElementById('sms-country').value;
+    localStorage.setItem('xurel_country', activeCountry);
+    
+    // Muat Favorit Khusus Negara Tersebut
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
+    
+    refreshSms();
+}
+window.changeSmsCountry = changeSmsCountry;
+
+// ==========================================
 // 4. INISIALISASI & KONTROL SERVER UI
 // ==========================================
 async function initSms() {
@@ -191,8 +225,10 @@ async function initSms() {
             </style>
             <div id="wrapper-active-orders"></div>
             <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
-                <summary style="cursor: pointer; outline: none; display: flex; align-items: center; justify-content: flex-start;">
+                <summary style="cursor: pointer; outline: none; display: flex; align-items: center; justify-content: space-between;">
                     <span id="hidden-toggle-text" style="background:#e9ecef; padding:6px 12px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-muted); letter-spacing:0.5px; border: 1px solid #ddd;">SHOW</span>
+                    <select id="sms-country" onchange="window.changeSmsCountry()" style="background:#e9ecef; padding:4px 8px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-blue); letter-spacing:0.5px; border: 1px solid #ddd; outline:none; cursor:pointer;">
+                    </select>
                 </summary>
                 <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
             </details>
@@ -213,6 +249,7 @@ async function initSms() {
         });
     }
 
+    updateCountryDropdown();
     applySmsLock();
     await loadServersList();
     attachGlobalOrderListener(); 
@@ -234,11 +271,12 @@ export async function changeSmsProvider() {
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
+    updateCountryDropdown();
     await loadServersList();
     
-    // Muat ulang favorit sesuai provider aktif
-    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}`) || "[]");
-    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}`) || "[]");
+    // Muat ulang favorit sesuai provider dan negara yang aktif
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
 
     attachGlobalOrderListener(); 
     refreshSms();
@@ -303,9 +341,11 @@ export function applySmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     let prov = document.getElementById('sms-provider');
     let srv = document.getElementById('sms-server');
+    let countrySelect = document.getElementById('sms-country');
     
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
+    if(countrySelect) countrySelect.disabled = isLocked;
 
     let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
     if (lockIcon) {
@@ -317,7 +357,15 @@ export function applySmsLock() {
 window.applySmsLock = applySmsLock;
 
 async function apiCall(endpoint, method = "GET", body = null) {
-    const options = { method, headers: { "Content-Type": "application/json", "X-Server-Name": currentServerName } };
+    // MENYISIPKAN NEGARA KE HEADER
+    const options = { 
+        method, 
+        headers: { 
+            "Content-Type": "application/json", 
+            "X-Server-Name": currentServerName,
+            "X-Country": activeCountry
+        } 
+    };
     if (body) options.body = JSON.stringify(body);
     try {
         const controller = new AbortController();
@@ -347,7 +395,7 @@ async function updateSmsBal() {
 export function toggleFavoritePrice(priceStr) {
     if (favoritePrices.includes(priceStr)) favoritePrices = favoritePrices.filter(x => x !== priceStr);
     else favoritePrices.push(priceStr);
-    localStorage.setItem(`sms_fav_prices_${activeProviderKey}`, JSON.stringify(favoritePrices));
+    localStorage.setItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`, JSON.stringify(favoritePrices));
     renderPriceGroups();
 }
 window.toggleFavoritePrice = toggleFavoritePrice;
@@ -355,7 +403,7 @@ window.toggleFavoritePrice = toggleFavoritePrice;
 export function toggleFavoriteOp(opName) {
     if (favoriteOps.includes(opName)) favoriteOps = favoriteOps.filter(x => x !== opName);
     else favoriteOps.push(opName);
-    localStorage.setItem(`sms_fav_ops_${activeProviderKey}`, JSON.stringify(favoriteOps));
+    localStorage.setItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`, JSON.stringify(favoriteOps));
     const context = document.getElementById('current-price-context');
     if (context) openProviderMenu(context.value);
 }
@@ -554,7 +602,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
         const savedOp = activeProviderKey === "smscode" ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
-        // --- NOTIFIKASI BELI (DONE) ---
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
         showBuySuccessNotif(); 
 
@@ -613,7 +660,6 @@ function renderSmsOrders() {
         const expire = orderTime + 1200000; 
         const passed2Mins = (Date.now() - orderTime) >= 120000; 
 
-        // --- NOTIFIKASI CERDAS LOKAL (OTP BARU) ---
         let otpKey = `${o.id}_${o.otp_received_at || 'null'}`; 
         if (o.otp_code && o.otp_received_at && !notifiedOtps.includes(otpKey)) {
             playSimpleSound('otp');
@@ -623,16 +669,12 @@ function renderSmsOrders() {
             localStorage.setItem('sms_notified_otps', JSON.stringify(notifiedOtps));
         }
 
-        // ========================================================
-        // SINKRONISASI HISTORY OTP & VIRTUAL RESEND KE FIREBASE
-        // ========================================================
         let currentOtp = (o.otp_code && String(o.otp_code).trim() !== "") ? String(o.otp_code) : null;
         let hist = o.otp_history || []; 
         
         let needsDbUpdate = false;
         let dbUpdates = {};
 
-        // 1. Deteksi dan Push OTP Baru ke Firebase
         if (currentOtp && o.otp_received_at) {
             let lastHist = hist.length > 0 ? hist[hist.length - 1] : null;
             if (!lastHist || lastHist.time !== o.otp_received_at) {
@@ -643,26 +685,20 @@ function renderSmsOrders() {
                 
                 needsDbUpdate = true;
                 hist = newHist; 
-
-                // --- PERUBAHAN: Paksa Layar Geser ke Kanan saat OTP Baru Masuk ---
                 window.orderOtpIndex[o.id] = hist.length - 1;
             }
         }
 
-        // 2. Kirim update ke Firebase jika ada perubahan
         if (needsDbUpdate) {
             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${o.id}`).update(dbUpdates);
         }
 
-        // 3. Susun daftar item yang akan dirender di Layar
         let items = hist.map(h => h.code);
         
-        // Jika UI meminta tunggu OTP baru ATAU belum ada OTP masuk sama sekali
         if (o.waiting_for_new_otp || items.length === 0) {
             items.push("LOADING");
         }
 
-        // 4. Atur Navigasi Index Lokal
         if (window.orderOtpIndex[o.id] === undefined) window.orderOtpIndex[o.id] = items.length - 1;
         let currentIndex = window.orderOtpIndex[o.id];
         if (currentIndex >= items.length) currentIndex = items.length - 1;
@@ -673,7 +709,6 @@ function renderSmsOrders() {
         let canGoRight = currentIndex < items.length - 1;
         let displayItem = items[currentIndex];
 
-        // 5. Render UI Slider & Teks OTP
         let otpContentHTML = (displayItem === "LOADING") 
             ? `<div class="loader-bars"><span></span><span></span><span></span></div>`
             : `<span onclick="copyOtpCode('${displayItem}', this)" style="cursor:pointer; color:#00897B; letter-spacing:6px; font-size:31px; font-weight:900; display: inline-flex; align-items: center;">${displayItem.replace(/(\d{3})(?=\d)/g, '$1 ')}</span>`;
@@ -750,21 +785,17 @@ export async function actSms(action, id) {
         return; 
     }
 
-    // LOGIKA RESEND CANGGIH: OPTIMISTIC UPDATE & HYBRID API
     if (action === 'resend') {
         if (globalOrders[id]) {
-            // 1. UPDATE LOKAL & RENDER INSTAN 
             globalOrders[id].waiting_for_new_otp = true;
             delete window.orderOtpIndex[id]; 
             renderSmsOrders(); 
 
-            // 2. UPDATE FIREBASE 
             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
                 waiting_for_new_otp: true
             });
         }
         
-        // 3. JIKA HEROSMS / SMSCODE: STOP di sini
         if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
             return; 
         }
@@ -787,4 +818,4 @@ export async function actSms(action, id) {
         showModal("Gagal", j.error?.message || "Aksi ditolak server.", "alert");
     }
 }
-window.actSms = actSms;
+window.actSms = actSms;a
