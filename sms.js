@@ -8,7 +8,7 @@ const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
     "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 } 
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -427,8 +427,16 @@ async function loadSmsPrices() {
         cMax = 10000; 
     }
     
-    if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat" || activeProviderKey === "smsbower") {
+    if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
+    } else if (activeProviderKey === "smsbower") {
+        // Murni menampilkan semua harga USD dari Bower dengan melakukan filter menggunakan IDR di background
+        json.data.filter(i => { 
+            let idr = parseFloat(i.price) * currentUsdRate; 
+            return idr >= cMin && idr <= cMax; 
+        }).forEach(i => {
+             normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) });
+        });
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
         json.data.filter(i => { let idr = parseFloat(i.price) * currentUsdRate; return idr >= cMin && idr <= cMax; }).forEach(i => {
              normalizedPrices.push({ pid: i.id, price: i.price, opCode: 'any', opName: 'ANY (ACAK)' });
@@ -460,21 +468,15 @@ export function renderPriceGroups() {
         let isFavA = favoritePrices.includes(a); let isFavB = favoritePrices.includes(b);
         if (isFavA && !isFavB) return -1; if (!isFavA && isFavB) return 1; return parseFloat(a) - parseFloat(b);
     });
+    
+    // Semua layanan dikembalikan ke UI statis: Harga selalu diklik dulu untuk memunculkan ANY / Provider.
+    // Hal ini 100% konsisten agar bot auto-clicker tidak pernah meleset.
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
         let pinBadgeHTML = isFav ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">FAVORIT</span>` : '';
         let pinIconHTML = isFav ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;"></i>` : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;"></i>`;
         let ops = cachedPriceGroups[price];
         
-        if (activeProviderKey !== "smscode" && activeProviderKey !== "smsbower" && ops.length === 1) {
-            let item = ops[0];
-            return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
-                        <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
-                            ${item.opName} - ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
-                            <span style="color: #fff; font-size: 9px; font-weight: 900; background: var(--fb-blue); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">BELI</span> ${pinBadgeHTML}
-                        </div>${pinIconHTML}
-                    </div>`;
-        }
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
                     <div onclick="openProviderMenu('${price}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
                         ${formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency)}
@@ -809,7 +811,8 @@ export async function actSms(action, id) {
             });
         }
         
-        if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode' || activeProviderKey === 'smsbower') {
+        // SMS Bower tidak dibypass agar Worker bisa menembak setStatus=3
+        if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
             return; 
         }
     }
