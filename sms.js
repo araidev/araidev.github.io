@@ -6,9 +6,9 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 675, maxPrice: 1000 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1300 },
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 50000 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -423,18 +423,11 @@ async function loadSmsPrices() {
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
     
-    if ((activeProviderKey === "smscode" || activeProviderKey === "smsbower") && activeCountry === "PH") {
-        cMax = 10000; 
-    }
-    
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
     } else if (activeProviderKey === "smsbower") {
-        // Murni menampilkan semua harga USD dari Bower dengan melakukan filter menggunakan IDR di background
-        json.data.filter(i => { 
-            let idr = parseFloat(i.price) * currentUsdRate; 
-            return idr >= cMin && idr <= cMax; 
-        }).forEach(i => {
+        // TAMPILKAN SEMUA: Mengabaikan filter min/max IDR agar harga desimal USD lolos semua
+        json.data.forEach(i => {
              normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || 'any', opName: cleanOpName(i.operator) });
         });
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
@@ -469,8 +462,6 @@ export function renderPriceGroups() {
         if (isFavA && !isFavB) return -1; if (!isFavA && isFavB) return 1; return parseFloat(a) - parseFloat(b);
     });
     
-    // Semua layanan dikembalikan ke UI statis: Harga selalu diklik dulu untuk memunculkan ANY / Provider.
-    // Hal ini 100% konsisten agar bot auto-clicker tidak pernah meleset.
     box.innerHTML = sortedPrices.map(price => {
         let isFav = favoritePrices.includes(price);
         let pinBadgeHTML = isFav ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">FAVORIT</span>` : '';
@@ -811,7 +802,6 @@ export async function actSms(action, id) {
             });
         }
         
-        // SMS Bower tidak dibypass agar Worker bisa menembak setStatus=3
         if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
             return; 
         }
