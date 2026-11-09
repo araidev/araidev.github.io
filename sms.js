@@ -5,10 +5,10 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA SPESIFIK
 // ==========================================
 const PROVIDERS = {
-    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
+    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -609,7 +609,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${pText.replace(/<[^>]*>?/gm, '')}?`, "confirm")) return;
 
-    // OTP CEPAT DIKEMBALIKAN MENGGUNAKAN METODE AWAL (MENGIRIMKAN KODE OPERATOR ASLI)
+    // HANYA SMSCODE DAN SMSBOWER YANG MENGGUNAKAN NAMA TAMPILAN, OTP CEPAT MENGGUNAKAN KODE OPERATOR ASLI
     let payload = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? 
         { type: "product", product_id: parseInt(pid), price: Number(price), operator: name } : 
         { product_id: String(pid), price: price, operator: operator };
@@ -618,7 +618,6 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     if(j.success && j.data) {
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
-        
         const savedOp = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
@@ -671,7 +670,16 @@ function renderSmsOrders() {
     let ordersList = Object.keys(globalOrders).map(id => ({ id: id, ...globalOrders[id] })).sort((a,b) => b.created_at - a.created_at);
 
     ordersList.forEach(o => {
-        let phone = o.phone || o.phone_number || '...';
+        let phone = o.phone || o.phone_number;
+        
+        // ==========================================
+        // AUTO-CLEANER: Hapus Pesanan Hantu
+        // ==========================================
+        if (!phone || String(phone).trim() === "" || phone === "undefined" || phone === "null") {
+            db.ref(`OTP/${activeProviderKey}/${currentServerName}/${o.id}`).remove();
+            return; 
+        }
+
         if (phone.startsWith('62')) phone = '0' + phone.substring(2);
         
         const price = o.price || 0;
