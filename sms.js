@@ -6,8 +6,10 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 675, maxPrice: 1500 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1300 } 
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
+    // Ganti URL bower di bawah ini dengan URL worker SMS Bower milik Anda
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -25,7 +27,6 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
-// --- FAVORIT MURNI LOCAL STORAGE (DENGAN KONTEKS NEGARA) ---
 let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
 let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]"); 
 
@@ -44,7 +45,7 @@ window.navigateOtp = function(id, direction) {
 };
 
 // ==========================================
-// 1B. SINKRONISASI MURNI FIREBASE (LISTENER)
+// 1B. SINKRONISASI MURNI FIREBASE
 // ==========================================
 function attachGlobalOrderListener() {
     if (!currentServerName) return;
@@ -141,7 +142,8 @@ export function updateCountryDropdown() {
     if (!countrySelect) return;
     
     let html = '';
-    if (activeProviderKey === 'smscode') {
+    // --- UPDATED: smsbower juga punya dropdown ID & PH ---
+    if (activeProviderKey === 'smscode' || activeProviderKey === 'smsbower') {
         html += `<option value="ID">🇮🇩 ID</option>`;
         html += `<option value="PH">🇵🇭 PH</option>`;
     } else {
@@ -160,7 +162,6 @@ export function changeSmsCountry() {
     activeCountry = document.getElementById('sms-country').value;
     localStorage.setItem('xurel_country', activeCountry);
     
-    // Muat Favorit Khusus Negara Tersebut
     favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
     favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
     
@@ -355,7 +356,6 @@ export function applySmsLock() {
 }
 window.applySmsLock = applySmsLock;
 
-// --- PERBAIKAN: CORS FIX VIA URL PARAMETER ---
 async function apiCall(endpoint, method = "GET", body = null) {
     const options = { 
         method, 
@@ -427,7 +427,12 @@ async function loadSmsPrices() {
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
     
-    if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
+    // Toleransi max harga untuk negara Filipina (PH) agar tidak disembunyikan
+    if ((activeProviderKey === "smscode" || activeProviderKey === "smsbower") && activeCountry === "PH") {
+        cMax = 10000; 
+    }
+    
+    if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat" || activeProviderKey === "smsbower") {
         json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
     } else if (activeProviderKey === "herosms" || activeProviderKey === "hwa") {
         json.data.filter(i => { let idr = parseFloat(i.price) * currentUsdRate; return idr >= cMin && idr <= cMax; }).forEach(i => {
@@ -437,6 +442,11 @@ async function loadSmsPrices() {
                  opList.forEach(op => { normalizedPrices.push({ pid: i.id, price: i.price, opCode: op, opName: cleanOpName(op) }); });
              }
         });
+    }
+
+    if (normalizedPrices.length === 0) {
+        box.innerHTML = `<div style="padding:30px; text-align:center; color:var(--fb-red); font-weight:900;">Stok di rentang harga ini kosong.</div>`;
+        return;
     }
 
     cachedPriceGroups = {};
@@ -460,7 +470,9 @@ export function renderPriceGroups() {
         let pinBadgeHTML = isFav ? `<span style="color: var(--fb-green); font-weight: 900; margin-left: 8px;">FAVORIT</span>` : '';
         let pinIconHTML = isFav ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;"></i>` : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;"></i>`;
         let ops = cachedPriceGroups[price];
-        if (activeProviderKey !== "smscode" && ops.length === 1) {
+        
+        // --- UPDATED: Jika operator cuma 1 atau provider adalah SMS Bower (tidak ada menu operator) ---
+        if ((activeProviderKey !== "smscode" && ops.length === 1) || activeProviderKey === "smsbower") {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
                         <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
@@ -508,7 +520,9 @@ window.openProviderMenu = openProviderMenu;
 // ==========================================
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
-    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "smscode" ? "#95a5a6" : "#007bff"; 
+    
+    // Penyesuaian warna kartu untuk bower
+    let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "smscode" ? "#95a5a6" : activeProviderKey === "smsbower" ? "#ff7b00" : "#007bff"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
     const recycledBadge = isRecycled ? `<span style="font-size:9px; color:#fff; background:var(--fb-red); padding:2px 5px; border-radius:4px; margin-left:8px;">DAUR ULANG</span>` : '';
@@ -597,7 +611,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${pText.replace(/<[^>]*>?/gm, '')}?`, "confirm")) return;
 
-    let payload = (activeProviderKey === "smscode") ? 
+    let payload = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? 
         { type: "product", product_id: parseInt(pid), price: Number(price), operator: name } : 
         { product_id: String(pid), price: price, operator: operator };
 
@@ -605,7 +619,7 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     if(j.success && j.data) {
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
-        const savedOp = activeProviderKey === "smscode" ? name : operator;
+        const savedOp = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
@@ -802,7 +816,8 @@ export async function actSms(action, id) {
             });
         }
         
-        if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode') {
+        // --- UPDATED: smsbower juga dibypass layaknya smscode dan herosms ---
+        if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode' || activeProviderKey === 'smsbower') {
             return; 
         }
     }
