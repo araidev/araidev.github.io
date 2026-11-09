@@ -5,10 +5,10 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA SPESIFIK
 // ==========================================
 const PROVIDERS = {
-    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 } 
+    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -36,7 +36,7 @@ let cachedPriceGroups = {};
 // STATE NAVIGASI HISTORY OTP
 // ==========================================
 window.orderOtpIndex = window.orderOtpIndex || {};
-window.orderOtpCount = window.orderOtpCount || {}; // SENSOR PENAMBAHAN OTP BARU
+window.orderOtpCount = window.orderOtpCount || {}; 
 
 window.navigateOtp = function(id, direction) {
     if (window.orderOtpIndex[id] !== undefined) {
@@ -135,7 +135,7 @@ function cleanOpName(name) {
 }
 
 // ==========================================
-// KONTROL NEGARA KHUSUS (DIPERBARUI UNTUK VIETNAM)
+// KONTROL NEGARA KHUSUS
 // ==========================================
 export function updateCountryDropdown() {
     const countrySelect = document.getElementById('sms-country');
@@ -609,7 +609,8 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     const pText = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
     if(!await showModal("Konfirmasi", `Beli nomor untuk ${name.toUpperCase()} seharga ${pText.replace(/<[^>]*>?/gm, '')}?`, "confirm")) return;
 
-    let payload = (activeProviderKey === "smscode" || activeProviderKey === "smsbower" || activeProviderKey === "otpcepat") ? 
+    // OTP CEPAT DIKEMBALIKAN MENGGUNAKAN METODE AWAL (MENGIRIMKAN KODE OPERATOR ASLI)
+    let payload = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? 
         { type: "product", product_id: parseInt(pid), price: Number(price), operator: name } : 
         { product_id: String(pid), price: price, operator: operator };
 
@@ -617,7 +618,8 @@ export async function executeBuySms(pid, price, name, operator, countryRank = ""
     if(j.success && j.data) {
         localStorage.setItem(`pid_${activeProviderKey}_${j.data.orders[0].id}`, pid);
         localStorage.setItem(`price_${activeProviderKey}_${j.data.orders[0].id}`, price);
-        const savedOp = (activeProviderKey === "smscode" || activeProviderKey === "smsbower" || activeProviderKey === "otpcepat") ? name : operator;
+        
+        const savedOp = (activeProviderKey === "smscode" || activeProviderKey === "smsbower") ? name : operator;
         if (savedOp) localStorage.setItem(`op_${activeProviderKey}_${j.data.orders[0].id}`, savedOp);
         
         if(j.data.orders[0].is_recycled) playSimpleSound('recycled');
@@ -716,10 +718,9 @@ function renderSmsOrders() {
             items.push("LOADING");
         }
 
-        // --- SENSOR PENAMBAHAN OTP & AUTO-SCROLL ---
         if (window.orderOtpCount[o.id] !== items.length) {
             window.orderOtpCount[o.id] = items.length;
-            window.orderOtpIndex[o.id] = items.length - 1; // Secara paksa tembak index ke paling kanan
+            window.orderOtpIndex[o.id] = items.length - 1; 
         }
         
         if (window.orderOtpIndex[o.id] === undefined) window.orderOtpIndex[o.id] = items.length - 1;
@@ -812,7 +813,7 @@ export async function actSms(action, id) {
         if (globalOrders[id]) {
             globalOrders[id].waiting_for_new_otp = true;
             delete window.orderOtpIndex[id]; 
-            delete window.orderOtpCount[id]; // Reset sensor saat resend
+            delete window.orderOtpCount[id]; 
             renderSmsOrders(); 
 
             db.ref(`OTP/${activeProviderKey}/${currentServerName}/${id}`).update({
