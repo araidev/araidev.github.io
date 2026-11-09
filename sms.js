@@ -5,10 +5,10 @@ import { db, auth } from './firebase.js';
 // 1. KONFIGURASI PROVIDER & HARGA SPESIFIK
 // ==========================================
 const PROVIDERS = {
-    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
+    "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
+    "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 400, maxPrice: 1500 },
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 400, maxPrice: 1500 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -423,14 +423,9 @@ async function loadSmsPrices() {
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
     
-    if ((activeProviderKey === "smscode" || activeProviderKey === "smsbower") && activeCountry === "PH") {
-        cMax = 10000; 
-    }
-    
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
     } else if (activeProviderKey === "smsbower") {
-        // FILTER IDR DIKEMBALIKAN: Memfilter harga USD murni menggunakan patokan batas Rupiah
         json.data.filter(i => {
             let idr = parseFloat(i.price) * currentUsdRate;
             return idr >= cMin && idr <= cMax;
