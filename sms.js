@@ -8,7 +8,6 @@ const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
     "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
     "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    // Ganti URL bower di bawah ini dengan URL worker SMS Bower milik Anda
     "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 } 
 };
 
@@ -142,7 +141,6 @@ export function updateCountryDropdown() {
     if (!countrySelect) return;
     
     let html = '';
-    // --- UPDATED: smsbower juga punya dropdown ID & PH ---
     if (activeProviderKey === 'smscode' || activeProviderKey === 'smsbower') {
         html += `<option value="ID">🇮🇩 ID</option>`;
         html += `<option value="PH">🇵🇭 PH</option>`;
@@ -312,7 +310,6 @@ export function changeSmsServer() {
 }
 window.changeSmsServer = changeSmsServer;
 
-// --- ANIMASI REFRESH ---
 export function refreshSms() {
     const refreshIcons = document.querySelectorAll('.fa-arrows-rotate, .fa-sync');
     refreshIcons.forEach(icon => {
@@ -329,7 +326,6 @@ export function refreshSms() {
 }
 window.refreshSms = refreshSms;
 
-// --- FUNGSI GEMBOK (LOCK) ---
 export function toggleSmsLock() {
     let isLocked = localStorage.getItem('sms_ui_locked') === 'true';
     localStorage.setItem('sms_ui_locked', !isLocked);
@@ -427,7 +423,6 @@ async function loadSmsPrices() {
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
     
-    // Toleransi max harga untuk negara Filipina (PH) agar tidak disembunyikan
     if ((activeProviderKey === "smscode" || activeProviderKey === "smsbower") && activeCountry === "PH") {
         cMax = 10000; 
     }
@@ -471,8 +466,7 @@ export function renderPriceGroups() {
         let pinIconHTML = isFav ? `<i class="fa-solid fa-circle-check" onclick="toggleFavoritePrice('${price}')" style="color: var(--fb-green); font-size:18px; cursor:pointer; padding-left:10px;"></i>` : `<i class="fa-regular fa-circle" onclick="toggleFavoritePrice('${price}')" style="color: #bdc3c7; font-size:18px; cursor:pointer; padding-left:10px;"></i>`;
         let ops = cachedPriceGroups[price];
         
-        // --- UPDATED: Jika operator cuma 1 atau provider adalah SMS Bower (tidak ada menu operator) ---
-        if ((activeProviderKey !== "smscode" && ops.length === 1) || activeProviderKey === "smsbower") {
+        if (activeProviderKey !== "smscode" && activeProviderKey !== "smsbower" && ops.length === 1) {
             let item = ops[0];
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;">
                         <div onclick="executeBuySms('${item.pid}', ${item.price}, '${item.opName}', '${item.opCode}', '${item.country || ""}')" style="flex:1; cursor: pointer; font-weight: 900; color:var(--fb-red); display:flex; align-items:center;">
@@ -521,7 +515,6 @@ window.openProviderMenu = openProviderMenu;
 function createCardHTML(oId, phone, priceDisplay, resendState, cancelState, replaceState, otpDisplay, isDone = false, isRecycled = false, expireTime = 0, operatorName = "UNKNOWN", isHidden = false) {
     const doneStyle = isDone ? 'style="background:#e6f4ea; color:var(--fb-green); border-color:var(--fb-green);"' : 'disabled';
     
-    // Penyesuaian warna kartu untuk bower
     let bColor = activeProviderKey === "herosms" ? "#8e44ad" : activeProviderKey === "smscode" ? "#95a5a6" : activeProviderKey === "smsbower" ? "#ff7b00" : "#007bff"; 
     
     const phoneColorStyle = isRecycled ? 'color: var(--fb-red);' : '';
@@ -816,7 +809,6 @@ export async function actSms(action, id) {
             });
         }
         
-        // --- UPDATED: smsbower juga dibypass layaknya smscode dan herosms ---
         if (activeProviderKey === 'herosms' || activeProviderKey === 'smscode' || activeProviderKey === 'smsbower') {
             return; 
         }
