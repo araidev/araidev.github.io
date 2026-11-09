@@ -1,6 +1,10 @@
 // === PENGATURAN FILTER ===
 // Ubah menjadi true untuk HANYA Pulau Jawa, atau false untuk semua provinsi
 const FILTER_HANYA_JAWA = true; 
+
+// Ubah menjadi true untuk MENGECUALIKAN Jawa Timur, false jika ingin tetap menampilkan Jawa Timur
+const KECUALIKAN_JAWA_TIMUR = true; 
+
 const DAFTAR_PROVINSI_JAWA = ["JAWA TIMUR", "JAWA TENGAH", "JAWA BARAT", "BANTEN", "DKI JAKARTA", "DI YOGYAKARTA", "DAERAH ISTIMEWA YOGYAKARTA"];
 
 const STORAGE_BASE_EMAIL = 'xurel_base_email';
@@ -59,12 +63,17 @@ export async function generateName() {
                 for (const prov in data) {
                     const namaProv = prov.toUpperCase();
                     
-                    // PENERAPAN FILTER:
+                    // PENERAPAN FILTER WILAYAH:
                     if (FILTER_HANYA_JAWA) {
                         const isJawa = DAFTAR_PROVINSI_JAWA.some(p => namaProv.includes(p));
                         if (!isJawa) continue;
                     } else {
                         if (namaProv.includes("PAPUA")) continue; 
+                    }
+
+                    // PENERAPAN FILTER PENGECUALIAN JAWA TIMUR
+                    if (KECUALIKAN_JAWA_TIMUR && namaProv.includes("JAWA TIMUR")) {
+                        continue; // Lewati proses jika ini adalah Jawa Timur
                     }
 
                     for (const kota in data[prov]) {
@@ -78,7 +87,9 @@ export async function generateName() {
                 dbWilayah = flatData;
             } catch (e) {
                 console.error("Gagal memuat kota.json, menggunakan data fallback:", e);
-                dbWilayah = [{ provinsi: "Jawa Timur", kota: "Surabaya", kecamatan: "Krembangan", desa: "Kemayoran", kodepos: "60111" }];
+                // Fallback default sementara diarahkan ke Jateng/Jabar jika Jatim dikecualikan, 
+                // namun untuk sederhananya kita biarkan fallback awal jika terjadi error fetching
+                dbWilayah = [{ provinsi: "Jawa Tengah", kota: "Semarang", kecamatan: "Semarang Tengah", desa: "Pendrikan Kidul", kodepos: "50131" }];
             }
         }
 
