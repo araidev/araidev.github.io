@@ -6,9 +6,11 @@ let currentNoteRaw = "";
 let isEditingNote = false;
 
 // ==========================================
-// VARIABEL LAYER AKTIF
+// VARIABEL LAYER AKTIF & LOCK (DARI LOCALSTORAGE)
 // ==========================================
-let currentLayer = "Catatan_A"; // Default pertama kali dibuka
+// Membaca layer terakhir yang dipilih dari cache HP, jika kosong gunakan "Catatan_A"
+let currentLayer = localStorage.getItem('notes_active_layer') || "Catatan_A"; 
+let isLayerLocked = localStorage.getItem('notes_layer_locked') === 'true';
 
 // ==========================================
 // FITUR STATISTIK
@@ -22,7 +24,6 @@ function getTodayWIB() {
     return `${wibTime.getFullYear()}-${String(wibTime.getMonth() + 1).padStart(2, '0')}-${String(wibTime.getDate()).padStart(2, '0')}`;
 }
 
-// Path statistik dinamis mengikuti layer aktif
 function getStatsPath() { return `notes_stats/${currentLayer}/${getTodayWIB()}`; }
 
 function incrementStat(type) { 
@@ -39,7 +40,7 @@ async function resetStatsManual() {
 function syncStats() {
     try {
         const path = getStatsPath();
-        if (currentStatsRef) currentStatsRef.off(); // Putus listener statistik layer lama
+        if (currentStatsRef) currentStatsRef.off(); 
         currentStatsRef = db.ref(path);
         currentStatsRef.on('value', snap => {
             const d = snap.val() || { saved: 0, deleted: 0 };
@@ -82,26 +83,62 @@ function updateStatsUI() {
 }
 
 // ==========================================
+// KENDALI GEMBOK (LAYER LOCK)
+// ==========================================
+export function toggleLayerLock() {
+    isLayerLocked = !isLayerLocked;
+    localStorage.setItem('notes_layer_locked', isLayerLocked);
+    applyLayerLockState();
+}
+window.toggleLayerLock = toggleLayerLock;
+
+function applyLayerLockState() {
+    const layerSelector = document.getElementById('layer-selector');
+    const lockBtn = document.getElementById('btn-lock-layer');
+    if (!layerSelector || !lockBtn) return;
+
+    if (isLayerLocked) {
+        layerSelector.disabled = true;
+        layerSelector.style.background = '#f0f2f5';
+        layerSelector.style.cursor = 'not-allowed';
+        lockBtn.innerHTML = '<i class="fa-solid fa-lock"></i>';
+        lockBtn.style.color = '#e74c3c'; // Warna merah saat terkunci
+        lockBtn.style.background = '#fadbd8'; // Background kemerahan
+    } else {
+        layerSelector.disabled = false;
+        layerSelector.style.background = 'white';
+        layerSelector.style.cursor = 'pointer';
+        lockBtn.innerHTML = '<i class="fa-solid fa-unlock"></i>';
+        lockBtn.style.color = '#65676b';
+        lockBtn.style.background = '#e4e6eb';
+    }
+}
+
+// ==========================================
 // CORE FUNCTIONS NOTES
 // ==========================================
 let currentNotesRef = null; 
 
 document.addEventListener('DOMContentLoaded', () => { 
-    syncNotes(); 
-    syncStats(); 
-    
-    // Deteksi jika Dropdown Layer diubah pengguna
     const layerSelector = document.getElementById('layer-selector');
+    
     if(layerSelector) {
+        // Terapkan pilihan layer terakhir dari cache saat dimuat
+        layerSelector.value = currentLayer;
+        applyLayerLockState();
+
         layerSelector.addEventListener('change', (e) => {
             currentLayer = e.target.value; 
+            localStorage.setItem('notes_active_layer', currentLayer); // Simpan pilihan ke memori HP
             syncNotes();  
             syncStats();  
         });
     }
+
+    syncNotes(); 
+    syncStats(); 
 });
 
-// Path note dinamis mengikuti layer aktif
 function getNotesPath() { return `notes/${currentLayer}`; }
 
 function formatDate(ts) {
@@ -114,8 +151,6 @@ function escapeHTML(str) { return !str ? "" : str.replace(/[&<>"']/g, m => ({ '&
 
 function syncNotes() {
     const path = getNotesPath(); 
-    
-    // Putus koneksi real-time dari layer yang lama agar tidak tercampur
     if (currentNotesRef) { currentNotesRef.off(); }
     
     currentNotesRef = db.ref(path);
@@ -141,7 +176,6 @@ function syncNotes() {
 
             card.onclick = () => {
                 selectedNoteKey = d.key; currentNoteRaw = d.content;
-                
                 const layerName = currentLayer.replace('_', ' ');
                 document.getElementById('view-tag').innerText = `${layerName} | ` + formatDate(d.timestamp);
                 
@@ -246,4 +280,4 @@ export function copyNoteContent(btn) {
     navigator.clipboard.writeText(currentNoteRaw); const originalHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> Tersalin'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
 }
-window.copyNoteContent = copyNoteContent;
+window.copyNoteContent = copyNoteContent;a
