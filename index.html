@@ -162,7 +162,22 @@
         <!-- ================= 3: CATATAN ================= -->
         <div id="view-notes" class="view-section" style="margin-top: 15px;">
             <div class="section-card" style="padding: 15px;">
-                <button class="btn-primary" style="width: 100%; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 6px;" onclick="openNoteModal()"><i class="fas fa-plus"></i> BUAT CATATAN</button>
+                
+                <!-- Action Bar Baru: Dropdown Layer & Tombol Buat Catatan -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 100%;">
+                    <select id="layer-selector" style="width: 35%; padding: 10px; border: 1px solid #cdd0d4; border-radius: 6px; background: white; font-weight: 600; color: #1c1e21; cursor: pointer; outline: none; font-size: 14px;">
+                        <option value="Catatan_A">Catatan A</option>
+                        <option value="Catatan_B">Catatan B</option>
+                        <option value="Catatan_C">Catatan C</option>
+                        <option value="Catatan_D">Catatan D</option>
+                        <option value="Catatan_E">Catatan E</option>
+                    </select>
+                    <button class="btn-primary" style="width: 65%; padding: 12px; font-weight: bold; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 5px;" onclick="openNoteModal()">
+                        <i class="fas fa-plus"></i> BUAT CATATAN
+                    </button>
+                </div>
+                <!-- Akhir Action Bar Baru -->
+
                 <div id="note-stats-container"></div>
                 <div id="notes-grid" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px;"></div>
             </div>
