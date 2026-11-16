@@ -6,6 +6,11 @@ let currentNoteRaw = "";
 let isEditingNote = false;
 
 // ==========================================
+// VARIABEL LAYER AKTIF
+// ==========================================
+let currentLayer = "Catatan_A"; // Default pertama kali dibuka
+
+// ==========================================
 // FITUR STATISTIK
 // ==========================================
 let currentStatsRef = null;
@@ -17,11 +22,16 @@ function getTodayWIB() {
     return `${wibTime.getFullYear()}-${String(wibTime.getMonth() + 1).padStart(2, '0')}-${String(wibTime.getDate()).padStart(2, '0')}`;
 }
 
-function getStatsPath() { return `notes_stats/public/${getTodayWIB()}`; }
-function incrementStat(type) { try { db.ref(getStatsPath()).child(type).transaction((val) => (val || 0) + 1); } catch (e) {} }
+// Path statistik dinamis mengikuti layer aktif
+function getStatsPath() { return `notes_stats/${currentLayer}/${getTodayWIB()}`; }
+
+function incrementStat(type) { 
+    try { db.ref(getStatsPath()).child(type).transaction((val) => (val || 0) + 1); } catch (e) {} 
+}
 
 async function resetStatsManual() {
-    if (await showModal("Reset Statistik", "Hapus data simpan & hapus hari ini menjadi 0?", "danger")) {
+    const layerName = currentLayer.replace('_', ' '); 
+    if (await showModal("Reset Statistik", `Hapus data simpan & hapus hari ini di ${layerName} menjadi 0?`, "danger")) {
         try { await db.ref(getStatsPath()).update({ saved: 0, deleted: 0 }); } catch (e) {}
     }
 }
@@ -29,7 +39,7 @@ async function resetStatsManual() {
 function syncStats() {
     try {
         const path = getStatsPath();
-        if (currentStatsRef) currentStatsRef.off();
+        if (currentStatsRef) currentStatsRef.off(); // Putus listener statistik layer lama
         currentStatsRef = db.ref(path);
         currentStatsRef.on('value', snap => {
             const d = snap.val() || { saved: 0, deleted: 0 };
@@ -74,9 +84,25 @@ function updateStatsUI() {
 // ==========================================
 // CORE FUNCTIONS NOTES
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => { syncNotes(); syncStats(); });
+let currentNotesRef = null; 
 
-function getNotesPath() { return 'notes/public'; }
+document.addEventListener('DOMContentLoaded', () => { 
+    syncNotes(); 
+    syncStats(); 
+    
+    // Deteksi jika Dropdown Layer diubah pengguna
+    const layerSelector = document.getElementById('layer-selector');
+    if(layerSelector) {
+        layerSelector.addEventListener('change', (e) => {
+            currentLayer = e.target.value; 
+            syncNotes();  
+            syncStats();  
+        });
+    }
+});
+
+// Path note dinamis mengikuti layer aktif
+function getNotesPath() { return `notes/${currentLayer}`; }
 
 function formatDate(ts) {
     if(!ts) return "---"; const d = new Date(ts);
@@ -88,8 +114,12 @@ function escapeHTML(str) { return !str ? "" : str.replace(/[&<>"']/g, m => ({ '&
 
 function syncNotes() {
     const path = getNotesPath(); 
-    db.ref(path).off();
-    db.ref(path).orderByChild('timestamp').on('value', snap => {
+    
+    // Putus koneksi real-time dari layer yang lama agar tidak tercampur
+    if (currentNotesRef) { currentNotesRef.off(); }
+    
+    currentNotesRef = db.ref(path);
+    currentNotesRef.orderByChild('timestamp').on('value', snap => {
         statsData.total = snap.numChildren();
         updateStatsUI();
         
@@ -111,7 +141,10 @@ function syncNotes() {
 
             card.onclick = () => {
                 selectedNoteKey = d.key; currentNoteRaw = d.content;
-                document.getElementById('view-tag').innerText = "PUB | " + formatDate(d.timestamp);
+                
+                const layerName = currentLayer.replace('_', ' ');
+                document.getElementById('view-tag').innerText = `${layerName} | ` + formatDate(d.timestamp);
+                
                 document.getElementById('view-title').innerText = d.title;
                 document.getElementById('view-content').innerHTML = autoLinkText(escapeHTML(d.content));
                 document.getElementById('modal-note-view').classList.add('active');
@@ -159,7 +192,7 @@ export async function saveNote() {
     const c = document.getElementById('note-content').value;
     if(!c) return showModal("Peringatan", "Konten tidak boleh kosong!", "alert");
     
-    const path = getNotesPath();
+    const path = getNotesPath(); 
     try {
         const snapshot = await db.ref(path).once('value');
         let usedNumbers = new Set();
