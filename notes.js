@@ -8,7 +8,6 @@ let isEditingNote = false;
 // ==========================================
 // VARIABEL LAYER AKTIF & LOCK (DARI LOCALSTORAGE)
 // ==========================================
-// Membaca layer terakhir yang dipilih dari cache HP, jika kosong gunakan "Catatan_A"
 let currentLayer = localStorage.getItem('notes_active_layer') || "Catatan_A"; 
 let isLayerLocked = localStorage.getItem('notes_layer_locked') === 'true';
 
@@ -83,8 +82,16 @@ function updateStatsUI() {
 }
 
 // ==========================================
-// KENDALI GEMBOK (LAYER LOCK)
+// KENDALI LAYER & GEMBOK 
 // ==========================================
+export function changeLayer(val) {
+    currentLayer = val;
+    localStorage.setItem('notes_active_layer', currentLayer);
+    syncNotes();
+    syncStats();
+}
+window.changeLayer = changeLayer;
+
 export function toggleLayerLock() {
     isLayerLocked = !isLayerLocked;
     localStorage.setItem('notes_layer_locked', isLayerLocked);
@@ -102,8 +109,8 @@ function applyLayerLockState() {
         layerSelector.style.background = '#f0f2f5';
         layerSelector.style.cursor = 'not-allowed';
         lockBtn.innerHTML = '<i class="fa-solid fa-lock"></i>';
-        lockBtn.style.color = '#e74c3c'; // Warna merah saat terkunci
-        lockBtn.style.background = '#fadbd8'; // Background kemerahan
+        lockBtn.style.color = '#e74c3c'; 
+        lockBtn.style.background = '#fadbd8'; 
     } else {
         layerSelector.disabled = false;
         layerSelector.style.background = 'white';
@@ -123,16 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const layerSelector = document.getElementById('layer-selector');
     
     if(layerSelector) {
-        // Terapkan pilihan layer terakhir dari cache saat dimuat
         layerSelector.value = currentLayer;
         applyLayerLockState();
-
-        layerSelector.addEventListener('change', (e) => {
-            currentLayer = e.target.value; 
-            localStorage.setItem('notes_active_layer', currentLayer); // Simpan pilihan ke memori HP
-            syncNotes();  
-            syncStats();  
-        });
     }
 
     syncNotes(); 
@@ -151,21 +150,40 @@ function escapeHTML(str) { return !str ? "" : str.replace(/[&<>"']/g, m => ({ '&
 
 function syncNotes() {
     const path = getNotesPath(); 
+    
+    // Matikan koneksi lama agar tidak bertumpuk
     if (currentNotesRef) { currentNotesRef.off(); }
+    
+    // KOSONGKAN LAYAR TERLEBIH DAHULU SAAT PINDAH LAYER
+    const grid = document.getElementById('notes-grid'); 
+    if (grid) {
+        grid.style.display = 'block';
+        grid.innerHTML = '<div style="text-align:center; padding:30px; color:#888; font-size:12px;"><i class="fas fa-spinner fa-spin"></i> Memuat catatan...</div>';
+    }
     
     currentNotesRef = db.ref(path);
     currentNotesRef.orderByChild('timestamp').on('value', snap => {
         statsData.total = snap.numChildren();
         updateStatsUI();
         
-        const grid = document.getElementById('notes-grid'); 
         if(!grid) return;
         
-        grid.style.display = 'flex'; grid.style.flexDirection = 'column'; grid.style.gap = '8px'; 
+        // Kembalikan ke mode grid
+        grid.style.display = 'flex'; 
+        grid.style.flexDirection = 'column'; 
+        grid.style.gap = '8px'; 
         grid.innerHTML = ''; 
         
         let items = [];
         snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
+
+        // Tampilkan pesan jika layer masih kosong
+        if (items.length === 0) {
+            grid.style.display = 'block';
+            grid.innerHTML = '<div style="text-align:center; padding:30px; color:#ccc; font-size:12px; font-weight:bold;">Belum ada catatan di layer ini.</div>';
+            return;
+        }
+
         const borderColors = ['#1877F2', '#2ECC71', '#E74C3C', '#F1C40F', '#9B59B6', '#E67E22'];
 
         items.reverse().forEach((d, index) => {
@@ -280,4 +298,4 @@ export function copyNoteContent(btn) {
     navigator.clipboard.writeText(currentNoteRaw); const originalHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> Tersalin'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
 }
-window.copyNoteContent = copyNoteContent;a
+window.copyNoteContent = copyNoteContent;
