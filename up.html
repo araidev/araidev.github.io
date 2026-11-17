@@ -98,16 +98,33 @@
         .badge-status { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
         .badge-order { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
-        /* Admin Buttons - Disusun vertikal ke bawah & Dikecilkan */
-        .admin-actions { display: none; flex-direction: column; gap: 4px; margin-left: 4px; padding-right: 6px; justify-content: center; }
-        .btn-act { 
-            width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); 
-            cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 11px; 
-            background: var(--card-bg); color: var(--text-gray); transition: border-color 0.2s;
+        /* Admin Buttons - Dirapikan untuk Grid */
+        .admin-actions { 
+            display: none; 
+            flex-direction: column; 
+            gap: 2px; 
+            padding: 0 6px 0 4px; 
+            justify-content: center; 
+            align-items: center;
+            border-left: 1px dashed var(--border); /* Pemisah visual yang rapi */
         }
-        .btn-act:hover { border-color: var(--primary); color: var(--primary); }
-        .btn-pin.active { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: var(--warning); }
-        .btn-del:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+        .btn-act { 
+            width: 24px; 
+            height: 24px; 
+            border-radius: 6px; 
+            border: none; /* Menghilangkan kotak agar tidak sumpek */
+            cursor: pointer; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 12px; 
+            background: transparent; /* Menyatu dengan background kartu */
+            color: var(--text-gray); 
+            transition: all 0.2s;
+        }
+        .btn-act:hover { background: var(--input-bg); color: var(--primary); }
+        .btn-pin.active { color: var(--warning); background: rgba(245, 158, 11, 0.15); }
+        .btn-del:hover { color: var(--danger); background: rgba(239, 68, 68, 0.15); }
 
         /* FLOATING BUTTON */
         .fab {
