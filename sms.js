@@ -6,7 +6,7 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500, waMinPrice: 0, waMaxPrice: 5000 },
     "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
     "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
 };
@@ -18,6 +18,7 @@ let BASE_URL = PROVIDERS[activeProviderKey].url;
 let currentServerName = ""; 
 let currentUsdRate = 16000; 
 let activeCountry = localStorage.getItem('xurel_country') || "ID"; 
+let activeService = localStorage.getItem('xurel_service') || "shopee"; 
 
 let smsInitialized = false; 
 let pollingInterval = null;
@@ -26,8 +27,13 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
-let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
-let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]"); 
+function getFavSuffix() {
+    const svcPart = (activeProviderKey === 'smscode' && activeService === 'wa') ? '_wa' : '';
+    return `${activeProviderKey}_${activeCountry}${svcPart}`;
+}
+
+let favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${getFavSuffix()}`) || "[]");
+let favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${getFavSuffix()}`) || "[]"); 
 
 let notifiedOtps = JSON.parse(localStorage.getItem('sms_notified_otps') || "[]"); 
 let cachedPriceGroups = {}; 
@@ -135,8 +141,33 @@ function cleanOpName(name) {
 }
 
 // ==========================================
-// KONTROL NEGARA KHUSUS (ID, PH, VN)
+// KONTROL LAYANAN & NEGARA KHUSUS
 // ==========================================
+export function updateServiceDropdown() {
+    const serviceSelect = document.getElementById('sms-service');
+    if (!serviceSelect) return;
+
+    if (activeProviderKey === 'smscode') {
+        serviceSelect.style.display = 'inline-block';
+        serviceSelect.value = activeService;
+    } else {
+        serviceSelect.style.display = 'none';
+        activeService = 'shopee';
+    }
+}
+window.updateServiceDropdown = updateServiceDropdown;
+
+export function changeSmsService() {
+    activeService = document.getElementById('sms-service').value;
+    localStorage.setItem('xurel_service', activeService);
+
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${getFavSuffix()}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${getFavSuffix()}`) || "[]");
+
+    refreshSms();
+}
+window.changeSmsService = changeSmsService;
+
 export function updateCountryDropdown() {
     const countrySelect = document.getElementById('sms-country');
     if (!countrySelect) return;
@@ -175,8 +206,8 @@ export function changeSmsCountry() {
     activeCountry = document.getElementById('sms-country').value;
     localStorage.setItem('xurel_country', activeCountry);
     
-    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
-    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${getFavSuffix()}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${getFavSuffix()}`) || "[]");
     
     refreshSms();
 }
@@ -241,8 +272,14 @@ async function initSms() {
             <details id="wrapper-hidden-orders" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ced4da;">
                 <summary style="cursor: pointer; outline: none; display: flex; align-items: center; justify-content: space-between;">
                     <span id="hidden-toggle-text" style="background:#e9ecef; padding:6px 12px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-muted); letter-spacing:0.5px; border: 1px solid #ddd;">SHOW</span>
-                    <select id="sms-country" onchange="window.changeSmsCountry()" style="background:#e9ecef; padding:4px 8px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-blue); letter-spacing:0.5px; border: 1px solid #ddd; outline:none; cursor:pointer;">
-                    </select>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <select id="sms-service" onclick="event.stopPropagation()" onchange="window.changeSmsService()" style="display:none; background:#e9ecef; padding:4px 8px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-green); letter-spacing:0.5px; border: 1px solid #ddd; outline:none; cursor:pointer;">
+                            <option value="shopee">Shopee</option>
+                            <option value="wa">WhatsApp</option>
+                        </select>
+                        <select id="sms-country" onclick="event.stopPropagation()" onchange="window.changeSmsCountry()" style="background:#e9ecef; padding:4px 8px; border-radius:6px; font-size: 10px; font-weight:900; color:var(--fb-blue); letter-spacing:0.5px; border: 1px solid #ddd; outline:none; cursor:pointer;">
+                        </select>
+                    </div>
                 </summary>
                 <div id="inner-hidden-orders" style="margin-top: 15px;"></div>
             </details>
@@ -263,6 +300,7 @@ async function initSms() {
         });
     }
 
+    updateServiceDropdown();
     updateCountryDropdown();
     applySmsLock();
     await loadServersList();
@@ -285,11 +323,12 @@ export async function changeSmsProvider() {
     document.getElementById('wrapper-active-orders').innerHTML = ''; 
     document.getElementById('inner-hidden-orders').innerHTML = ''; 
     
+    updateServiceDropdown();
     updateCountryDropdown();
     await loadServersList();
     
-    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`) || "[]");
-    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`) || "[]");
+    favoritePrices = JSON.parse(localStorage.getItem(`sms_fav_prices_${getFavSuffix()}`) || "[]");
+    favoriteOps = JSON.parse(localStorage.getItem(`sms_fav_ops_${getFavSuffix()}`) || "[]");
 
     attachGlobalOrderListener(); 
     refreshSms();
@@ -353,10 +392,12 @@ export function applySmsLock() {
     let prov = document.getElementById('sms-provider');
     let srv = document.getElementById('sms-server');
     let countrySelect = document.getElementById('sms-country');
+    let serviceSelect = document.getElementById('sms-service');
     
     if(prov) prov.disabled = isLocked;
     if(srv) srv.disabled = isLocked;
     if(countrySelect) countrySelect.disabled = isLocked;
+    if(serviceSelect) serviceSelect.disabled = isLocked;
 
     let lockIcon = document.getElementById('global-sms-lock-icon') || document.querySelector('.fa-lock, .fa-lock-open, .fa-unlock');
     if (lockIcon) {
@@ -378,11 +419,12 @@ async function apiCall(endpoint, method = "GET", body = null) {
     
     if (body) {
         body.country = activeCountry;
+        body.service = activeService;
         options.body = JSON.stringify(body);
     }
 
     const separator = endpoint.includes('?') ? '&' : '?';
-    const finalEndpoint = `${endpoint}${separator}country=${activeCountry}`;
+    const finalEndpoint = `${endpoint}${separator}country=${activeCountry}&service=${activeService}`;
 
     try {
         const controller = new AbortController();
@@ -412,7 +454,7 @@ async function updateSmsBal() {
 export function toggleFavoritePrice(priceStr) {
     if (favoritePrices.includes(priceStr)) favoritePrices = favoritePrices.filter(x => x !== priceStr);
     else favoritePrices.push(priceStr);
-    localStorage.setItem(`sms_fav_prices_${activeProviderKey}_${activeCountry}`, JSON.stringify(favoritePrices));
+    localStorage.setItem(`sms_fav_prices_${getFavSuffix()}`, JSON.stringify(favoritePrices));
     renderPriceGroups();
 }
 window.toggleFavoritePrice = toggleFavoritePrice;
@@ -420,7 +462,7 @@ window.toggleFavoritePrice = toggleFavoritePrice;
 export function toggleFavoriteOp(opName) {
     if (favoriteOps.includes(opName)) favoriteOps = favoriteOps.filter(x => x !== opName);
     else favoriteOps.push(opName);
-    localStorage.setItem(`sms_fav_ops_${activeProviderKey}_${activeCountry}`, JSON.stringify(favoriteOps));
+    localStorage.setItem(`sms_fav_ops_${getFavSuffix()}`, JSON.stringify(favoriteOps));
     const context = document.getElementById('current-price-context');
     if (context) openProviderMenu(context.value);
 }
@@ -437,6 +479,11 @@ async function loadSmsPrices() {
     let normalizedPrices = [];
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
+
+    if (activeProviderKey === "smscode" && activeService === "wa") {
+        cMin = PROVIDERS.smscode.waMinPrice;
+        cMax = PROVIDERS.smscode.waMaxPrice;
+    }
     
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
         json.data.filter(i => i.price >= cMin && i.price <= cMax).forEach(i => normalizedPrices.push({ pid: i.id, price: i.price, opCode: i.injected_operator_id || i.operator || 'any', opName: cleanOpName(i.operator) }));
