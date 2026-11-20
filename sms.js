@@ -6,9 +6,9 @@ import { db, auth } from './firebase.js';
 // ==========================================
 const PROVIDERS = {
     "herosms": { name: "HER", url: "https://hero.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 },
-    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500, waMinPrice: 0, waMaxPrice: 5000 },
+    "smscode": { name: "COD", url: "https://sms.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500, waMinPrice: 0, waMaxPrice: 25000 },
     "otpcepat": { name: "CEP", url: "https://cepat.aam-zip.workers.dev", currency: "IDR", minPrice: 0, maxPrice: 1500 },
-    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500 } 
+    "smsbower": { name: "BWR", url: "https://bower.aam-zip.workers.dev", currency: "USD", minPrice: 0, maxPrice: 1500, waMinPrice: 0, waMaxPrice: 50000 } 
 };
 
 let activeProviderKey = localStorage.getItem('xurel_provider') || "herosms";
@@ -27,8 +27,12 @@ let isPolling = false;
 
 let globalOrders = {}; 
 
+function supportsServiceDropdown(providerKey) {
+    return providerKey === 'smscode' || providerKey === 'smsbower';
+}
+
 function getFavSuffix() {
-    const svcPart = (activeProviderKey === 'smscode' && activeService === 'wa') ? '_wa' : '';
+    const svcPart = (supportsServiceDropdown(activeProviderKey) && activeService === 'wa') ? '_wa' : '';
     return `${activeProviderKey}_${activeCountry}${svcPart}`;
 }
 
@@ -147,7 +151,7 @@ export function updateServiceDropdown() {
     const serviceSelect = document.getElementById('sms-service');
     if (!serviceSelect) return;
 
-    if (activeProviderKey === 'smscode') {
+    if (supportsServiceDropdown(activeProviderKey)) {
         serviceSelect.style.display = 'inline-block';
         serviceSelect.value = activeService;
     } else {
@@ -480,9 +484,9 @@ async function loadSmsPrices() {
     let cMin = PROVIDERS[activeProviderKey].minPrice;
     let cMax = PROVIDERS[activeProviderKey].maxPrice;
 
-    if (activeProviderKey === "smscode" && activeService === "wa") {
-        cMin = PROVIDERS.smscode.waMinPrice;
-        cMax = PROVIDERS.smscode.waMaxPrice;
+    if (supportsServiceDropdown(activeProviderKey) && activeService === "wa") {
+        cMin = PROVIDERS[activeProviderKey].waMinPrice ?? cMin;
+        cMax = PROVIDERS[activeProviderKey].waMaxPrice ?? cMax;
     }
     
     if (activeProviderKey === "smscode" || activeProviderKey === "otpcepat") {
@@ -774,6 +778,7 @@ function renderSmsOrders() {
         }
 
         let items = hist.map(h => h.code);
+        let hasReceivedOtp = Boolean(currentOtp || (Array.isArray(hist) && hist.length > 0));
         
         if (o.waiting_for_new_otp || items.length === 0) {
             items.push("LOADING");
@@ -813,13 +818,14 @@ function renderSmsOrders() {
         `;
             
         let isOnLatestAndValid = (currentIndex === items.length - 1) && (displayItem !== "LOADING");
+        let canFinishOrder = activeProviderKey === "smsbower" ? hasReceivedOtp : isOnLatestAndValid;
 
         const resendState = isOnLatestAndValid ? '' : 'disabled';
         const cancelState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
         const replaceState = passed2Mins && !isOnLatestAndValid ? '' : 'disabled';
         
         const displayPrice = formatDisplayPrice(price, PROVIDERS[activeProviderKey].currency);
-        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, isOnLatestAndValid, o.is_recycled, expire, opName, !!o.hidden);
+        const htmlStr = createCardHTML(o.id, phone, displayPrice, resendState, cancelState, replaceState, otpDisplay, canFinishOrder, o.is_recycled, expire, opName, !!o.hidden);
 
         if (o.hidden) hiddenHTML += htmlStr;
         else activeHTML += htmlStr;
